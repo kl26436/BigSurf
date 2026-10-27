@@ -401,66 +401,376 @@ Everything on the list serves a job. Two look-ups (`get_program`, `get_week_plan
 
 ### What changed
 - 2026-10-24: `get_verdicts` added (AP-16) — 23 tools; its label is a good example of the formula in 3.4. AP-17/18 not started: still zero dropdowns, still quiet fixes.
-- *(after AP-18: capitals count before/after; the normalizeExercise result)*
+- 2026-10-25: AP-17/18 shipped (`0cbd688`) — guards and reject-not-coerce in; AP-23 planner tools shipped (`2df3642`): `get_rotation_candidates`, `propose_week_adjustment`, `get_verdicts{scope}`, `set_primary_lifts`, `rationale`, `get_workouts`, `propose_skip_exercise`. Re-run 3.10 and record the capitals count and the `normalizeExercise` result here.
+- *(after re-check)*
 
 ## Lesson 4 — The system prompt: only what you can't code
 
-**Maps to:** AP-19, the deletions in AP-17.
+**Maps to:** AP-19 (both output contracts, live-specific prompt), the prose deletions AP-17/18 made possible. Written 2026-10-25 against `functions/index.js` after AP-17/18 landed (`0cbd688`).
 
-Outline:
-- What belongs: identity and tone; the output contract; how to handle ambiguity and when to ask; what the authoritative blocks mean ("explain the verdict, don't override it"); safety lines (injuries).
-- What doesn't: numbers, thresholds, formulas, anything already in a verdict or a guard.
-- **Output contract** (AP-19): Verdict → Because (≤2 bullets with the user's numbers) → Do (exact weight × reps or one action) → optional Watch. ~120 words chat, ~40 live. One recommendation unless a plan is asked for.
-- Live mode gets its own ~300-token prompt; the chat prompt's data list is false there.
-- Model routing: Sonnet for lookups, Opus for program design. Effort is the last dial, not the first.
-- Check: token count before/after; the prompt should roughly halve.
+### 4.1 What the system prompt is
 
-## Lesson 5 — Evaluation: making "stupid" falsifiable
+The first thing in the message array, before the block, before your question, on every round of every turn: your standing instructions to the coach. Yours is three strings glued together — `TRAINING_SCIENCE_PROMPT` + `COACH_TOOLS_PROMPT` + a memory block (`index.js:950-1090`). Today that's roughly **2,060 + 2,330 + ~100 ≈ 4,500 tokens**. On a turn with a 5,000-token block, the model has read nine thousand tokens of yours before it reaches twelve words of yours that matter.
 
-**Maps to:** AP-20a–e.
+The system prompt is where everyone instinctively goes to fix an agent, and it's the weakest lever you have. It *advises*. Code *enforces*; the block *informs*; tools *enable*. The prompt is for the part that's left: how to talk, how to decide between valid options, what to do when unsure.
 
-Outline:
-- **Traces first** (20a): per turn, store the context (or hash + size), every tool call with input/output/error/ms, rounds, tokens, latency. From now on every bad answer is a reproducible case.
-- **Fixtures** (20b): 10–20 anonymized snapshots of your real data shapes. Scenarios: stalled lift at rung 1/2/3; deload week + "go heavier?"; low-volume pattern; rest day; kg user; injury + loading exercise; program build; rewrite pull day; machine taken (live); weekly review.
-- **Runner** (20c): `scripts/coach-eval.mjs` — pure context builder, real prompt + tools, in-memory Firestore mock, captured trace. Requires extracting `buildTrainingContext` from `AppState` first.
-- **Assertions** (20d): cheap, code-checkable, non-negotiable — no write tool on a question; propose-not-update during deload; every weight loadable; equipment exists at gym; injured pattern absent; word count in contract; verdict quoted when present.
-- **Rubric** (20e): a grader model scores 1–5 on grounded / one clear recommendation / explains why / consistent with verdict. Calibrate the grader against 10 answers you score by hand first. Gate prompt/tool PRs on `npm run eval:coach`.
-- Check: break something on purpose (reintroduce the 4× volume bug on a branch) and confirm the eval catches it.
+### 4.2 What belongs in it — and what doesn't
 
-## Lesson 6 — Memory and multi-turn
+| Belongs | Doesn't belong (and where it goes instead) |
+|---|---|
+| Who you are and how you talk — one or two sentences | Numbers and thresholds → **code**, surfaced as verdicts (gone after AP-17 ✅) |
+| How to treat the block: *"Rules verdicts are authoritative — explain, don't override"* | Rules a tool can check → the **form or the executor** (AP-18 ✅ — now delete the prose that duplicated them) |
+| The output contracts — what a good answer looks like, one for questions and one for plans | A description of the block's sections → the block's own **headers** already say what each section is |
+| What to do when unsure — say so; ask one question; call `get_verdicts` rather than guess | Tool routing ("use X not Y when…") → **tool labels** and a merged tool (Lesson 3.8) |
+| Safety — injuries, pain, never coach through a tweak | Training-science facts the model already knows (progressive overload, 2–3×/week) → nothing; it knows |
+| Conversation habits — build on earlier turns, don't re-ask for consent inside a batch | Anything in capitals — if it needs ALWAYS or NEVER, it wants to be code |
 
-**Maps to:** AP-15e; `remember_fact` / `forget_fact`; the thread replay logic.
+Rule of thumb: **after reading the block and the tool list, what would a good coach still need to be told?** That sentence is the prompt. Everything else is decoration that costs tokens and attention on every round.
 
-Outline:
-- Three kinds of memory and they're all just context: the message array (this turn), the thread (replayed turns), and durable facts (`memoryBlock`). None of it is "learning."
-- Durable facts should be few, user-visible, and editable. Let the model propose; let the user confirm.
-- Threads age. A thread reopened later needs a fresh briefing and a note that earlier turns were against older data.
-- Check: open a two-week-old thread, ask "what should I do today?", confirm the answer uses today's data.
+### 4.3 Your prompt today, section by section
 
-## Lesson 7 — Cost, latency, and when not to use an agent
+`TRAINING_SCIENCE_PROMPT`, in order:
 
-Outline:
-- Per-turn cost = (system + context + accumulated tool traffic) × rounds. Long context and many rounds multiply.
-- The decision tree: known steps → workflow. One judgment step → workflow with one model call. Open-ended input + bounded tools → agent. Numbers and thresholds → plain code, always.
-- Route by difficulty (AP-19). Cache what doesn't change. Prefer one good tool call over three exploratory ones — which means better tool descriptions, not a smarter model.
-- Monetization lens: the coach is a per-user cost center; proactive surfaces (scoreboard, weekly review, live nudge) deliver most of the trainer value at a fraction of the cost because the rules do the work.
+| Section | Verdict | Why |
+|---|---|---|
+| "THE DATA YOU RECEIVE INCLUDES" — 14 lines listing the block's sections | **Delete** | The block's section headers already say this. It's also false in live mode, which gets a different block. |
+| "HOW TO USE THE DATA" — injuries, goal framing, readiness, missed sessions, "say so plainly" | **Keep, shrink** | This is judgment. Cut the loadable-weights paragraph to one line — AP-17's loadability guard now enforces it. Keep ramp structure (judgment the rules don't have). |
+| "Training principles" — overload, frequency, deload cadence, compound-first, plateau ladder | **Delete most** | The model knows these. Keep two lines it can't know are *your* choices: "variety within structure — primaries stable, accessories rotate between blocks" and the 4–6 week deload cadence. The MEV/MRV line is already fixed ("the numbers in the context"). |
+| "Designing programs" — start from the person, structure the block, balance the week, progression per lift class, one-line why | **Keep — this becomes the planning contract** | Pure judgment; it's the shape of a good plan. AP-19 turns it into the six-part contract so the output has a fixed form. |
+| "Progression calls come from the RULES" — authoritative verdicts, action glossary, no-verdict fallback, scoreboard for progress, fatigue is leading | **Keep** | The best section in the file. The action glossary (bump / consolidate / chase-rep / rung 1-2-3) is the right kind of prompt content: it's how to *read* a verdict, not how to compute one. |
+| "Format: short bullet points… Concreteness beats brevity…" | **Replace** | With the two contracts (4.4). "Short bullets" produced the specimen's 400-word wall. |
+
+`COACH_TOOLS_PROMPT` (≈2,330 tokens, now the biggest piece):
+
+- **Consent rule** — keep, it can't be structural. But shrink: once a wrong write costs one dismissed card (Lesson 3.8), 200 words become three lines.
+- **Batching** — keep, one line.
+- **Six NEVERs and the 400-word scope section** for the three "change a workout" tools — after AP-18, each one should be checkable: either the executor refuses it (then delete the prose) or it can't be checked (then it's a real instruction — keep it, un-capitalized). Expect this section to lose two-thirds of its length. If the tools merge, it loses nearly all of it.
+- **Per-tool paragraphs** that restate the tool's own label — delete; the label is already in the array.
+- **Programs paragraph** (~300 words) — most of it is the planning contract and the program shape rules; AP-17's shape check enforces "≥4 weeks needs a deload," and the contract covers "give the block a SHAPE." Keep the levers glossary and `rotateAccessories` guidance; delete the rest.
+
+Target after the sweep: **doctrine ≈ 800 tokens, tools ≈ 700, live ≈ 300**. Less than half of today, with nothing lost that was doing work.
+
+### 4.4 The two contracts (AP-19)
+
+A contract is a fixed shape for the answer. It does more for how the coach *feels* than any other prompt change, because it removes the model's freedom to pad.
+
+**Questions** — anything that isn't creating or reshaping a block:
+
+```
+Verdict   one line, rule-derived when a verdict exists
+Because   ≤ 2 bullets, citing the user's numbers
+Do        exact weight × reps, or one action
+Watch     optional, one line
+```
+~120 words in chat, ~40 live. One recommendation unless a plan is asked for.
+
+**Plans** — creating or reshaping a block:
+
+```
+1  The block in one line        goal · weeks · deload week
+2  Week by week                 table: week · what it's for · levers
+3  Day by day                   the split, each template's exercises, primaries marked
+4  What stays fixed, and why    the primaries — "so the scoreboard keeps meaning something"
+5  What changes, and why        each swap with the engine's reason (never used / idle since)
+6  How we'll know it worked     2–3 scoreboard numbers to watch at week 4
+```
+The same six parts are saved as `rationale` on the program (AP-23e) and shown on the Block page (AP-24). The talk-through survives the chat.
+
+**One worked example of each beats twenty rules.** Add a short, real example under each contract — the specimen question answered in the Question shape; a four-week block in the Plan shape. Models imitate examples far more reliably than they follow instructions.
+
+**Live mode gets its own base prompt.** Today live mode = the full chat prompt + a 340-token addendum. The chat prompt's data list is false there and its contracts are too long. A ~300-token live prompt — identity, the live block's meaning, "one sentence, one proposal," pain rule — replaces it (AP-19).
+
+### 4.5 Two habits that keep a prompt honest
+
+**The deletion test.** Remove a line. Run the eval (Lesson 5). If no scenario changes, the line was decoration. Without an eval you can't run this test — which is the practical reason AP-20a comes before any further prompt tuning, including AP-19's second pass.
+
+**Stable prefix.** The API caches the unchanging start of your request. Keep the prompt in the same order every call — identity, how to read the block, contracts, safety, tool notes — with anything that varies (memory, date) at the end. Reordering or interpolating variables into the middle throws the cache away on every turn.
+
+### 4.6 Check (twenty minutes, before AP-19)
+
+1. **Paste `TRAINING_SCIENCE_PROMPT` into a token counter.** Write the number here. Then go line by line and mark each **K** (keep — judgment or contract), **S** (shrink — true but long), **D** (delete — the block says it, a guard enforces it, or the model knows it). Count the D's.
+2. **Do the same for `COACH_TOOLS_PROMPT`**, with one extra question per NEVER: *could the executor check this?* If yes, it's a D once you confirm AP-18 checks it.
+3. **Answer the specimen question in the Question contract yourself**, in under 80 words, using only the verdict line for Smith bench. That's the target answer; keep it for the eval.
+
+### What changed
+- 2026-10-25: after AP-17/18 — MEV numbers and the PUSH/HOLD matrix are gone; "Rules verdicts are AUTHORITATIVE" is in; format paragraph unchanged; tools prompt still carries 6 NEVER / 2 REQUIRED / 3 ONLY. Sizes: doctrine ≈ 2,060 tok, tools ≈ 2,330, live ≈ 340.
+- 2026-10-25 (later): AP-19 shipped (`2df3642`) — both contracts and routing in. Prompt sizes after the change not yet measured; re-run 4.6 step 1 and record them here.
+- *(after AP-19 second pass: the K/S/D counts, and the specimen answered in-contract)*
+
+## Lesson 5 — Measuring it: traces, scenarios, and the eval loop
+
+**Maps to:** AP-20a (shipped 2026-10-25, `2df3642`), AP-20b–e (not started). Written the afternoon traces landed, against the real trace document in `functions/coach-routing.js#buildTraceDoc`.
+
+### 5.1 The problem this solves
+
+Go back to the specimen (Lesson 1.4b). You looked at one answer and judged it crappy. You were mostly right — but you couldn't say *which* of five causes produced it, you couldn't reproduce it, and after a week of fixes you still can't prove the next answer is better rather than differently wrong. Two anecdotes aren't a measurement. Thumbs-up/down (which you have) is a weak one: sparse, biased toward the answers you felt strongly about, and silent about *why*.
+
+Software has tests for this. Agents need the same thing, in three parts: a **recording** of every turn (traces), a **fixed set of situations** to replay (scenarios), and **checks** that run against the replay (assertions + a grader). Together they turn "the coach feels stupid" into "scenario 7 failed assertion 3 in commit X."
+
+### 5.2 Traces — the flight recorder (you have this now)
+
+A trace is everything about one turn, written to `coachTraces` after the answer streams. Yours records:
+
+```
+userId, threadId, turn, mode (chat | live), route (which model and why), model
+question                        what the user typed
+contextText (≤ 60k chars)       THE BLOCK, verbatim — what the model actually saw
+contextChars, contextHash       size, and a fingerprint so identical blocks group
+toolCalls[]                     round · name · input · output · isError · ms   (up to 60)
+rounds                          how many model calls the turn took
+tokens { input, output }        cost
+latencyMs                       how long you waited
+stopReason, response            how it ended, and the answer (≤ 8k chars)
+error                           if the turn died
+```
+
+That is the complete answer to "what happened?" for any turn. From now on, the Lesson 1 question — *which cause?* — is a lookup:
+
+| Symptom | Where to look in the trace |
+|---|---|
+| wrong number in the answer | `contextText` — is the number wrong *in the block*? (cause 1) or right in the block and wrong in the answer? (model) |
+| "I don't see X" / hedging | `contextText` — is X there? (cause 2) |
+| long, narrated arithmetic | `toolCalls` — did it fetch history instead of quoting a verdict? `contextText` — was a verdict line present? (cause 3) |
+| "I set 12 sets" but the template says 3 | `toolCalls[n].output` — what did the tool *say* happened? (cause 4) |
+| slow or expensive | `rounds`, `tokens`, `latencyMs`, `route` |
+| card never appeared | `toolCalls` — was there an `isError`, or a success for a bad id? |
+
+**Habit:** every time an answer bothers you, copy the trace id into `docs/bug-log.md` with one line of what you expected. Each entry is a future scenario.
+
+### 5.3 Scenarios — freezing a situation so you can replay it (AP-20b)
+
+A scenario is a *frozen copy of your data at a moment* plus a question plus what a good answer must contain. Freezing matters: your real data changes every session, so "ask the coach again" is never the same test twice.
+
+Each scenario folder under `tests/fixtures/coach-scenarios/<name>/`:
+
+```
+fixture.json      workouts, templates, equipment, program, settings — real shapes, anonymized
+question.txt      the exact user text
+today.txt         the date the scenario happens on (so "today" and program week resolve)
+expect.json       assertions (5.5) + a golden answer (5.6)
+```
+
+The fifteen to start with. The first is already written for you:
+
+| # | Scenario | Why it's in the set |
+|---|---|---|
+| 1 | **The specimen**: week 6 deload, "review my push session" after a 185×6 → 185×3 bench | your real bad case; the before/after you care most about |
+| 2 | Stalled lift, rung 1 — "should I go heavier on row?" | must say hold, chase a rep |
+| 3 | Stalled lift, rung 3 — same question | must propose rotation via `get_rotation_candidates` |
+| 4 | Deload week, "can I push bench today?" | must hold; no write tool; quotes the DELOAD line |
+| 5 | Hamstrings under MEV two weeks — "how's my week?" | scoreboard headline leads; names the pattern |
+| 6 | Rest day — "what should I do today?" | says rest; no tool call needed |
+| 7 | kg user | every number in kg; nothing in lbs |
+| 8 | Injury on file + an exercise that loads it — "build me a leg day" | must not program it; must flag the substitution |
+| 9 | **"Plan my next block"** after a finished block | Plan contract, all six parts; deload week present; primaries unchanged from last block; every swap has an engine reason |
+| 10 | **"Last week was hard"** mid-block | `propose_week_adjustment`, not a template edit |
+| 11 | **"Swap back extension for something"** | top candidate from `get_rotation_candidates` with its reason; one `replace_day` offer |
+| 12 | "Rewrite my pull day" | one `replace_day`, not a chain of updates |
+| 13 | Live: machine taken | one `propose_swap`, equipment at this gym |
+| 14 | Live: "my knee's weird on leg press" | swap or skip; never coach through it |
+| 15 | Weekly review | opens with the scoreboard headline; one focus |
+
+How to get the fixtures: `node scripts/backup-user-data.mjs` dumps your real collections; pick a day, trim to the templates and the last ~40 workouts, replace names where needed. Real shapes matter more than real values — a fixture built by hand will miss the field the bug lives in.
+
+### 5.4 The runner — replaying a scenario against the real coach (AP-20c)
+
+`scripts/coach-eval.mjs`, per scenario: load `fixture.json` into the in-memory Firestore mock (`tests/fixtures/firestore-mock.js`), build the block exactly as the app would, call the real prompt + real tools with `today` pinned, execute tool calls against the mock, and save the trace next to the scenario. Then run the checks.
+
+The one prerequisite: `buildTrainingContext` reads `AppState` directly (`ai-coach-ui.js:1376`). The runner can't give it an `AppState`, so the block builder has to become a pure function that takes its inputs — the same change that let the live context be tested. Do that first; nothing else in AP-20 works without it.
+
+Cost: 15 scenarios × ~3 rounds on the chat model is a few dollars a run. Run on the cheaper route while iterating, the real route before merging.
+
+### 5.5 Assertions — the cheap checks that never argue (AP-20d)
+
+Binary, code-checked, no model involved. Each scenario lists the ones that apply:
+
+- **No write tool on a question.** `toolCalls` contains no `create_*`, `update_*`, `replace_day`, `set_*` when the question is a question.
+- **Deload → propose, never edit.** When the block says DELOAD, any change goes through `propose_session_adjustments` or `propose_week_adjustment`.
+- **Every prescribed weight is loadable** — parse `N × W` from the answer; W must be reachable in increments from the fixture's plates.
+- **Equipment exists at the gym** — any machine named in a swap is in the fixture's equipment list for that location.
+- **Injured pattern absent** — nothing in a built template loads the listed injury.
+- **Verdict quoted when present** — the Smith bench verdict's weight appears in the answer.
+- **In contract** — Question answers ≤ ~140 words; Plan answers contain all six section markers.
+- **One recommendation** — one `Do` line unless a plan was asked for.
+- **`log_advice` called** when a number was prescribed.
+- **Rounds ≤ 4** for a question; **tokens** within a budget per scenario.
+- **Unit discipline** — a kg fixture's answer contains no `lb`.
+
+Each is a few lines of JavaScript against the trace. Write them to fail on today's prompt where you know it's wrong — a test that passes on day one isn't testing anything.
+
+### 5.6 The grader — a model scoring what code can't (AP-20e)
+
+Some qualities aren't checkable by regex: *did it explain why in the user's numbers? did it lead with the right thing? would a trainer say this?* For those, a second model reads the trace and scores it against a rubric. This is what the field guide once called the "Coach Grader" — it's a step in this loop, not a product.
+
+Rules that keep a grader honest, because graders are agreeable by default:
+
+- **Score dimensions separately, 1–5 each**, never one overall number: *grounded in the user's numbers · one clear recommendation · explains why · consistent with the verdict · in contract.*
+- **Give it the verdict and the golden answer**, not just the response. It grades against something.
+- **Require a quoted sentence as evidence** for every score ≤ 3. No quote, no score.
+- **Calibrate once.** Score ten answers by hand first. Run the grader on the same ten. Where you disagree by 2+, fix the rubric wording, not the grader. Re-check every few months.
+- **Use the cheaper model** for grading; it's reading, not reasoning.
+
+The golden answer for scenario 1 is the one you wrote in Lesson 4's check — the specimen answered in the Question contract in under 80 words. Every scenario gets one; they're the clearest statement of what "good" means that you'll ever write.
+
+### 5.7 The loop
+
+```
+change a prompt line, a tool label, a guard, a context section
+        ↓
+npm run eval:coach          15 scenarios → 15 traces → assertions + grader scores
+        ↓
+diff against the last run   which scenarios moved, which assertions flipped, score deltas
+        ↓
+merge only if nothing regressed — or you can say why the regression is acceptable
+```
+
+That's the deletion test from Lesson 4.5 made real: remove a prompt line, run the loop, see if any scenario cares. It's also how the Block Planner gets good without you being the only judge — scenario 9 with its assertions *is* the definition of a good plan.
+
+### 5.8 Check (thirty minutes, before AP-20b)
+
+1. **Pull one trace.** Open `coachTraces` in Firestore, find today's most recent turn, and read `contextText` top to bottom. Compare it against Lesson 2.3's five questions. Then read `toolCalls` — did it call anything, and did any `isError`? Write the `contextChars` number into Lesson 2's *What changed* — that's the post-AP-16 measurement that was never taken.
+2. **Write scenario 1 as a card** — the specimen: which fixture data it needs (program in week 6, the push template, ~40 workouts around 09-07, your equipment list), the question verbatim, five assertions from 5.5 that apply, and your golden answer. That card is the template for the other fourteen.
+3. **Note the prerequisite.** Confirm `buildTrainingContext` still reads `AppState` (it does as of `2df3642`). Extracting it is the first task of AP-20c; put it on the list before fixtures, because the fixtures are useless without a runner.
+
+### What changed
+- 2026-10-25: AP-20a shipped (`2df3642`) — every chat and live turn writes a `coachTraces` doc with the full block, tool calls, rounds, tokens, latency, route. 20b–e not started; `buildTrainingContext` still coupled to `AppState`.
+- *(after AP-20c: first full run — scenarios passing / failing, grader agreement on the ten hand-scored answers)*
+
+## Lesson 6 — Memory: three things that are all just context
+
+**Maps to:** AP-15e (freshness, shipped), AP-15h (recent conversations, shipped), `remember_fact` / `forget_fact`. Written 2026-10-25.
+
+### 6.1 The model remembers nothing
+
+Worth saying once more because every intuition fights it: between one model call and the next, nothing persists. Not the last turn, not last week's thread, not the fact that you told it your knees hurt. If the coach "remembers" something, it's because your code put it back into the message array. "Memory" in an agent is a filing system *you* run, and every drawer of it is just more text in the block.
+
+There are three drawers in your coach. They differ only in how long the text lives and who decides what goes in.
+
+### 6.2 Drawer 1 — this turn (seconds)
+
+The message array itself: block, your question, each tool call and result. Lives for one turn. You don't manage it; the loop does. Its only failure mode is size (Lesson 2.5): every round re-reads all of it.
+
+### 6.3 Drawer 2 — this thread (hours to days)
+
+When you continue a thread, the app sends the earlier turns again — question, answer, question, answer — so the model sees the conversation so far. That's why a follow-up like "and for squat?" works: "bench, hold at 185" is right there above it.
+
+Two things you shipped that make this drawer honest:
+
+- **The block ages, so it gets refreshed** (AP-15e, `contextRefreshReason`): on turn 1 the block rides along; later turns carry only the question; after 24 hours or after a coach write, a fresh block is sent. Before this, a thread reopened two weeks later reasoned from two-week-old numbers with no way to know it.
+- **The Today line dates every block**, so even a replayed one visibly says when it was built.
+
+What to watch: a long thread replays *every* turn, so a 30-turn thread costs 30 turns of text on each new round. Threads should end. A "new chat" button is a cost control, not just UI.
+
+### 6.4 Drawer 3 — across threads (weeks to forever)
+
+This is what people mean by "memory," and you have two kinds:
+
+**Durable facts** — `remember_fact` / `forget_fact` → `preferences/coachMemory` → `memoryBlock`, appended to the system prompt on every call. Injuries, goals, schedule quirks, preferences. The model proposes what to store; the tool clips to 200 characters; you can see and edit the list. Rules for this drawer:
+
+- **Few and visible.** Twenty facts is a profile; two hundred is noise the model skims. Facts the app already tracks (weights, body comp) never go here — the prompt says so, and it's right.
+- **The user can read and delete every line.** Memory that the person can't inspect feels like surveillance and goes stale silently. Yours is visible in Settings; keep it that way.
+- **Phrase facts to age well.** "Knees hurt on deep squats" ages fine. "Deloading this week" is wrong in eight days — that belongs in `sessionIntent`, not memory.
+
+**Recent conversations** — AP-15h, the "what did we say last time" section of the block: your last five thread questions with dates and the first sentence of each answer. This is the drawer the specimen was missing — a trainer remembers you asked about bench three weeks running. It's cheap (≈400 tokens), automatic, and it's the difference between a coach and a help desk.
+
+And the **outcomes block** (`coachAdvice` → `buildOutcomesContext`): what the coach prescribed and what you actually lifted after. That's memory of its own advice, with consequences attached — the closest thing the coach has to learning from experience, and it's done entirely by code.
+
+### 6.5 Where a document tool fits (the PDF question, answered properly)
+
+Lesson 1.4b said the model already knows the textbooks. The fuller answer: a **retrieval tool** is drawer 4 — knowledge too big to carry in every block, fetched when relevant and dropped into context as text. It earns its place when the knowledge is something the model *can't* have: your equipment catalog and machine specs, your bug log, other users' data when the coach serves a hundred lifters, anything published after the model's training date. It does not earn its place for general training science. For the coach today, the rules engine is the textbook, and `get_verdicts` is the retrieval tool.
+
+### 6.6 Check (ten minutes)
+
+1. Open Settings → coach memory. Read every fact. Delete anything that's a measurement, anything that's expired, anything you wouldn't want quoted back. Count what's left.
+2. Open a thread from two or more weeks ago and ask "what should I do today?" The trace (`coachTraces`) should show a fresh block with today's date on the Today line. If it shows the old date, the refresh rule didn't fire — note why.
+3. Ask the coach something you asked last week in a different thread. The answer should reference the earlier exchange ("you asked about bench on Tuesday — still hold"). If it doesn't, check the block for the recent-conversations section.
+
+### What changed
+- 2026-10-25: AP-15e and AP-15h shipped; memory visible in Settings; outcomes block live.
+- *(after the check: fact count; did the stale-thread refresh fire; did the cross-thread reference land)*
 
 ---
 
-## After the coach — candidate agents 2, 3, 4
+## Lesson 7 — Cost, speed, and when not to build an agent
 
-Pick based on what you want to learn next. Each teaches something the coach doesn't.
+**Maps to:** AP-19 routing (shipped, `coach-routing.js`), the budget habits in Lessons 2 and 4. Written 2026-10-25.
 
-| Candidate | What it does | What it teaches | Agent or workflow? |
-|---|---|---|---|
-| **Block Planner** (Big Surf) | At the last week of a block: reads the scoreboard + stale patterns + equipment at your gym, proposes the next block, you approve with one tap | Structured output, human-in-the-loop approval, workflow-with-one-judgment-step | Mostly workflow — the model picks and explains; code generates candidates and validates |
-| **Coach Grader** (dev side) | The AP-20e rubric agent: reads a trace, scores it, explains the score, diffs against last run | LLM-as-judge, rubric design, calibrating a grader against your own labels | Workflow |
-| **Photo Machine ID → equipment** (Big Surf) | Camera → identify machine → match catalog → route through the AP-12 planner → select it in the workout | Multimodal input, tool chaining, confidence thresholds, "ask vs act" | Small agent (2–3 tools) |
-| **Something outside Big Surf** | e.g. a weekly FRC scouting digest, or a fantasy lineup assistant with a tool that reads your league | Building from zero with the Agent SDK; what a minimal viable loop looks like without an existing codebase | Your choice — good for seeing the skeleton without the history |
+### 7.1 What a turn costs
 
-Suggested order: Coach Grader (you need it for AP-20 anyway and it's the fastest to build), then Block Planner (it's the trainer feature you actually want), then whichever of the other two appeals.
+Tokens in × price + tokens out × price, per round, summed over the turn. The specimen: 6,165 in, 6,843 out, one round — and most of the output was *thinking*, which you pay for and never see. Three multipliers decide the bill:
+
+- **Block + prompt size** — re-read every round (Lesson 2.5, 4.1).
+- **Rounds** — a turn that calls three tools reads everything four times.
+- **Model and effort** — the flagship at high effort costs several times a smaller model at normal effort, and on a fact lookup it adds nothing.
+
+So the levers, in order: shrink the block and prompt (done partly; measure it), cut rounds by giving the model what it needs up front (verdicts did this), route by difficulty (AP-19 did this), and touch effort last.
+
+### 7.2 Routing — the right model for the question (what AP-19 built)
+
+`routeCoachTurn()` looks at the question: a fact lookup ("what's my bench PR?", "when did I last do legs?") goes to the quick tier — cheaper model, normal effort, one or two rounds. Everything else goes to the full tier. The trace records `route` and the reason, so you can see the split and check that nothing hard was sent down the cheap path.
+
+Two rules for routing as you extend it: **route on the question, never on the answer** (you can't know the answer's difficulty before you have it), and **when unsure, route up** — a cheap wrong answer costs more than an expensive right one. Weekly reviews and block plans always take the full tier; they're where the judgment is.
+
+### 7.3 Latency
+
+The user feels rounds and output length, not tokens. A one-round, 80-word answer in the Question contract arrives in a few seconds; the specimen's 400-word narration after a tool call did not. Streaming hides some of it. The contract hides more. For live mode, the budget is one round and one sentence — anything slower loses to just picking a weight.
+
+### 7.4 When not to build an agent
+
+The decision tree, which is the whole guide in four lines:
+
+```
+Are the steps known in advance?                 → plain code. No model.
+Known steps, one needs words or judgment?        → a workflow: code runs the steps, the model fills one.
+Open-ended input, bounded set of actions?        → an agent: model + tools + loop.
+Has a number and a threshold?                    → code. Always. Even inside an agent.
+```
+
+Apply it to Big Surf: the weekly review is a workflow (code gathers; the model writes). The scoreboard, the verdicts, the fatigue signal are plain code. The coach is an agent because the input is your words and the actions are bounded by 20-odd tools. The Block Planner is the agent doing a job, with the plan's shape fixed by a contract so it behaves more like a workflow than it looks.
+
+A warning sign you'll meet: the urge to add a tool so the model can "figure something out" — query the data, compute a trend, compare two weeks. That's the arithmetic-by-prose trap with a schema on it. If you can write the function, write the function and hand the model the result.
+
+### 7.5 The monetization lens
+
+For paying users the coach is a per-user, per-turn cost, and its value arrives mostly through surfaces that don't cost a turn: the set rows, the scoreboard card, the Block page, the weekly review (one turn per week). Chat is where the expensive, open-ended questions go, and routing keeps the cheap ones cheap. Design for that: the rules engine does the daily work for free; the model is spent on planning and on the questions only a person could ask.
+
+### 7.6 Check (ten minutes)
+
+1. From `coachTraces`, pull a week of turns and sum `tokens.input + tokens.output` by `route`. That's your first real cost picture; note it in *What changed*.
+2. Find the longest `rounds` in the week and read that trace's `toolCalls`. Could the block have carried what the first tool call fetched?
+3. Find one `quick`-routed turn and read the answer. Was it right? That's the only routing check that matters.
+
+### What changed
+- 2026-10-25: routing shipped with AP-19; traces record `route`.
+- *(after a week of traces: tokens by route; longest turn; any mis-routed question)*
 
 ---
+
+## After the coach — what the next agent is (revised 2026-10-25)
+
+The first version of this section listed three "candidate agents" inside Big Surf. On reflection two of them aren't agents:
+
+- **Block Planner** is the coach doing job 1. Same loop, same block, same tools plus the ones in AP-23, seeded with "plan my next block," answered in the Plan contract, saved as `rationale`, shown on the Block page. Building it as a separate agent would duplicate everything for no gain. It's a *job*, and it's the most important one.
+- **Coach Grader** is AP-20e — the model-as-judge step in the eval. It makes the planner's output *measurable*; it doesn't change what the planner does. It's tooling you'll build, not a product.
+- **Photo Machine ID** is an equipment-entry convenience. Someday list.
+
+So: there is one agent in Big Surf, the coach, and the plan already covers making it good. The second agent you build should be **outside Big Surf**, from zero, so you see the skeleton without three months of history around it.
+
+### Agent 2 — Sleeper guillotine assistant
+
+Why this one: your league has a cadence (weekly), a crisp objective (don't be the lowest score this week — survival, not maximizing), a bounded tool set (Sleeper's public read API: league, rosters, matchups, players, trending adds; a projections source), and one judgment-heavy moment that rules can't fully own — when an eliminated team's roster hits waivers and eighteen teams bid at once. It is the coach's architecture in miniature:
+
+| | Coach | Guillotine assistant |
+|---|---|---|
+| Cadence | per block / per week / per session | per week: Tue waivers → Sun lineup |
+| Rules (code) | progression, stall rung, MRV, e1RM | floor projections, bye/injury checks, "lowest likely score" risk, FAAB budget math |
+| Judgment (model) | which verdict to lead with, swaps, "my knee" | which eliminated-roster player to chase, how much to bid, start the safe floor or the upside play when you're not in danger |
+| Block | today, verdicts, constraints, evidence, last time | week, your roster vs the field's floors, waiver pool ranked, your bids last week and what happened |
+| Look-ups | history, equipment, verdicts | roster, matchups, trending, projections |
+| Proposals | next target, swap, week adjustment | lineup card, waiver claims with bids — nothing submits without a tap |
+| Eval | 15 fixtures + grader | past weeks replayed: would the lineup have survived? |
+
+What it teaches that the coach can't: building the loop from an empty file; designing the block *before* the tools; a hard external API with rate limits; a scoring objective you can backtest exactly (survival is binary, week by week). Scope for a first version: read-only tools, one proposal card, five replayed weeks as the eval. Start it after the coach plans a block you'd actually follow.
 
 ## Ten rules on a card
 
