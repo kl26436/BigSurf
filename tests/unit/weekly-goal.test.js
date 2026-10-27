@@ -20,8 +20,8 @@ function calculateGoalPercentage(weekCount, weeklyGoal) {
 
 /**
  * Calculate SVG stroke-dashoffset for a progress ring.
- * MIRRORS: js/core/workout/exercise-ui.js exercise mini-ring math
- * (lines 584-585, inline in the card render) — keep in sync manually.
+ * Generic ring math (the v1 exercise cards that inlined it were deleted in
+ * UD-6; chart-donut.js does its own arc math).
  * @param {number} percentage - 0-100
  * @param {number} radius - Circle radius
  * @returns {number} stroke-dashoffset value

@@ -14,7 +14,7 @@ import { haptic } from '../utils/haptics.js';
 import { navigateTo } from '../ui/navigation.js';
 import { ensureFreshBodyWeight } from '../features/bodyweight-prompt.js';
 import { scheduleRestNotification, cancelRestNotification, isFCMAvailable } from '../utils/push-notification-manager.js';
-import { convertYouTubeUrl } from './exercise-ui.js';
+import { convertYouTubeUrl } from './form-video.js';
 import { confirmSheet } from '../ui/confirm-sheet.js';
 import { openSheet as openSheetPrimitive, closeSheet } from '../ui/sheet.js';
 import { once } from '../ui/busy.js';
@@ -4386,7 +4386,7 @@ export async function loadAutofillForExercise(idx, { reseed = false, trigger = n
     // lives in resolveFormVideo. Failures are non-fatal — the button just
     // doesn't show.
     try {
-        const { resolveFormVideo } = await import('./exercise-ui.js');
+        const { resolveFormVideo } = await import('./form-video.js');
         const formVideo = await resolveFormVideo(exName, equipName);
         exercise._formVideoUrl = formVideo?.url || null;
     } catch {

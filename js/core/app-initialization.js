@@ -1136,17 +1136,6 @@ function setupSignInListeners() {
 }
 
 function setupOtherEventListeners() {
-    // Global unit toggle
-    const globalUnitToggle = document.querySelector('.global-settings .unit-toggle');
-    if (globalUnitToggle) {
-        globalUnitToggle.addEventListener('click', (e) => {
-            if (e.target.classList.contains('unit-btn')) {
-                import('./workout/workout-core.js').then((module) => {
-                    module.setGlobalUnit(e.target.dataset.unit);
-                });
-            }
-        });
-    }
 
     // Close modal buttons
     document.addEventListener('click', (e) => {

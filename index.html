@@ -57,8 +57,6 @@
         <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
         <link rel="stylesheet" href="styles/index.css" />
 
-        <!-- Chart.js for progress tracking -->
-        <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
         <!-- Leaflet for maps -->
         <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
@@ -121,13 +119,7 @@
         <link rel="modulepreload" href="js/core/features/body-stats.js">
         <link rel="modulepreload" href="js/core/features/body-measurements.js">
         <link rel="modulepreload" href="js/core/features/bodyweight-prompt.js">
-        <link rel="modulepreload" href="js/core/workout/rest-timer.js">
-        <link rel="modulepreload" href="js/core/features/block-view.js">
-        <link rel="modulepreload" href="js/core/features/goal-progress.js">
-        <link rel="modulepreload" href="js/core/features/plan-timeline.js">
-        <link rel="modulepreload" href="js/core/features/plan-sessions.js">
-        <link rel="modulepreload" href="js/core/ui/template-selection.js">
-        <link rel="modulepreload" href="js/core/workout/exercise-ui.js">
+        <link rel="modulepreload" href="js/core/workout/form-video.js">
         <link rel="modulepreload" href="js/core/data/equipment-catalog.js">
         <link rel="modulepreload" href="js/core/data/equipment-catalog-helpers.js">
         <link rel="modulepreload" href="js/core/workout/set-seeding.js">
@@ -151,6 +143,11 @@
         <link rel="modulepreload" href="js/core/features/machine-exercise-matcher.js">
         <link rel="modulepreload" href="js/core/features/equipment-discovery.js">
         <link rel="modulepreload" href="js/core/ui/equipment-library-ui.js">
+        <link rel="modulepreload" href="js/core/features/block-view.js">
+        <link rel="modulepreload" href="js/core/features/goal-progress.js">
+        <link rel="modulepreload" href="js/core/features/plan-timeline.js">
+        <link rel="modulepreload" href="js/core/features/plan-sessions.js">
+        <link rel="modulepreload" href="js/core/ui/template-selection.js">
         <link rel="modulepreload" href="js/core/ui/workout-history-ui.js">
         <link rel="modulepreload" href="js/core/workout/edit-history-inline.js">
         <link rel="modulepreload" href="js/core/features/manual-workout.js">
@@ -532,19 +529,6 @@
                 aria-atomic="false"
             ></div>
 
-            <!-- Rest Timer (if needed) -->
-            <div id="rest-timer" class="rest-timer hidden">
-                <div class="timer-display">
-                    <span id="timer-countdown" aria-live="polite">0:00</span>
-                </div>
-                <div class="timer-controls">
-                    <button id="pause-rest-btn" class="btn btn-secondary" onclick="toggleHeaderRestTimer()" aria-label="Pause rest timer">
-                        <i class="fas fa-pause"></i>
-                    </button>
-                    <button id="skip-rest-btn" class="btn btn-primary" onclick="skipHeaderRestTimer()">
-                        <i class="fas fa-forward"></i> Skip
-                    </button>
-                </div>
             </div>
         </div>
 

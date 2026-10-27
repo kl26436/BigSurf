@@ -88,7 +88,7 @@ export function getWorkoutHistory(appState) {
                         );
                         break;
                     case 'showExerciseVideo':
-                        window.showExerciseVideo(el.dataset.video, el.dataset.exercise);
+                        window.awShowFormVideo?.(el.dataset.video, el.dataset.exercise);
                         break;
                     case 'editWorkout':
                         // Inline edit lives in edit-history-inline.js; the old

@@ -1,17 +1,12 @@
 // Body Weight & Measurements UI — Phase 12.2, 12.3, 12.4
-// Dashboard widget, weight entry modal, Stats chart, body measurements modal
+// The Log weight page (entry + measurements). The weight chart is metric-detail-ui.js (SVG).
 
 import { AppState } from '../utils/app-state.js';
 import { escapeHtml, escapeAttr, showNotification, formatHeight, parseHeightToCm, unitLabel } from '../ui/ui-helpers.js';
 import { getDateString, formatDateShort, formatRelative } from '../utils/date-helpers.js';
 import { navigateTo, navigateBack } from '../ui/navigation.js';
 import { once } from '../ui/busy.js';
-import {
-    saveBodyWeight,
-    getBodyWeightSince,
-    calculate7DayAverage,
-    convertMeasurementUnit,
-} from './body-measurements.js';
+import { saveBodyWeight } from './body-measurements.js';
 
 // ===================================================================
 // WEIGHT ENTRY MODAL (Phase 12.2)
@@ -290,175 +285,6 @@ async function saveBodyWeightEntryNow() {
             updateSetting('profileHeightCm', heightCm);
         }
         closeWeightEntryModal();
-    }
-}
-
-// ===================================================================
-// STATS PAGE CHART (Phase 12.3)
-// ===================================================================
-
-let bodyWeightChart = null;
-
-let currentBodyWeightTimeRange = '3M';
-
-/**
- * Set time range and re-render the body weight chart.
- */
-export async function setBodyWeightTimeRange(range) {
-    currentBodyWeightTimeRange = range;
-
-    // Update pill buttons
-    const pills = document.querySelectorAll('#bodyweight-chart-section .pill-btn');
-    pills.forEach(btn => {
-        btn.classList.toggle('active', btn.textContent === range);
-    });
-
-    await renderBodyWeightChart();
-}
-
-/**
- * Render (or re-render) the body weight chart using Chart.js.
- */
-export async function renderBodyWeightChart() {
-    const canvas = document.getElementById('bodyweight-chart');
-    if (!canvas) return;
-
-    // Destroy previous chart
-    if (bodyWeightChart) {
-        bodyWeightChart.destroy();
-        bodyWeightChart = null;
-    }
-
-    // Calculate start date from range
-    const now = new Date();
-    let startDate;
-    switch (currentBodyWeightTimeRange) {
-        case '3M': startDate = new Date(now.getFullYear(), now.getMonth() - 3, now.getDate()); break;
-        case '6M': startDate = new Date(now.getFullYear(), now.getMonth() - 6, now.getDate()); break;
-        case '1Y': startDate = new Date(now.getFullYear() - 1, now.getMonth(), now.getDate()); break;
-        case 'ALL': startDate = new Date(2020, 0, 1); break;
-        default: startDate = new Date(now.getFullYear(), now.getMonth() - 3, now.getDate());
-    }
-
-    const startDateStr = getDateString(startDate);
-    const entries = await getBodyWeightSince(startDateStr);
-
-    if (entries.length === 0) {
-        const container = document.getElementById('bodyweight-chart-container');
-        if (container) {
-            container.innerHTML = `
-                <div class="empty-state">
-                    <div class="empty-state-icon"><i class="fas fa-chart-line"></i></div>
-                    <div class="empty-state-description">No weight data for this period.</div>
-                </div>
-            `;
-        }
-        return;
-    }
-
-    // Convert all to user's unit
-    const unit = AppState.globalUnit || 'lbs';
-    const converted = entries
-        .filter(e => e.weight > 0) // Skip measurements-only
-        .map(e => convertMeasurementUnit(e, unit));
-
-    const movingAvg = calculate7DayAverage(converted);
-
-    const labels = converted.map(e => {
-        const d = new Date(e.date + 'T00:00:00');
-        return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-    });
-
-    const ctx = canvas.getContext('2d');
-    bodyWeightChart = new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels,
-            datasets: [
-                {
-                    label: `Weight (${unitLabel(unit)})`,
-                    data: converted.map(e => e.weight),
-                    borderColor: 'rgba(0, 200, 180, 0.5)',
-                    backgroundColor: 'rgba(0, 200, 180, 0.05)',
-                    pointRadius: 3,
-                    pointBackgroundColor: 'rgba(0, 200, 180, 0.7)',
-                    borderWidth: 1.5,
-                    tension: 0.1,
-                    fill: false,
-                },
-                {
-                    label: '7-Day Avg',
-                    data: movingAvg.map(e => e.weight),
-                    borderColor: 'rgba(0, 200, 180, 1)',
-                    backgroundColor: 'rgba(0, 200, 180, 0.1)',
-                    pointRadius: 0,
-                    borderWidth: 2.5,
-                    tension: 0.3,
-                    fill: true,
-                },
-            ],
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            interaction: {
-                intersect: false,
-                mode: 'index',
-            },
-            plugins: {
-                legend: {
-                    display: true,
-                    position: 'bottom',
-                    labels: {
-                        color: getComputedStyle(document.documentElement).getPropertyValue('--text-secondary').trim() || '#999',
-                        boxWidth: 12,
-                        padding: 12,
-                        font: { size: 11 },
-                    },
-                },
-                tooltip: {
-                    backgroundColor: 'rgba(30, 30, 30, 0.95)',
-                    titleColor: '#fff',
-                    bodyColor: '#ddd',
-                    padding: 10,
-                    displayColors: false,
-                    callbacks: {
-                        title: (items) => items[0]?.label || '',
-                        label: (item) => `${item.dataset.label}: ${item.raw} ${unitLabel(unit)}`,
-                    },
-                },
-            },
-            scales: {
-                x: {
-                    ticks: {
-                        color: getComputedStyle(document.documentElement).getPropertyValue('--text-tertiary').trim() || '#666',
-                        maxTicksLimit: 6,
-                        font: { size: 10 },
-                    },
-                    grid: { display: false },
-                },
-                y: {
-                    ticks: {
-                        color: getComputedStyle(document.documentElement).getPropertyValue('--text-tertiary').trim() || '#666',
-                        font: { size: 10 },
-                        callback: (v) => `${v}`,
-                    },
-                    grid: {
-                        color: 'rgba(255, 255, 255, 0.05)',
-                    },
-                },
-            },
-        },
-    });
-}
-
-/**
- * Destroy the body weight chart (for cleanup when leaving Stats page).
- */
-export function destroyBodyWeightChart() {
-    if (bodyWeightChart) {
-        bodyWeightChart.destroy();
-        bodyWeightChart = null;
     }
 }
 

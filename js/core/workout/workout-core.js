@@ -32,57 +32,7 @@ export {
     showMidWorkoutSummary,
 } from './workout-session.js';
 
-// === Exercise UI: Rendering, Set Management, Equipment, Video, Units ===
-export {
-    renderExercises,
-    updateExerciseCard,
-    createExerciseCard,
-    generateExerciseTable,
-    loadExerciseHistory,
-    updateSet,
-    addSet,
-    deleteSet,
-    addSetToExercise,
-    removeSetFromExercise,
-    saveExerciseNotes,
-    markExerciseComplete,
-    deleteExerciseFromWorkout,
-    addExerciseToActiveWorkout,
-    confirmExerciseAddToWorkout,
-    changeExerciseEquipment,
-    applyEquipmentChange,
-    setGlobalUnit,
-    setExerciseUnit,
-    editExerciseDefaults,
-    showExerciseVideo,
-    hideExerciseVideo,
-    showExerciseVideoAndToggleButton,
-    hideExerciseVideoAndToggleButton,
-    convertYouTubeUrl,
-    loadLastWorkoutHint,
-    toggleSetComplete,
-    toggleReorderMode,
-    toggleExerciseOverflow,
-    supersetWithNext,
-    ungroupExerciseFromWorkout,
-    toggleExerciseExpansion,
-    replaceExercise,
-    updateCardioField,
-    updateBodyweightSet,
-} from './exercise-ui.js';
 
-// === Rest Timer ===
-export {
-    toggleModalRestTimer,
-    skipModalRestTimer,
-    restoreModalRestTimer,
-    saveActiveTimerState,
-    restoreActiveTimerState,
-    restoreTimerFromAppState,
-    autoStartRestTimer,
-    toggleHeaderRestTimer,
-    skipHeaderRestTimer,
-} from './rest-timer.js';
 
 // === Active Workout V2 — Wizard UI ===
 export {

@@ -8,6 +8,7 @@
 import { AppState } from './core/utils/app-state.js';
 import { startApplication } from './core/app-initialization.js';
 import { confirmSheet } from './core/ui/confirm-sheet.js';
+import { loadExerciseHistory } from './core/data/data-manager.js';
 import { updateSetting, onboardingNext, onboardingBack, onboardingSkipWeightGoal, completeOnboarding, restartOnboarding, rebuildPRsFromSettings, openProfile, editProfileName, editProfileHeight, editProfileBirthday, editProfileExperience, selectProfileExperience, closeProfileExperiencePicker, closeProfile, editBodyWeightGoal, notifDiagEnable, notifDiagTest, editCoachInjuries, editCoachNotes } from './core/ui/settings-ui.js';
 import { exportWorkoutData, exportDataForAI } from './core/data/data-manager.js';
 import { dismissFirstUseTip } from './core/features/first-use-tips.js';
@@ -57,44 +58,10 @@ import {
     closeWorkoutOverflow,
     updateWorkoutProgress,
     showMidWorkoutSummary,
-    updateSet,
-    addSet,
-    deleteSet,
-    addSetToExercise,
-    removeSetFromExercise,
-    saveExerciseNotes,
-    updateCardioField,
-    markExerciseComplete,
-    deleteExerciseFromWorkout,
-    addExerciseToActiveWorkout,
-    confirmExerciseAddToWorkout,
-    toggleModalRestTimer,
-    skipModalRestTimer,
-    showExerciseVideo,
-    hideExerciseVideo,
-    showExerciseVideoAndToggleButton,
-    hideExerciseVideoAndToggleButton,
-    setGlobalUnit,
-    setExerciseUnit,
-    editExerciseDefaults,
-    loadExerciseHistory,
-    autoStartRestTimer,
-    toggleSetComplete,
-    toggleHeaderRestTimer,
-    skipHeaderRestTimer,
-    toggleReorderMode,
-    toggleExerciseOverflow,
-    supersetWithNext,
-    ungroupExerciseFromWorkout,
-    toggleExerciseExpansion,
-    replaceExercise,
-    changeExerciseEquipment,
-    applyEquipmentChange,
     changeWorkoutLocation,
     selectWorkoutLocationOption,
     closeWorkoutLocationSelector,
     confirmWorkoutLocationChange,
-    updateBodyweightSet,
     // Active Workout V2
     renderActiveWorkout,
     renderActiveWorkoutAll as awRenderAll,
@@ -317,7 +284,6 @@ import {
     showWeightEntryModal,
     closeWeightEntryModal,
     saveBodyWeightEntry,
-    setBodyWeightTimeRange,
 } from './core/features/body-measurements-ui.js';
 
 // Bodyweight exercise prompt
@@ -507,29 +473,12 @@ window.updateWorkoutProgress = updateWorkoutProgress;
 window.showMidWorkoutSummary = showMidWorkoutSummary;
 
 // Exercise Management
-window.toggleExerciseExpansion = toggleExerciseExpansion;
-window.replaceExercise = replaceExercise;
-window.updateSet = updateSet;
 // cycleSetType removed — set types not used in UI
-window.addSet = addSet;
-window.deleteSet = deleteSet;
-window.addSetToExercise = addSetToExercise;
-window.removeSetFromExercise = removeSetFromExercise;
-window.saveExerciseNotes = saveExerciseNotes;
-window.updateCardioField = updateCardioField;
-window.markExerciseComplete = markExerciseComplete;
-window.toggleSetComplete = toggleSetComplete;
-window.deleteExerciseFromWorkout = deleteExerciseFromWorkout;
-window.editExerciseDefaults = editExerciseDefaults;
-window.addExerciseToActiveWorkout = addExerciseToActiveWorkout;
-window.confirmExerciseAddToWorkout = confirmExerciseAddToWorkout;
 window.loadExerciseHistory = function (exerciseName, exerciseIndex) {
     loadExerciseHistory(exerciseName, exerciseIndex, AppState);
 };
 
 // Equipment change during workout
-window.changeExerciseEquipment = changeExerciseEquipment;
-window.applyEquipmentChange = applyEquipmentChange;
 
 // Location management during workout
 window.changeWorkoutLocation = changeWorkoutLocation;
@@ -539,15 +488,6 @@ window.confirmWorkoutLocationChange = confirmWorkoutLocationChange;
 window.getSessionLocation = getSessionLocation;
 
 // Timer Functions
-window.toggleModalRestTimer = toggleModalRestTimer;
-window.skipModalRestTimer = skipModalRestTimer;
-window.autoStartRestTimer = autoStartRestTimer;
-window.toggleHeaderRestTimer = toggleHeaderRestTimer;
-window.skipHeaderRestTimer = skipHeaderRestTimer;
-window.toggleReorderMode = toggleReorderMode;
-window.toggleExerciseOverflow = toggleExerciseOverflow;
-window.supersetWithNext = supersetWithNext;
-window.ungroupExerciseFromWorkout = ungroupExerciseFromWorkout;
 
 // Active Workout V2 — wizard UI
 window.renderActiveWorkout = renderActiveWorkout;
@@ -612,14 +552,8 @@ window.openPlateCalcPopover = async function (exerciseIndex) {
 };
 
 // Video Functions
-window.showExerciseVideo = showExerciseVideo;
-window.hideExerciseVideo = hideExerciseVideo;
-window.showExerciseVideoAndToggleButton = showExerciseVideoAndToggleButton;
-window.hideExerciseVideoAndToggleButton = hideExerciseVideoAndToggleButton;
 
 // Unit Management
-window.setGlobalUnit = setGlobalUnit;
-window.setExerciseUnit = setExerciseUnit;
 
 // Manual Workout Functions
 window.showAddManualWorkoutModal = showAddManualWorkoutModal;
@@ -857,12 +791,10 @@ window.openMachineIdCamera = openMachineIdCamera;
 window.showWeightEntryModal = showWeightEntryModal;
 window.closeWeightEntryModal = closeWeightEntryModal;
 window.saveBodyWeightEntry = saveBodyWeightEntry;
-window.setBodyWeightTimeRange = setBodyWeightTimeRange;
 
 // Bodyweight Exercises + Equipment Base Weight
 window.ensureFreshBodyWeight = ensureFreshBodyWeight;
 window.editBodyWeight = editBodyWeight;
-window.updateBodyweightSet = updateBodyweightSet;
 window.saveEquipmentBaseWeight = saveEquipmentBaseWeight;
 window.saveEquipmentField = saveEquipmentField;
 window.setEquipmentBaseWeightUnit = setEquipmentBaseWeightUnit;
