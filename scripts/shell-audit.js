@@ -35,7 +35,7 @@ const MARKER_END = '<!-- shell-audit:end -->';
 // these to 0 — lower the number when you beat it, never raise it. SH-5 moves
 // them into CI.
 const BUDGETS = {
-    overlayRootsOutsideSheetCss: 5,
+    overlayRootsOutsideSheetCss: 3, // UD-1: the More menu became an openSheet
     safeAreaTopRulesOutsidePrimitives: 0, // SH-4: the inset lives in page-header.css + sheet.css (via --safe-top)
     backCloseControlsUnderTap: 4,
     searchInputsOutsideFieldSearch: 0, // DS-4 — every search input is a .field-search

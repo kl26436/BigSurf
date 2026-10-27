@@ -4,6 +4,11 @@
 import { resetPageLock } from './page-lock.js';
 import { closeAllSheets, closeTopSheet, sheetDepth } from './sheet.js';
 import { createBackGuard } from './back-guard.js';
+import { toggleMoreMenu, closeMoreMenu } from './more-menu.js';
+
+// UD-1 — the More menu is an openSheet (more-menu.js); re-exported here so
+// main.js's window wiring and older imports keep working.
+export { toggleMoreMenu, closeMoreMenu };
 
 // ===================================================================
 // NAVIGATION ROUTING
@@ -158,13 +163,6 @@ export function navigateTo(view) {
     // this also drops any explicit lockPage() hold.
     closeAllSheets();
     resetPageLock();
-
-    // The bottom-nav more menu (#more-menu) lives outside the section system,
-    // so hiding the source section doesn't dismiss it. bottomNavTo() already
-    // closes it before calling navigateTo, but any other code path (in-page
-    // CTA, deep link, programmatic redirect) reaches navigateTo directly and
-    // would leave the sheet visible across the navigation.
-    closeMoreMenu();
 
     // Push current view onto stack for back navigation. SH-6 — going
     // "forward" to the view that's on top of the stack IS going back (a
@@ -566,8 +564,8 @@ function openExerciseManager() {
 
 // Navigate via bottom nav with tab state management
 export function bottomNavTo(tab) {
-    // Close more menu if open
-    closeMoreMenu();
+    // Another tab while More is up: navigateTo closes it (it's a sheet).
+    if (tab !== 'more') closeMoreMenu();
 
     // Update active tab
     updateBottomNavActive(tab);
@@ -619,201 +617,6 @@ export function updateBottomNavActive(tab) {
             item.classList.remove('active');
             item.removeAttribute('aria-current');
         }
-    });
-}
-
-// Toggle more menu visibility with ARIA
-export function toggleMoreMenu() {
-    const menu = document.getElementById('more-menu');
-    const overlay = document.getElementById('more-menu-overlay');
-    const moreBtn = document.querySelector('[data-tab="more"]');
-
-    if (menu && overlay) {
-        const isVisible = menu.classList.contains('visible');
-
-        // Belt-and-suspenders: wipe any inline transform/transition BEFORE
-        // toggling visibility. If the previous close was interrupted mid-
-        // animation and left inline styles behind, the CSS class-based
-        // animation can't move the sheet because the inline styles win.
-        // The user was seeing "stuck halfway open" as the residue of an
-        // earlier drag/gesture that never got a clean cleanup. Nuking here
-        // guarantees every open starts from the CSS-defined baseline.
-        menu.style.transform = '';
-        menu.style.transition = '';
-
-        menu.classList.toggle('visible', !isVisible);
-        overlay.classList.toggle('visible', !isVisible);
-
-        // Update ARIA state
-        if (moreBtn) {
-            moreBtn.setAttribute('aria-expanded', !isVisible);
-        }
-
-        // Setup drag-to-dismiss on open + schedule a health check for the
-        // "stuck halfway open" report class. If it recurs after the current
-        // fix set, the check auto-logs to Firestore with full diagnostic
-        // state so we can see exactly what's stranding the sheet without
-        // asking the user to reproduce with dev tools open.
-        if (!isVisible) {
-            setupBottomSheetDrag(menu, overlay);
-            scheduleStuckMenuCheck(menu, overlay);
-        }
-    }
-}
-
-/**
- * 350ms after the more menu opens (past the CSS transition), verify its
- * bottom edge is actually flush with the viewport bottom. If it isn't, the
- * sheet is floating — the exact "stuck halfway" symptom — so we snapshot
- * the diagnostic state (kb-inset var, inline styles, visualViewport, menu
- * rect) and persist it as a warning via the standard errorLogs pipeline.
- * Zero user impact when everything's fine; automatic bug report when not.
- */
-function scheduleStuckMenuCheck(menu, overlay) {
-    setTimeout(async () => {
-        // If the user already closed it, nothing to check.
-        if (!menu.classList.contains('visible')) return;
-
-        const rect = menu.getBoundingClientRect();
-        // How far the sheet's bottom edge sits ABOVE the viewport bottom.
-        // A properly anchored bottom sheet should have gap ≈ 0. > 20px means
-        // it's floating in mid-screen — the stuck-halfway case.
-        const gap = Math.round(window.innerHeight - rect.bottom);
-        if (gap <= 20) return;
-
-        try {
-            const { captureWarning } = await import('../utils/error-handler.js');
-            const rootStyle = getComputedStyle(document.documentElement);
-            const menuComputed = getComputedStyle(menu);
-            const vv = window.visualViewport ? {
-                height: Math.round(window.visualViewport.height),
-                offsetTop: Math.round(window.visualViewport.offsetTop),
-                scale: window.visualViewport.scale,
-            } : null;
-
-            captureWarning(
-                `More menu stuck-halfway — ${gap}px floating gap below sheet`,
-                'toggleMoreMenu',
-                {
-                    gap,
-                    menuRect: {
-                        top: Math.round(rect.top),
-                        bottom: Math.round(rect.bottom),
-                        height: Math.round(rect.height),
-                    },
-                    windowInnerHeight: window.innerHeight,
-                    windowInnerWidth: window.innerWidth,
-                    // The suspected root cause vector: kb-inset stranded non-zero.
-                    kbInsetVar: rootStyle.getPropertyValue('--kb-inset').trim() || null,
-                    // Computed values so we can see what CSS/inline combined into.
-                    menuComputedBottom: menuComputed.bottom,
-                    menuComputedTransform: menuComputed.transform,
-                    menuComputedTransition: menuComputed.transition,
-                    // Inline styles — any residue from drag or elsewhere.
-                    menuInlineStyles: {
-                        transform: menu.style.transform || null,
-                        transition: menu.style.transition || null,
-                        bottom: menu.style.bottom || null,
-                        cssText: menu.style.cssText || null,
-                    },
-                    overlayVisible: !!overlay && overlay.classList.contains('visible'),
-                    visualViewport: vv,
-                    userAgent: navigator.userAgent || null,
-                    platform: navigator.platform || null,
-                    devicePixelRatio: window.devicePixelRatio || null,
-                }
-            );
-        } catch {
-            // Never let the diagnostic itself break the app.
-        }
-    }, 350);
-}
-
-// Close more menu
-export function closeMoreMenu() {
-    const menu = document.getElementById('more-menu');
-    const overlay = document.getElementById('more-menu-overlay');
-    const moreBtn = document.querySelector('[data-tab="more"]');
-
-    if (menu) {
-        menu.classList.remove('visible');
-        // Hard-reset any inline transform/transition the drag handler set.
-        // If a drag was interrupted (iOS swipe-back, app backgrounded), the
-        // touchend cleanup never ran and the sheet was left with
-        // `transform: translateY(<px>)` + `transition: none` — overriding
-        // the CSS close animation. The menu would visibly stick at whatever
-        // position the user's finger left it, and the only escape was
-        // closing the app entirely.
-        menu.style.transform = '';
-        menu.style.transition = '';
-    }
-    if (overlay) overlay.classList.remove('visible');
-    if (moreBtn) moreBtn.setAttribute('aria-expanded', 'false');
-}
-
-// Drag-to-dismiss for bottom sheet
-function setupBottomSheetDrag(sheet, overlay) {
-    const handle = sheet.querySelector('.bottom-sheet-handle');
-    if (!handle || handle._dragSetup) return;
-    handle._dragSetup = true;
-
-    let startY = 0;
-    let currentY = 0;
-    let isDragging = false;
-
-    // Always-safe cleanup: clear inline transform/transition the drag set so
-    // a class-based close animation can run. Used both on natural touchend
-    // and on the iOS-interrupt paths below.
-    const resetInlineStyles = () => {
-        sheet.style.transition = '';
-        sheet.style.transform = '';
-    };
-
-    handle.addEventListener('touchstart', (e) => {
-        startY = e.touches[0].clientY;
-        currentY = startY;
-        isDragging = true;
-        sheet.style.transition = 'none';
-    }, { passive: true });
-
-    handle.addEventListener('touchmove', (e) => {
-        if (!isDragging) return;
-        currentY = e.touches[0].clientY;
-        const diff = currentY - startY;
-        if (diff > 0) {
-            sheet.style.transform = `translateY(${diff}px)`;
-        }
-    }, { passive: true });
-
-    handle.addEventListener('touchend', () => {
-        if (!isDragging) return;
-        isDragging = false;
-        sheet.style.transition = 'transform 0.3s ease';
-        const diff = currentY - startY;
-        if (diff > 80) {
-            closeMoreMenu();
-        } else {
-            sheet.style.transform = 'translateY(0)';
-        }
-        // Reset transform after close animation
-        setTimeout(resetInlineStyles, 300);
-    }, { passive: true });
-
-    // iOS fires touchcancel when the OS preempts the gesture (system
-    // back-swipe, app switcher, multitasking). Without this, isDragging
-    // stayed true, the inline `transition: none` stuck, and the sheet was
-    // frozen wherever the finger left it — the "stuck partial open" the
-    // user reported. Same handler for touchend without a real touchend.
-    const handleCancel = () => {
-        if (!isDragging) return;
-        isDragging = false;
-        resetInlineStyles();
-    };
-    handle.addEventListener('touchcancel', handleCancel, { passive: true });
-    // Belt-and-suspenders: if the page becomes hidden mid-drag (background,
-    // tab switch), clean up so coming back doesn't show the half-open sheet.
-    document.addEventListener('visibilitychange', () => {
-        if (document.visibilityState === 'hidden') handleCancel();
     });
 }
 
@@ -871,13 +674,9 @@ function topDialog() {
     return open[open.length - 1] || null;
 }
 
-function moreMenuOpen() {
-    return !!document.getElementById('more-menu')?.classList.contains('visible');
-}
-
 function canGoBackInApp() {
     if (typeof document === 'undefined') return false;
-    if (topDialog() || sheetDepth() > 0 || moreMenuOpen()) return true;
+    if (topDialog() || sheetDepth() > 0) return true;
     const current = getCurrentView();
     return navStack.length > 0 || (!!current && current !== 'dashboard');
 }
@@ -897,7 +696,6 @@ function goBackInApp() {
     }
     // A non-dismissible sheet (BW prompt, a save in flight) only closes from its own buttons.
     if (sheetDepth() > 0) { closeTopSheet({ dismissOnly: true }); return; }
-    if (moreMenuOpen()) { closeMoreMenu(); return; }
     // Leaving the live workout goes through its own confirm, like its ← button.
     if (getCurrentView() === 'active-workout' && typeof window.awConfirmExit === 'function') {
         window.awConfirmExit();

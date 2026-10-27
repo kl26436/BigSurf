@@ -121,6 +121,22 @@
     font-size: 0.72rem;
 }
 
+/* A row that is a <button> (the More sheet): drop the UA button look so it
+   reads exactly like a div row; its text spans stack like the div ones. */
+.srow--button {
+    width: 100%;
+    background: none;
+    border: 0;
+    border-bottom: 1px solid var(--border-subtle);
+    font: inherit;
+    color: inherit;
+    text-align: left;
+}
+.srow--button:last-child { border-bottom: none; }
+.srow--button .srow-info,
+.srow--button .srow-name,
+.srow--button .srow-desc { display: block; }
+
 /* Clickable row variant */
 .srow--clickable {
     cursor: pointer;

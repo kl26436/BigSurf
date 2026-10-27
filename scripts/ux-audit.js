@@ -22,10 +22,10 @@ const ROOT = path.resolve(__dirname, '..');
 const BUDGETS = {
     // Flex rows named -row / __row / -item / __item / -entry defined outside
     // components/cards.css. DS-1: a list item is a .row-card.
-    rowClassesOutsideCardsCss: 52,
+    rowClassesOutsideCardsCss: 51,
     // Classes that render a section head. Target: .dash-section-head + .sec-head
     // (titled heads) and .group-label (grouped settings).
-    sectionHeadClasses: 10,
+    sectionHeadClasses: 9,
     // Distinct letter-spacing values on uppercase rules (the eyebrow).
     eyebrowLetterSpacingValues: 7,
     // Closers that hide a page section by hand instead of navigateBack().
@@ -38,7 +38,7 @@ const BUDGETS = {
     hardcodedUnitLiterals: 2,
     // Words the user never sees (UD-5 word table): location, orphan, mapped,
     // picker, program; and weight-first set notation ("185 lb × 6").
-    uxWordHits: 93,
+    uxWordHits: 92,
 };
 
 // A row is a component name for a list item — set rows and menu rows may
@@ -51,7 +51,8 @@ const HEAD_CLASSES = [
 ];
 
 const rel = (f) => path.relative(ROOT, f).replace(/\\/g, '/');
-const read = (f) => fs.readFileSync(f, 'utf8');
+// Windows checkouts may carry CRLF in the working tree; the regexes expect \n.
+const read = (f) => fs.readFileSync(f, 'utf8').replace(/\r\n/g, '\n');
 const stripCss = (t) => t.replace(/\/\*[\s\S]*?\*\//g, '');
 
 function cssRules(text) {

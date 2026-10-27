@@ -937,30 +937,44 @@ window.deleteDexaEntry = deleteDexaEntry;
 let _withingsConnected = false;
 window.handleWithingsSettingsAction = async function () {
     if (_withingsConnected) {
-        // Already connected — offer sync or disconnect
-        const syncNow = await confirmSheet({
-            title: 'Sync Withings now?',
-            confirmLabel: 'Sync now',
-            cancelLabel: 'Disconnect instead',
+        // B8 — one sheet, two named actions. It used to be a "Sync now?"
+        // confirm whose dismiss (backdrop, Escape, back) resolved false and
+        // opened "Disconnect Withings?" — closing a sheet became a destructive path.
+        const { openSheet } = await import('./core/ui/sheet.js');
+        openSheet({
+            id: 'withings-actions',
+            title: 'Withings',
+            subtitle: 'Connected',
+            actions: [
+                { label: 'Disconnect', onClick: 'withingsDisconnectFromSheet()' },
+                { label: 'Sync now', onClick: 'withingsSyncFromSheet()', primary: true },
+            ],
         });
-        if (syncNow) {
-            await syncWithingsWeight();
-        } else {
-            const disconnect = await confirmSheet({
-                title: 'Disconnect Withings?',
-                message: 'You can reconnect anytime.',
-                confirmLabel: 'Disconnect',
-                cancelLabel: 'Stay connected',
-                destructive: true,
-            });
-            if (disconnect) {
-                await disconnectWithings();
-                _withingsConnected = false;
-                updateWithingsUI(false);
-            }
-        }
     } else {
         await connectWithings();
+    }
+};
+
+window.withingsSyncFromSheet = async function () {
+    const { closeSheet } = await import('./core/ui/sheet.js');
+    closeSheet('withings-actions');
+    await syncWithingsWeight();
+};
+
+window.withingsDisconnectFromSheet = async function () {
+    const { closeSheet } = await import('./core/ui/sheet.js');
+    closeSheet('withings-actions');
+    const disconnect = await confirmSheet({
+        title: 'Disconnect Withings?',
+        message: 'You can reconnect anytime.',
+        confirmLabel: 'Disconnect',
+        cancelLabel: 'Stay connected',
+        destructive: true,
+    });
+    if (disconnect) {
+        await disconnectWithings();
+        _withingsConnected = false;
+        updateWithingsUI(false);
     }
 };
 

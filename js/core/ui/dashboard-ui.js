@@ -219,10 +219,6 @@ async function renderDashboard() {
         perfMark('dashboard:painted');
         perfReport();
 
-        // "Manage Locations" in the More menu — PF-2: off the render path,
-        // read once per session.
-        refreshLocationsMenuItem();
-
         showFirstUseTip('more-menu');
     } catch (error) {
         console.error('❌ Error rendering dashboard:', error);
@@ -1720,21 +1716,6 @@ export async function renderProgressPage() {
             </div>
         </div>
     `;
-}
-
-/**
- * PF-2 — "Manage locations" shows only when there's a gym saved. Read once per
- * session (AppState._cachedLocations), never on the dashboard's render path.
- */
-function refreshLocationsMenuItem() {
-    const apply = (locations) => {
-        const item = document.getElementById('more-menu-locations');
-        if (item) item.classList.toggle('hidden', !locations || locations.length === 0);
-    };
-    if (Array.isArray(AppState._cachedLocations)) { apply(AppState._cachedLocations); return; }
-    new FirebaseWorkoutManager(AppState).getUserLocations()
-        .then((locations) => { AppState._cachedLocations = locations || []; apply(AppState._cachedLocations); })
-        .catch(() => { /* Non-critical */ });
 }
 
 // PF-3 — data changed behind the page (another device's workout landed in the

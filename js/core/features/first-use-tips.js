@@ -13,7 +13,7 @@ const TIPS = {
     },
     'more-menu': {
         target: '[data-tab="more"]',
-        text: 'Equipment library, Plate calculator, and more are here',
+        text: 'Your plan, goals, equipment, gyms and settings are here',
         position: 'above',
     },
     // UD-2 — the one-time hint for swipe-to-remove (there's no Remove button).

@@ -211,7 +211,7 @@ async function scheduleKeyboardOcclusionCheck(input) {
 
     try {
         const { captureWarning } = await import('./utils/error-handler.js');
-        const sheet = input.closest('.aw-sheet, .more-menu, .modal, .field-search--sticky');
+        const sheet = input.closest('.aw-sheet, .modal, .field-search--sticky');
         captureWarning(
             `Keyboard occluding input — ${overhang}px overhang below viewport`,
             'installKeyboardAwareFocusHandler',
@@ -515,8 +515,6 @@ export function showUserInfo(user) {
     }
 
     // Update More menu email
-    const moreMenuEmail = document.getElementById('more-menu-email');
-    if (moreMenuEmail) moreMenuEmail.textContent = user.email || '';
 }
 
 export function hideUserInfo() {

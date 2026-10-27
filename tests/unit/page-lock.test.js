@@ -45,9 +45,8 @@ describe('page lock', () => {
         modal.classList.remove('hidden');
         expect(overlayOpen()).toBe(true);
         modal.remove();
-        add('<div class="more-menu-overlay"></div>');
-        expect(overlayOpen()).toBe(false);
-        document.querySelector('.more-menu-overlay').classList.add('visible');
+        // UD-1 — the More menu is an openSheet now: its backdrop is a .sheet-backdrop.
+        add('<div class="sheet-backdrop"></div>');
         expect(overlayOpen()).toBe(true);
     });
 

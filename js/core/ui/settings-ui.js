@@ -14,6 +14,8 @@ import { isManualDeloadActive, manualDeloadEnd, MANUAL_DELOAD_WEIGHT_PCT, weekOv
 import { pickPrimaries, applyPrimaryChoice, PATTERN_LABELS } from '../features/progress-scoreboard.js';
 import { inferPattern } from '../features/movement-patterns.js';
 import { isFCMAvailable, getPushSubscription, initializeFCM, scheduleRestNotification } from '../utils/push-notification-manager.js';
+import { weekKindLabel } from '../features/plain-language.js';
+import { getUnreadErrorCount } from '../utils/error-handler.js';
 
 // Default settings — merged with user overrides on load
 const DEFAULT_SETTINGS = {
@@ -223,7 +225,9 @@ function manualDeloadDesc(override, on) {
     if (typeof override.weightPct === 'number') levers.push(`${Math.abs(override.weightPct)}% ${override.weightPct < 0 ? 'lighter' : 'heavier'}`);
     if (typeof override.setDelta === 'number' && override.setDelta) levers.push(`${override.setDelta > 0 ? '+' : ''}${override.setDelta} set${Math.abs(override.setDelta) === 1 ? '' : 's'}`);
     if (!levers.length) levers.push(`${Math.abs(MANUAL_DELOAD_WEIGHT_PCT)}% lighter`);
-    return `${override.label || 'Deload'} on through ${endLabel} · ${levers.join(' · ')}`;
+    // B10 — the week's kind in plain words (TP-0); override.label is a stored
+    // key ('Deload'), never copy.
+    return `${weekKindLabel(override)} through ${endLabel} · ${levers.join(' · ')}`;
 }
 
 /** Toggle the manual deload week; the next workouts start lighter. */
@@ -273,6 +277,9 @@ export function renderSettings() {
     const displayName = user?.displayName || 'User';
     const email = user?.email || '';
     const photoURL = user?.photoURL || '';
+    // The error log's door moved here from the More menu (UD-1); its badge
+    // keeps the id error-log-ui.js#updateBadge looks for.
+    const unreadErrors = getUnreadErrorCount();
 
     container.innerHTML = `
         <div class="settings-page">
@@ -566,6 +573,17 @@ export function renderSettings() {
                     <div class="srow-icon ic-muted"><i class="fas fa-upload"></i></div>
                     <div class="srow-info"><div class="srow-name">Import</div></div>
                     <i class="fas fa-chevron-right srow-chev"></i>
+                </div>
+                <div class="srow srow--clickable" onclick="showErrorLog()">
+                    <div class="srow-icon ic-muted"><i class="fas fa-bug"></i></div>
+                    <div class="srow-info">
+                        <div class="srow-name">Error log</div>
+                        <div class="srow-desc">What went wrong lately — for bug reports</div>
+                    </div>
+                    <div class="srow-right">
+                        <span id="error-log-badge" class="error-badge${unreadErrors ? '' : ' hidden'}">${unreadErrors > 99 ? '99+' : unreadErrors}</span>
+                        <i class="fas fa-chevron-right srow-chev"></i>
+                    </div>
                 </div>
             </div>
 

@@ -133,6 +133,9 @@ function bmiCategory(bmi) {
     return              { key: 'ob3',    label: 'Obese III' };
 }
 
+// One label for logging a weigh-in, everywhere (UD-1 word table).
+const LOG_WEIGHT_ACTION = '<button class="detail-breakdown-action" onclick="showWeightEntryModal()"><i class="fas fa-plus"></i> Log weight</button>';
+
 function renderDetailLayout({ title, tag, range, hero, chart, insight, breakdown, breakdownAction }) {
     return `
         <div class="page-header page-header--detail">
@@ -330,12 +333,15 @@ async function renderBodyWeightDetail(container, range) {
         const userUnit = AppState.globalUnit || 'lbs';
 
         if (!entries || entries.length === 0) {
+            // B11 — the empty page carries the way in (it used to point at
+            // Settings, which has no weight path).
             container.innerHTML = renderDetailLayout({
                 title: 'Body weight',
                 range,
-                hero: '<div class="md-empty">No body weight entries yet.</div>',
+                hero: '<div class="md-empty">No weigh-ins yet</div>',
                 chart: '',
-                breakdown: '<div class="md-empty-line">Add weight entries in Settings to see trends.</div>',
+                breakdown: '<div class="md-empty-line">Log your weight and the trend shows up here.</div>',
+                breakdownAction: LOG_WEIGHT_ACTION,
             });
             return;
         }
@@ -456,7 +462,7 @@ async function renderBodyWeightDetail(container, range) {
             }),
             insight,
             breakdown: recentEntries || '<div class="md-empty-line">No recent entries.</div>',
-            breakdownAction: `<button class="detail-breakdown-action" onclick="showWeightEntryModal()"><i class="fas fa-plus"></i> Log entry</button>`,
+            breakdownAction: LOG_WEIGHT_ACTION,
         });
     } catch (error) {
         console.error('❌ Error rendering body weight detail:', error);

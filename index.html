@@ -106,6 +106,7 @@
         <link rel="modulepreload" href="js/core/workout/workout-management-ui.js">
         <link rel="modulepreload" href="js/core/app-initialization.js">
         <link rel="modulepreload" href="js/core/ui/back-guard.js">
+        <link rel="modulepreload" href="js/core/ui/more-menu.js">
         <link rel="modulepreload" href="js/core/ui/navigation.js">
         <link rel="modulepreload" href="js/core/ui/delete-account.js">
         <link rel="modulepreload" href="js/core/features/progress-scoreboard.js">
@@ -1338,82 +1339,6 @@
         </section>
 
         <!-- More Menu Bottom Sheet -->
-        <div id="more-menu" class="more-menu">
-            <div class="bottom-sheet-handle" id="more-menu-handle"></div>
-            <div class="more-menu-content">
-                <!-- Training Tools -->
-                <div class="more-menu-section-title">Training tools</div>
-                <button class="more-menu-item" onclick="navigateTo('exercises'); closeMoreMenu();">
-                    <i class="fas fa-list"></i>
-                    <span>Exercises</span>
-                </button>
-                <button class="more-menu-item" onclick="navigateTo('templates'); closeMoreMenu();">
-                    <i class="fas fa-dumbbell"></i>
-                    <span>Your workouts</span>
-                </button>
-                <button class="more-menu-item" onclick="navigateTo('equipment'); closeMoreMenu();">
-                    <i class="fas fa-wrench"></i>
-                    <span>Equipment</span>
-                </button>
-
-                <div class="more-menu-divider"></div>
-
-                <!-- Utilities -->
-                <div class="more-menu-section-title">Utilities</div>
-                <button class="more-menu-item" onclick="navigateTo('plate-calculator'); closeMoreMenu();">
-                    <i class="fas fa-calculator"></i>
-                    <span>Plate calculator</span>
-                </button>
-                <button class="more-menu-item" onclick="navigateTo('ai-coach'); closeMoreMenu();">
-                    <i class="fas fa-brain"></i>
-                    <span>AI Coach</span>
-                </button>
-
-                <div class="more-menu-divider"></div>
-
-                <!-- Tracking -->
-                <div class="more-menu-section-title">Tracking</div>
-                <button class="more-menu-item" onclick="showProgressPage(); closeMoreMenu();">
-                    <i class="fas fa-chart-line"></i>
-                    <span>Progress</span>
-                </button>
-                <button class="more-menu-item" onclick="openMetricDetail('body-weight'); closeMoreMenu();">
-                    <i class="fas fa-weight-scale"></i>
-                    <span>Body measurements</span>
-                </button>
-
-                <div class="more-menu-divider"></div>
-
-                <!-- Manage -->
-                <div class="more-menu-section-title">Manage</div>
-                <button id="more-menu-locations" class="more-menu-item" onclick="navigateTo('location'); closeMoreMenu();">
-                    <i class="fas fa-map-marker-alt"></i>
-                    <span>Manage locations</span>
-                </button>
-                <button class="more-menu-item" onclick="navigateTo('settings'); closeMoreMenu();">
-                    <i class="fas fa-cog"></i>
-                    <span>Settings</span>
-                </button>
-                <button class="more-menu-item" onclick="showErrorLog(); closeMoreMenu();">
-                    <i class="fas fa-bug"></i>
-                    <span>Error log</span>
-                    <span id="error-log-badge" class="error-badge hidden">0</span>
-                </button>
-
-                <div class="more-menu-divider"></div>
-
-                <!-- Account -->
-                <div class="more-menu-user">
-                    <i class="fas fa-user"></i>
-                    <span id="more-menu-email"></span>
-                </div>
-                <button class="more-menu-item more-menu-signout" onclick="signOutUser(); closeMoreMenu();">
-                    <i class="fas fa-sign-out-alt"></i>
-                    <span>Sign out</span>
-                </button>
-            </div>
-        </div>
-        <div id="more-menu-overlay" class="more-menu-overlay" onclick="closeMoreMenu()"></div>
 
         <!-- (The old inline "clear caches unless v4.55" script is gone: every cache name
              since failed its test, so it wiped the cache and reloaded on every other

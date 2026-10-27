@@ -17,7 +17,6 @@
 
 const OVERLAY_SELECTOR = [
     '.sheet-backdrop',                 // js/core/ui/sheet.js (SH-2b)
-    '.more-menu-overlay.visible',
     '.onboarding-overlay',
     '.aw-form-video-overlay',
     'dialog.modal[open]',
