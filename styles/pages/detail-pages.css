@@ -189,15 +189,9 @@
 
 /* ===== EXERCISE ROW (in muscle group detail) ===== */
 .d-exercise-row {
-    background: var(--bg-card);
-    border: 1px solid var(--border-subtle);
-    border-radius: var(--radius-md);
     padding: 10px 12px;
-    display: flex;
-    align-items: center;
     gap: 10px;
     margin: 0 14px 6px;
-    cursor: pointer;
 }
 .d-ex-spark { width: 54px; height: 24px; flex-shrink: 0; }
 .d-ex-info { flex: 1; min-width: 0; }
@@ -215,12 +209,7 @@
 
 /* ===== PR ROW (in detail page) ===== */
 .d-pr-row {
-    background: var(--bg-card);
-    border: 1px solid var(--border-subtle);
-    border-radius: var(--radius-md);
     padding: 10px 12px;
-    display: flex;
-    align-items: center;
     gap: 10px;
     margin: 0 14px 6px;
 }
@@ -602,10 +591,4 @@
 .md-bmi-delta.delta-up   { color: var(--success); }
 .md-bmi-delta.delta-down { color: var(--warning); }
 
-.md-bc-row {
-    display: flex;
-    align-items: center;
-    gap: var(--space-16);
-    margin-bottom: var(--space-12);
-}
 .md-bc-legend { font-size: var(--font-sm); }

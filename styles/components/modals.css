@@ -555,11 +555,8 @@ dialog.modal:not([open]) {
     margin-bottom: var(--space-8);
 }
 .equipment-video-row {
-    display: flex;
     justify-content: space-between;
-    align-items: center;
     padding: var(--space-10) var(--space-12);
-    background: var(--bg-card);
     border-radius: var(--radius-sm);
     margin-bottom: var(--space-6);
 }

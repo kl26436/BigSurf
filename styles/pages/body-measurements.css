@@ -24,14 +24,6 @@
     gap: var(--space-8);
 }
 
-.measurement-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: var(--space-8) 0;
-    border-bottom: 1px solid var(--border);
-}
-
 .measurement-label {
     font-size: var(--font-sm);
     color: var(--text-main);

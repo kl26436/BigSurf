@@ -79,25 +79,6 @@
     min-width: 160px; /* overflow menu constraint */
     overflow: hidden;
 }
-.template-overflow-item {
-    display: flex;
-    align-items: center;
-    gap: var(--space-8);
-    width: 100%;
-    padding: var(--space-10) var(--pad-card-y);
-    background: none;
-    border: none;
-    color: var(--text-secondary);
-    font-size: var(--font-sm);
-    cursor: pointer;
-    text-align: left;
-}
-.template-overflow-item:active {
-    background: var(--border-subtle);
-}
-.template-overflow-item--danger {
-    color: var(--danger);
-}
 
 /* ===========================================
    20. WORKOUT SELECTOR
@@ -166,14 +147,8 @@
 
 /* ── Template row cards ── */
 .template-row {
-    display: flex;
-    align-items: center;
     gap: var(--space-12);
     padding: var(--space-12) var(--space-16);
-    background: var(--bg-card);
-    border: 1px solid var(--border-subtle);
-    border-radius: var(--radius-md);
-    cursor: pointer;
     transition: transform 0.15s, box-shadow 0.15s;
 }
 .template-row:active {
@@ -1267,7 +1242,6 @@
     border-bottom: 2px solid var(--border-subtle);
     border-bottom-left-radius: var(--radius-xs);
 }
-
 
 /* Template-kind sheet (5.6.0) — fires right after a workout, still breathing
    hard: three stacked choices need full tap height, not hairline rows. */

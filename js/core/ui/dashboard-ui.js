@@ -739,7 +739,7 @@ function renderForToday(allWorkouts) {
     // One-time quiet setup hint when no plan exists — dismissible forever,
     // never a popup (pull, not push).
     const setupRow = (wp === null && !AppState.settings?.weekPlanSetupDismissed) ? `
-        <div class="dash-alt-row dash-alt-row--setup" id="week-plan-setup-row">
+        <div class="row-card row-card--flat row-card--static dash-alt-row dash-alt-row--setup" id="week-plan-setup-row">
             <i class="fas fa-calendar-week dash-alt-row__icon"></i>
             <div class="dash-alt-row__txt dash-alt-row__txt--muted" onclick="openWeekPlanSheet()" role="button" tabindex="0">Plan your week — one workout per day</div>
             <button class="dash-alt-row__dismiss" onclick="dismissWeekPlanSetup(event)" aria-label="Dismiss">
@@ -751,7 +751,7 @@ function renderForToday(allWorkouts) {
     // dismissible like the week-plan hint, and only one hint at a time — the
     // week-plan hint goes first, since a plan is the natural first rung.
     const programRow = (!setupRow && !AppState._activeProgram && !AppState.settings?.programStarterDismissed) ? `
-        <div class="dash-alt-row dash-alt-row--setup" id="program-starter-row">
+        <div class="row-card row-card--flat row-card--static dash-alt-row dash-alt-row--setup" id="program-starter-row">
             <i class="fas fa-flag-checkered dash-alt-row__icon"></i>
             <div class="dash-alt-row__txt dash-alt-row__txt--muted" onclick="startProgramChat()" role="button" tabindex="0">Get a 4-week plan built from your workouts</div>
             <button class="dash-alt-row__dismiss" onclick="dismissProgramStarter(event)" aria-label="Dismiss">
@@ -764,7 +764,7 @@ function renderForToday(allWorkouts) {
         ${renderProgramHeartbeat()}
         <div class="dash-alt-list">
             ${rest.map(r => renderForTodayAltRow(r, lastDoneByType)).join('')}
-            <div class="dash-alt-row" onclick="openWorkoutSelectorForDay('${escapeAttr(dayName)}')" role="button" tabindex="0">
+            <div class="row-card row-card--flat dash-alt-row" onclick="openWorkoutSelectorForDay('${escapeAttr(dayName)}')" role="button" tabindex="0">
                 <i class="fas fa-list dash-alt-row__icon"></i>
                 <div class="dash-alt-row__txt dash-alt-row__txt--muted">All workouts</div>
                 <i class="fas fa-chevron-right dash-chev"></i>
@@ -970,7 +970,7 @@ function renderForTodayAltRow({ template }, lastDoneByType = {}) {
     const when = rec?.date ? formatRelativeDate(rec.date, { daysAgo: true, weeksAgo: true }) : '';
 
     return `
-        <div class="dash-alt-row" onclick="startWorkout('${startArg}')" role="button" tabindex="0" aria-label="Start ${escapeAttr(template.name || template.day)}">
+        <div class="row-card row-card--flat dash-alt-row" onclick="startWorkout('${startArg}')" role="button" tabindex="0" aria-label="Start ${escapeAttr(template.name || template.day)}">
             <i class="${icon} dash-alt-row__icon cat-txt-${category}"></i>
             <div class="dash-alt-row__txt">
                 <span class="dash-alt-row__name">${escapeHtml(template.name || template.day)}</span>
@@ -1030,7 +1030,7 @@ function renderThisWeekCard(allWorkouts, recentPRs, excludeKeys, topInsight) {
             volume > 0 ? `${formatVolume(volume)} ${unitLabel(unit)}` : null,
         ].filter(Boolean).join(' · ');
         rows.push(`
-            <div class="dash-week-row" onclick="viewWorkout('${escapeAttr(last.id)}')" role="button" tabindex="0">
+            <div class="row-card row-card--flat dash-week-row" onclick="viewWorkout('${escapeAttr(last.id)}')" role="button" tabindex="0">
                 <i class="fas fa-check dash-week-row__icon dash-week-row__icon--done"></i>
                 <div class="dash-week-row__txt">${parts}</div>
                 <i class="fas fa-chevron-right dash-chev"></i>
@@ -1042,7 +1042,7 @@ function renderThisWeekCard(allWorkouts, recentPRs, excludeKeys, topInsight) {
     const pr = (recentPRs || []).filter(p => !excludeKeys || !excludeKeys.has(prKey(p)))[0];
     if (pr) {
         rows.push(`
-            <div class="dash-week-row" onclick="showExerciseDetail('${escapeAttr(pr.exercise)}')" role="button" tabindex="0">
+            <div class="row-card row-card--flat dash-week-row" onclick="showExerciseDetail('${escapeAttr(pr.exercise)}')" role="button" tabindex="0">
                 <i class="fas fa-trophy dash-week-row__icon dash-week-row__icon--gold"></i>
                 <div class="dash-week-row__txt"><b>${escapeHtml(pr.exercise)} PR</b> · ${convertWeight(pr.weight, pr.unit || 'lbs', unit)} ${unitLabel(unit)} · ${prMetaLine(pr)}</div>
                 <i class="fas fa-chevron-right dash-chev"></i>
@@ -1103,7 +1103,7 @@ function renderThisWeekCard(allWorkouts, recentPRs, excludeKeys, topInsight) {
         }
     } catch { /* fall back to the generic headline */ }
     rows.push(`
-        <div class="dash-week-row" onclick="showProgressPage()" role="button" tabindex="0">
+        <div class="row-card row-card--flat dash-week-row" onclick="showProgressPage()" role="button" tabindex="0">
             <i class="fas ${headIcon} dash-week-row__icon"></i>
             <div class="dash-week-row__txt">${escapeHtml(headline)}</div>
             <i class="fas fa-chevron-right dash-chev"></i>
@@ -1187,7 +1187,7 @@ function renderScoreboardCard(allWorkouts) {
         ].join('');
         const valueStr = value != null ? `${value} ${unitLabel(unit)}` : '—';
         return `
-            <div class="dash-week-row sb-row" onclick="showExerciseDetail('${escapeAttr(p.name)}')" role="button" tabindex="0"
+            <div class="row-card row-card--flat dash-week-row sb-row" onclick="showExerciseDetail('${escapeAttr(p.name)}')" role="button" tabindex="0"
                  aria-label="${escapeAttr(`${p.name}: ${SB_TREND_LABEL[trend]}, estimated max ${valueStr}`)}">
                 <i class="fas ${SB_TREND_ICON[trend]} sb-row__trend sb-row__trend--${trend}" aria-hidden="true"></i>
                 <div class="dash-week-row__txt"><b>${escapeHtml(p.name)}</b> · ${valueStr}${delta}${chips}</div>
@@ -1464,7 +1464,7 @@ export function showTodaysPRs() {
 
     const unit = AppState.globalUnit || 'lbs';
     const rows = todays.map(pr => `
-        <button type="button" class="dash-todays-prs__row" data-exercise="${escapeAttr(pr.exercise)}">
+        <button type="button" class="row-card row-card--flat dash-todays-prs__row" data-exercise="${escapeAttr(pr.exercise)}">
             <div class="dash-todays-prs__badge"><i class="fas fa-trophy"></i></div>
             <div class="dash-todays-prs__info">
                 <div class="dash-todays-prs__name">${escapeHtml(pr.exercise)}</div>
@@ -1626,7 +1626,7 @@ function renderPRTable(prs) {
     return `
         <div class="dash-section-head dash-section-head--tight"><h3>Personal records</h3></div>
         ${prs.map(pr => `
-            <div class="pr-row" onclick="showExerciseDetail('${escapeAttr(pr.exercise)}')">
+            <div class="row-card pr-row" onclick="showExerciseDetail('${escapeAttr(pr.exercise)}')">
                 <div class="pr-badge"><i class="fas fa-trophy"></i></div>
                 <div class="pr-info">
                     <div class="pr-name">${escapeHtml(pr.exercise)}</div>

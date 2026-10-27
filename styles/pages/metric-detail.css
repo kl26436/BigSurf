@@ -111,13 +111,8 @@
 
 /* Breakdown rows */
 .detail-row {
-    background: var(--bg-card);
-    border: 1px solid var(--border-subtle);
-    border-radius: var(--radius-md);
     padding: 11px 12px;
     margin-bottom: var(--space-6);
-    display: flex;
-    align-items: center;
     gap: var(--space-12);
 }
 /* B18 — a weigh-in row is a value row: it doesn't press; its trash button acts (DS-1b). */

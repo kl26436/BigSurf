@@ -221,7 +221,7 @@ async function renderBodyWeightDetail(container, range) {
             const dateLabel = formatRelativeDate(e.date);
             const entryId = escapeHtml(e.id || '');
             return `
-                <div class="detail-row">
+                <div class="row-card row-card--static detail-row">
                     <div class="detail-weight-icon"><i class="fas fa-weight"></i></div>
                     <div class="detail-row__info">
                         <div class="detail-row__name">${dateLabel}</div>

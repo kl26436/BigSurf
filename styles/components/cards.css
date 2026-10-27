@@ -91,6 +91,19 @@
     color: var(--text-muted);
     font-size: var(--font-md);
 }
+/* UD-3 — the same row inside a container card (a list in a hero, a sheet
+   group): no card of its own, a hairline between rows instead. Pair with
+   .row-card; the component class keeps only what's specific to it. */
+.row-card--flat {
+    background: transparent;
+    border: 0;
+    border-radius: 0;
+    border-bottom: 1px solid var(--border-subtle);
+    padding: var(--space-12) 0;
+}
+.row-card--flat:last-child { border-bottom: 0; }
+.row-card--flat:active { background: var(--bg-card-hi); }
+.row-card--flat.row-card--static:active { background: transparent; }
 
 /* ===========================================
    4. CARDS (Base flat style)

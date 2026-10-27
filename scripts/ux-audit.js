@@ -22,7 +22,7 @@ const ROOT = path.resolve(__dirname, '..');
 const BUDGETS = {
     // Flex rows named -row / __row / -item / __item / -entry defined outside
     // components/cards.css. DS-1: a list item is a .row-card.
-    rowClassesOutsideCardsCss: 50,
+    rowClassesOutsideCardsCss: 0,
     // Classes that render a section head. Target: .dash-section-head + .sec-head
     // (titled heads) and .group-label (grouped settings).
     sectionHeadClasses: 9,
@@ -44,6 +44,19 @@ const BUDGETS = {
 // A row is a component name for a list item — set rows and menu rows may
 // keep component names; everything else moves to .row-card.
 const ROW_NAME = /^[a-z][\w-]*(?:-row|__row|-item|__item|-entry)$/;
+// Not list items, so DS-1 doesn't apply: control / form / layout rows inside
+// a component (a stepper, a legend, an input + button) and the rows of menus
+// and pickers in sheets (the plan's allow-list: "menus and set rows may keep
+// component names"). A new list row is a .row-card — don't add it here.
+const NOT_LIST_ROWS = new Set([
+    // layout / form / control rows
+    'stepper-row', 'section-header-row', 'equip-filter-row', 'library-exercise-header-row',
+    'loc-map-card__info-row', 'plate-calc-popover-input-row', 'popover-bar-row', 'legend-item',
+    'comp-donut-row', 'vat-row', 'bm-row', 'week-plan-editor__row', 'equip-base-weight-row',
+    'aw-rpe-row', 'aw-new-equip__base-row', 'bs-sub-row',
+    // menu / picker rows in sheets and popovers
+    'js-row', 'aw-add-ex-row', 'aw-ex-menu__item', 'function-picker__row', 'field-picker-row',
+]);
 const HEAD_CLASSES = [
     'sec-head', 'group-label', 'dash-section-head', 'd-sec-head', 'section-title',
     'more-menu-section-title', 'equip-group-header', 'gym-detail__group-header',
@@ -83,7 +96,7 @@ function audit(root = ROOT) {
                 if (!m) continue;
                 const cls = m[1];
                 if (HEAD_CLASSES.includes(cls)) definedHeads.add(cls);
-                if (r !== 'styles/components/cards.css' && ROW_NAME.test(cls)
+                if (r !== 'styles/components/cards.css' && ROW_NAME.test(cls) && !NOT_LIST_ROWS.has(cls)
                     && /display:\s*flex/.test(body) && /align-items:\s*center/.test(body)) {
                     rowClasses.set(cls, r);
                 }

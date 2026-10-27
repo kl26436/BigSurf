@@ -182,12 +182,7 @@
 
 /* Link row (for equipment/exercise lists inside groups) */
 .link-row {
-    background: var(--bg-card);
-    border: 1px solid var(--border-subtle);
-    border-radius: var(--radius-md);
     padding: 12px 14px;
-    display: flex;
-    align-items: center;
     gap: 10px;
     margin-bottom: 6px;
 }

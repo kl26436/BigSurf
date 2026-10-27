@@ -70,8 +70,6 @@
     margin-bottom: var(--space-12);
 }
 .equipment-location-item {
-    display: flex;
-    align-items: center;
     justify-content: space-between;
     padding: var(--pad-card-y) var(--pad-card-x);
     background: var(--bg-surface);

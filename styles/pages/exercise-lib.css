@@ -6,27 +6,7 @@
     flex-direction: column;
     gap: var(--gap-items);
 }
-.exercise-library-item {
-    display: flex;
-    align-items: center;
-    gap: var(--space-12);
-    padding: var(--pad-card-y) var(--pad-card-x);
-    background: var(--bg-card);
-    border-radius: var(--radius-md);
-    border: 1px solid var(--border-subtle);
-    box-shadow: var(--shadow-sm);
-    cursor: pointer;
-    transition:
-        background 0.15s,
-        border-color 0.15s;
-}
-.exercise-library-item:hover {
-    background: var(--bg-card-hi);
-    border-color: var(--border-light);
-}
-.exercise-library-item:active {
-    transform: scale(0.98);
-}
+
 .exercise-library-icon {
     width: var(--icon-md);
     height: var(--icon-md);
@@ -308,14 +288,9 @@
 
 /* Equipment item cards in edit exercise section */
 .edit-equipment-item {
-    display: flex;
-    align-items: center;
     justify-content: space-between;
     padding: var(--space-12) var(--space-16);
-    background: var(--bg-card);
     border: 1px solid var(--border);
-    border-radius: var(--radius-md);
-    cursor: pointer;
     transition:
         border-color 0.2s,
         background 0.2s;

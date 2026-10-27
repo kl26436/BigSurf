@@ -122,13 +122,9 @@
    chrome, no play circles — the hero must be the only card in For Today. ── */
 .dash-alt-list { margin-bottom: var(--space-8); }
 .dash-alt-row {
-    display: flex;
-    align-items: center;
     gap: var(--space-10);
     min-height: var(--tap);
     padding: var(--space-6) var(--space-4);
-    border-bottom: 1px solid var(--border-subtle);
-    cursor: pointer;
 }
 .dash-alt-row:last-child { border-bottom: none; }
 .dash-alt-row:active { background: var(--bg-card-hover); }
@@ -277,12 +273,7 @@
     border-top: 1px solid var(--border-subtle);
 }
 
-/* bc-row/legend/leg/dot stay: composition + metric detail pages use them */
-.bc-row {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-}
+/* bc-legend/leg/dot: the composition page's legend */
 .bc-legend {
     display: flex;
     flex-direction: column;
@@ -340,15 +331,9 @@
 
 /* ===== TEMPLATE ROWS (composition-detail action rows still use these) ===== */
 .dash-template-row {
-    background: var(--bg-card);
-    border: 1px solid var(--border-subtle);
-    border-radius: var(--radius-md);
     padding: 10px 12px;
-    display: flex;
-    align-items: center;
     gap: 10px;
     margin-bottom: 6px;
-    cursor: pointer;
 }
 .dash-template-icon {
     width: 34px;
@@ -665,13 +650,9 @@
     overflow: hidden;
 }
 .dash-week-row {
-    display: flex;
-    align-items: center;
     gap: var(--space-10);
     min-height: var(--tap);
     padding: var(--space-10) var(--space-12);
-    border-bottom: 1px solid var(--border-subtle);
-    cursor: pointer;
 }
 .dash-week-row:last-child { border-bottom: none; }
 .dash-week-row:active { background: var(--bg-card-hover); }
@@ -757,15 +738,9 @@
 
 /* ===== RECENT PR ROW ===== */
 .pr-row {
-    background: var(--bg-card);
-    border: 1px solid var(--border-subtle);
-    border-radius: var(--radius-md);
     padding: 10px 12px;
-    display: flex;
-    align-items: center;
     gap: 10px;
     margin-bottom: 6px;
-    cursor: pointer;
     transition: transform var(--anim-fast);
 }
 .pr-row:active { transform: scale(0.98); }
@@ -815,14 +790,9 @@
 }
 .dash-todays-prs__row {
     width: 100%;
-    display: flex;
-    align-items: center;
     gap: 12px;
     padding: 12px 16px;
-    background: transparent;
-    border: none;
     text-align: left;
-    cursor: pointer;
 }
 .dash-todays-prs__row:active { background: var(--bg-card); }
 .dash-todays-prs__badge {

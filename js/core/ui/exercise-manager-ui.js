@@ -910,7 +910,7 @@ async function populateEquipmentListForSection(
                 const locationDisplay = locationsList.length > 0 ? locationsList.join(', ') : '';
 
                 return `
-            <div class="edit-equipment-item" data-equipment-id="${escapeAttr(eq.id)}" data-name="${escapeAttr(eq.name)}"
+            <div class="row-card edit-equipment-item" data-equipment-id="${escapeAttr(eq.id)}" data-name="${escapeAttr(eq.name)}"
                  data-location="${escapeAttr(locationDisplay)}" data-equipment-json='${JSON.stringify(eq).replace(/'/g, '&#39;').replace(/</g, '&lt;')}'>
                 <div class="edit-equipment-item-info">
                     <div class="edit-equipment-item-name">${escapeHtml(eq.name)}</div>
@@ -1571,7 +1571,7 @@ function renderEquipmentEditorLocations() {
     container.innerHTML = editingEquipmentLocations
         .map(
             (loc, index) => `
-        <div class="equipment-location-item">
+        <div class="row-card row-card--static equipment-location-item">
             <span class="location-name">
                 <i class="fas fa-map-marker-alt"></i>
                 ${escapeHtml(loc)}
@@ -1605,7 +1605,7 @@ function renderEquipmentExerciseVideos() {
         const videoUrl = exerciseVideos[exName] || '';
         const safeExName = escapeAttr(exName);
         return `
-            <div class="equipment-video-row">
+            <div class="row-card row-card--static equipment-video-row">
                 <div class="equipment-video-info">
                     <span class="equipment-video-exercise">${escapeHtml(exName)}</span>
                     <input type="url" class="field-input equipment-video-input"

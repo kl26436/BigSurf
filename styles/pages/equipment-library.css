@@ -50,13 +50,9 @@
 
 /* Equipment row — single machine line in the body-part list */
 .equip-row {
-    display: flex;
-    align-items: center;
     gap: var(--space-12);
     padding: var(--space-12) var(--pad-page);
     background: var(--bg-card);
-    border-bottom: 1px solid var(--border-subtle);
-    cursor: pointer;
     transition: background var(--anim-fast);
 }
 .equip-row:active {
@@ -543,13 +539,9 @@
     gap: var(--space-8);
 }
 .scan-review-row {
-    display: flex;
-    align-items: center;
     gap: var(--space-12);
     padding: var(--space-12) var(--space-16);
-    background: var(--bg-card);
     border: 1px solid var(--border);
-    border-radius: var(--radius-md);
 }
 .scan-review-row__info {
     flex: 1;
@@ -888,46 +880,7 @@
     flex-direction: column;
     gap: var(--space-6);
 }
-.cm-gym-row {
-    appearance: none;
-    display: flex;
-    align-items: center;
-    gap: var(--space-12);
-    width: 100%;
-    padding: var(--space-12);
-    background: var(--bg-surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
-    color: var(--text-strong);
-    font-size: var(--font-sm);
-    cursor: pointer;
-    text-align: left;
-}
-.cm-gym-row:hover { border-color: var(--border-strong); }
-.cm-gym-row--on {
-    border-color: var(--primary);
-    background: var(--primary-bg-subtle);
-}
-.cm-gym-row__check {
-    color: var(--text-muted);
-    font-size: var(--font-md);
-}
-.cm-gym-row--on .cm-gym-row__check {
-    color: var(--primary);
-}
-.cm-gym-row__name {
-    flex: 1;
-    font-weight: 600;
-}
-.cm-gym-row__status {
-    font-size: var(--font-2xs);
-    color: var(--text-muted);
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-}
-.cm-gym-row--on .cm-gym-row__status {
-    color: var(--primary);
-}
+
 .cm-exercise-list {
     list-style: none;
     padding: 0;
@@ -1017,18 +970,13 @@
 
 /* Identity sheet key/value rows (UX-4c). */
 .equip-id-row {
-    display: flex;
-    align-items: center;
     justify-content: space-between;
     width: 100%;
     min-height: var(--tap);
     margin-bottom: var(--space-6);
     padding: var(--space-12);
-    background: var(--bg-card);
-    border: 1px solid var(--border-subtle);
     border-radius: var(--radius-sm);
     text-align: left;
-    cursor: pointer;
 }
 .equip-id-row:active {
     background: var(--bg-card-hi);
@@ -1053,21 +1001,16 @@
 
 /* Sheet action rows (UX-4c) — Play / Remove inside the used-for sheet. */
 .equip-sheet-row {
-    display: flex;
-    align-items: center;
     gap: var(--space-10);
     width: 100%;
     min-height: var(--tap);
     margin-bottom: var(--space-6);
     padding: var(--space-12);
-    background: var(--bg-card);
-    border: 1px solid var(--border-subtle);
     border-radius: var(--radius-sm);
     text-align: left;
     color: var(--text-main);
     font-size: var(--font-sm);
     font-weight: 600;
-    cursor: pointer;
 }
 .equip-sheet-row:active {
     background: var(--bg-card-hi);
@@ -1096,7 +1039,6 @@
 #equip-assign-sheet .equip-detail-ex-row[hidden] {
     display: none;
 }
-
 
 /* ── Machine photo ID (Phase 8) ── */
 .page-header__save--icon {

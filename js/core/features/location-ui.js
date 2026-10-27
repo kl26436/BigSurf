@@ -1005,7 +1005,7 @@ export function showLocationDetail(locationId) {
         <!-- Equipment at this location -->
         <div class="sec-head"><h4>Machines here <span class="count">${locationEquip.length}</span></h4></div>
         ${locationEquip.map(eq => `
-            <div class="link-row">
+            <div class="row-card row-card--static link-row">
                 <div class="srow-icon ic-muted"><i class="fas fa-dumbbell"></i></div>
                 <div class="link-row-info">${escapeHtml(eq.name)}</div>
                 <button class="link-row-action" onclick="openEquipmentDetail('${escapeAttr(eq.id)}')">View</button>

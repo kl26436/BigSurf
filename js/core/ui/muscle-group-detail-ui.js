@@ -135,7 +135,7 @@ function renderEmptyRange(range) {
 function renderExerciseRow(ex, bodyPart) {
     const color = bodyPartColor(bodyPart);
     return `
-        <div class="d-exercise-row" onclick="showExerciseDetail('${escapeAttr(ex.name)}')">
+        <div class="row-card d-exercise-row" onclick="showExerciseDetail('${escapeAttr(ex.name)}')">
             <div class="d-ex-spark">${chartSparkline({ points: ex.trend, color, width: 54, height: 24 })}</div>
             <div class="d-ex-info">
                 <div class="d-ex-name">${escapeHtml(ex.name)}</div>
@@ -151,13 +151,14 @@ function renderExerciseRow(ex, bodyPart) {
 
 function renderPRRow(pr) {
     return `
-        <div class="d-pr-row">
+        <div class="row-card d-pr-row" onclick="showExerciseDetail('${escapeAttr(pr.exercise)}')" role="button" tabindex="0">
             <div class="pr-badge"><i class="fas fa-trophy"></i></div>
             <div class="pr-info">
                 <div class="pr-name">${escapeHtml(pr.exercise)}</div>
                 <div class="pr-meta">${formatDateShort(pr.date)} · ${pr.reps} reps</div>
             </div>
             <div class="pr-val">${pr.weight} ${mgUnit()}</div>
+            <i class="fas fa-chevron-right row-card__action" aria-hidden="true"></i>
         </div>
     `;
 }

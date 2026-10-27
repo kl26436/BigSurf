@@ -599,7 +599,7 @@ export function getWorkoutHistory(appState) {
                 const catIcon = CATEGORY_ICONS[cat] || CATEGORY_ICONS.other;
 
                 html += `
-                    <div class="recent-workout-item" data-action="showFixedWorkout" data-doc-id="${escapeAttr(docId)}">
+                    <div class="row-card row-card--flat recent-workout-item" data-action="showFixedWorkout" data-doc-id="${escapeAttr(docId)}">
                         <div class="workout-picker-icon ${cat}">
                             <i class="fas ${catIcon}"></i>
                         </div>
@@ -860,7 +860,7 @@ export function getWorkoutHistory(appState) {
                           : '<i class="fas fa-exclamation-circle text-warning"></i>';
 
                 pickerHTML += `
-            <div class="workout-picker-item" data-action="selectFromPicker" data-date="${escapeAttr(date)}" data-index="${index}">
+            <div class="row-card workout-picker-item" data-action="selectFromPicker" data-date="${escapeAttr(date)}" data-index="${index}">
                 <div class="workout-picker-icon ${workout.category}">
                     <i class="fas ${CATEGORY_ICONS[(workout.category || 'other').toLowerCase()] || CATEGORY_ICONS.other}"></i>
                 </div>

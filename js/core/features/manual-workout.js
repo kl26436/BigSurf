@@ -214,7 +214,7 @@ async function loadWorkoutLibraryForManual() {
         container.innerHTML = activeTemplates
             .map(
                 (template, index) => `
-            <div class="manual-library-item" onclick="selectWorkoutForManual(${index})">
+            <div class="row-card manual-library-item" onclick="selectWorkoutForManual(${index})">
                 <div class="library-item-name">
                     <i class="fas fa-dumbbell"></i>
                     ${escapeHtml(template.name || template.day)}

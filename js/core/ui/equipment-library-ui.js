@@ -463,7 +463,7 @@ function renderScanReview() {
         ` : '';
 
         return `
-            <div class="scan-review-row">
+            <div class="row-card row-card--static scan-review-row">
                 <div class="scan-review-row__info">
                     <div class="scan-review-row__name">"${escapeHtml(item.name)}"</div>
                     ${exercisesHTML}
@@ -1038,7 +1038,7 @@ function renderGymDetailRow(item) {
         ? `openEquipmentDetail('${escapeAttr(item.id)}')`
         : `openCatalogMachine('${escapeAttr(item.id)}')`;
     return `
-        <div class="equip-row equip-row--compact" onclick="${onclickRef}">
+        <div class="row-card row-card--flat equip-row equip-row--compact" onclick="${onclickRef}">
             <div class="equip-row__icon ${typeColorClass}">
                 <i class="fas ${typeInfo.icon}"></i>
             </div>
@@ -1904,7 +1904,7 @@ function renderBrandCatalog(container) {
                 ? `openEquipmentDetail('${escapeAttr(owned.id)}')`
                 : `openCatalogMachine('${escapeAttr(m.id)}')`;
             return `
-                <div class="equip-row equip-row--compact" onclick="${onClick}">
+                <div class="row-card row-card--flat equip-row equip-row--compact" onclick="${onClick}">
                     <div class="equip-row__icon ${typeColorClass}">
                         <i class="fas ${typeInfo.icon}"></i>
                     </div>
@@ -2708,7 +2708,7 @@ function renderCatalogSearchResults(catalog, term) {
                     ? `openEquipmentDetail('${escapeAttr(owned.id)}')`
                     : `openCatalogMachine('${escapeAttr(m.machine.id)}')`;
                 return `
-                    <div class="equip-row equip-row--compact" onclick="${onClick}">
+                    <div class="row-card row-card--flat equip-row equip-row--compact" onclick="${onClick}">
                         <div class="equip-row__icon ${typeColorClass}">
                             <i class="fas ${typeInfo.icon}"></i>
                         </div>
@@ -2771,7 +2771,7 @@ function renderPopularAtGym(gymName) {
         const typeColorClass = `equip-row__icon--${(eq.equipmentType || 'Other').toLowerCase()}`;
         const displayName = eq.function || eq.name || '—';
         return `
-            <div class="equip-row equip-row--compact" onclick="openEquipmentDetail('${escapeAttr(eq.id)}')">
+            <div class="row-card row-card--flat equip-row equip-row--compact" onclick="openEquipmentDetail('${escapeAttr(eq.id)}')">
                 <div class="equip-row__icon ${typeColorClass}">
                     <i class="fas ${typeInfo.icon}"></i>
                 </div>
@@ -3321,15 +3321,15 @@ function renderIdentitySheetBody(equipment) {
                    onchange="saveEquipmentField('${escapeAttr(id)}', 'name', this.value)">
         </div>
         <div class="field-label">Details</div>
-        <button class="equip-id-row" onclick="identitySheetPickField('${escapeAttr(id)}', 'brand')">
+        <button class="row-card equip-id-row" onclick="identitySheetPickField('${escapeAttr(id)}', 'brand')">
             <span class="equip-id-row__k">Brand</span>
             <span class="equip-id-row__v">${escapeHtml(brandLabel)} <i class="fas fa-chevron-right"></i></span>
         </button>
-        <button class="equip-id-row" onclick="identitySheetPickField('${escapeAttr(id)}', 'line')">
+        <button class="row-card equip-id-row" onclick="identitySheetPickField('${escapeAttr(id)}', 'line')">
             <span class="equip-id-row__k">Line</span>
             <span class="equip-id-row__v">${escapeHtml(lineLabel)} <i class="fas fa-chevron-right"></i></span>
         </button>
-        <button class="equip-id-row" onclick="identitySheetPickField('${escapeAttr(id)}', 'function')">
+        <button class="row-card equip-id-row" onclick="identitySheetPickField('${escapeAttr(id)}', 'function')">
             <span class="equip-id-row__k">Function</span>
             <span class="equip-id-row__v">${escapeHtml(funcLabel)} <i class="fas fa-chevron-right"></i></span>
         </button>
@@ -3434,8 +3434,8 @@ export function openEquipmentExerciseSheet(equipmentId, exerciseName) {
                        onchange="saveEquipmentExerciseVideoFromLib('${escapeAttr(equipmentId)}', '${escapeAttr(exerciseName)}', this.value)">
                 ${inherited ? '<div class="equip-uf-inherits"><i class="fas fa-arrow-up-from-bracket"></i> Inherits exercise default</div>' : ''}
             </div>
-            ${effective ? `<button class="equip-sheet-row" onclick="awShowFormVideo('${escapeAttr(effective)}', '${escapeAttr(exerciseName)}')"><i class="fas fa-circle-play"></i> Play form video</button>` : ''}
-            <button class="equip-sheet-row equip-sheet-row--danger" onclick="removeExerciseFromEquipSheet('${escapeAttr(equipmentId)}', '${escapeAttr(exerciseName)}')"><i class="fas fa-trash"></i> Remove from this equipment</button>
+            ${effective ? `<button class="row-card equip-sheet-row" onclick="awShowFormVideo('${escapeAttr(effective)}', '${escapeAttr(exerciseName)}')"><i class="fas fa-circle-play"></i> Play form video</button>` : ''}
+            <button class="row-card equip-sheet-row equip-sheet-row--danger" onclick="removeExerciseFromEquipSheet('${escapeAttr(equipmentId)}', '${escapeAttr(exerciseName)}')"><i class="fas fa-trash"></i> Remove from this equipment</button>
         `,
         actions: [{ label: 'Done', onClick: `closeEquipmentExerciseSheet('${escapeAttr(equipmentId)}')`, primary: true }],
         onDismiss: () => openEquipmentDetail(equipmentId),

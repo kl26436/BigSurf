@@ -261,7 +261,7 @@ function renderNoDexaState() {
 function renderActions(hasDexa) {
     return `
         <div class="comp-actions-list">
-            <div class="dash-template-row" onclick="showDexaUploadModal()">
+            <div class="row-card dash-template-row" onclick="showDexaUploadModal()">
                 <div class="dash-template-icon dash-template-icon--primary"><i class="fas fa-file-upload"></i></div>
                 <div class="dash-template-info">
                     <div class="dash-template-name">Upload new DEXA scan</div>
@@ -270,7 +270,7 @@ function renderActions(hasDexa) {
                 <i class="fas fa-chevron-right comp-chev"></i>
             </div>
             ${hasDexa ? `
-                <div class="dash-template-row" onclick="showDexaHistory()">
+                <div class="row-card dash-template-row" onclick="showDexaHistory()">
                     <div class="dash-template-icon dash-template-icon--gold"><i class="fas fa-history"></i></div>
                     <div class="dash-template-info">
                         <div class="dash-template-name">Scan history</div>
@@ -279,7 +279,7 @@ function renderActions(hasDexa) {
                     <i class="fas fa-chevron-right comp-chev"></i>
                 </div>
             ` : ''}
-            <div class="dash-template-row" onclick="showWeightEntryModal()">
+            <div class="row-card dash-template-row" onclick="showWeightEntryModal()">
                 <div class="dash-template-icon dash-template-icon--shoulders"><i class="fas fa-weight"></i></div>
                 <div class="dash-template-info">
                     <div class="dash-template-name">Log body weight</div>

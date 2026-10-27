@@ -157,47 +157,6 @@
 }
 
 /* ── ADDED WEIGHT ROW ── */
-.bw-added-weight-row {
-    background: var(--bg-card);
-    border: 1px solid var(--border-subtle);
-    border-radius: var(--radius-sm);
-    padding: 12px 14px;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    margin-bottom: var(--space-12, 12px);
-}
-
-.bw-added-weight-row > i {
-    color: var(--text-muted);
-    font-size: 0.8rem;
-}
-
-.bw-added-weight-row--active {
-    background: var(--primary-bg);
-    border-color: var(--primary-border);
-}
-
-.bw-added-weight-row--active > i {
-    color: var(--primary);
-}
-
-.bw-added-weight-row__info {
-    flex: 1;
-    min-width: 0;
-}
-
-.bw-added-weight-row__name {
-    font-size: 0.82rem;
-    font-weight: 600;
-    color: var(--text-strong);
-}
-
-.bw-added-weight-row__hint {
-    font-size: 0.7rem;
-    color: var(--text-muted);
-    margin-top: 2px;
-}
 
 .bw-added-weight-input {
     width: 72px;
@@ -211,10 +170,6 @@
     text-align: center;
     font-variant-numeric: tabular-nums;
     outline: none;
-}
-
-.bw-added-weight-row--active .bw-added-weight-input {
-    border-color: var(--primary-border);
 }
 
 .bw-added-weight-unit {
@@ -235,23 +190,6 @@
 .bw-total-hint {
     font-size: var(--font-2xs, 0.68rem);
     color: var(--text-muted);
-}
-
-.bw-volume-row {
-    margin-top: var(--space-10, 10px);
-    padding-top: var(--space-10, 10px);
-    border-top: 1px solid var(--border-subtle);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    font-size: var(--font-xs, 0.74rem);
-    color: var(--text-muted);
-}
-
-.bw-volume-row strong {
-    color: var(--text-strong);
-    font-weight: 700;
-    font-variant-numeric: tabular-nums;
 }
 
 /* ── EQUIPMENT BASE WEIGHT (detail view) ── */
@@ -281,8 +219,6 @@
     display: flex;
     gap: 6px;
 }
-
-
 
 .equip-base-weight-hint {
     font-size: 0.7rem;
