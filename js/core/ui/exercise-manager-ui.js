@@ -2,7 +2,7 @@
 // Handles the integrated exercise manager modal
 
 import { AppState } from '../utils/app-state.js';
-import { showNotification, setHeaderMode, escapeHtml, escapeAttr, openModal, closeModal } from './ui-helpers.js';
+import { showNotification, escapeHtml, escapeAttr, openModal, closeModal } from './ui-helpers.js';
 import { confirmSheet } from './confirm-sheet.js';
 import { FirebaseWorkoutManager } from '../data/firebase-workout-manager.js';
 import { countReassignmentImpact, reassignEquipment } from '../data/data-manager.js';
@@ -69,10 +69,7 @@ export function openExerciseManager() {
     const section = document.getElementById('exercise-manager-section');
     if (section) {
         // SH-6 — one page system: the back stack remembers where we came from.
-        enterSection('exercise-manager-section');
-
-        // Hide header but keep bottom nav for consistency
-        setHeaderMode(false);
+        enterSection('exercise-manager-section'); // also hides the logo bar
 
         // Keep bottom nav visible for consistency
         setBottomNavVisible(true);

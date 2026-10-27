@@ -292,14 +292,17 @@ export function stopActiveWorkoutRestTimer() {
 }
 
 /**
- * Manage header visibility based on active section
- * Shows full header with logo on dashboard/history, hides on other pages
- * @param {boolean} showFullHeader - true for dashboard/history, false for other pages
+ * Show or hide the logo bar (#main-header). The decision is made in one
+ * place — navigation.js applyHeaderMode() on every route change — so callers
+ * other than navigation should not need this. Only `true` shows it: the old
+ * `setHeaderMode('equipment')` calls were truthy and showed the logo over a
+ * page that already had its own header.
+ * @param {boolean} showFullHeader - true only for views without a .page-header
  */
 export function setHeaderMode(showFullHeader) {
     const mainHeader = document.getElementById('main-header');
 
-    if (showFullHeader) {
+    if (showFullHeader === true) {
         // Show full header with logo
         if (mainHeader) mainHeader.style.display = 'flex';
     } else {

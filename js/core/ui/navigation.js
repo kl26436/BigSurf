@@ -80,6 +80,20 @@ function recordNavigation(view, { replace = false } = {}) {
 }
 
 /**
+ * Which views the logo bar (#main-header) belongs to. Every other view
+ * renders its own .page-header, which carries the status-bar inset — if the
+ * logo bar stayed up too, the inset was paid twice (10/26 bug-log: ~60px of
+ * dead space above the Plan page and every drill-down). One rule, applied on
+ * every route change; nothing else decides header visibility.
+ */
+const LOGO_VIEWS = new Set(['dashboard', 'history', 'workout-history']);
+
+function applyHeaderMode(view) {
+    const normalized = String(view).replace(/-section$/, '');
+    if (window.setHeaderMode) window.setHeaderMode(LOGO_VIEWS.has(normalized));
+}
+
+/**
  * SH-6 — for flows that paint a page themselves (workout start, the exercise
  * library's edit page and equipment hand-offs): record it in the back stack
  * and the back guard exactly as navigateTo would, without re-running the
@@ -91,6 +105,7 @@ function recordNavigation(view, { replace = false } = {}) {
 export function enterSection(view, { replace = false } = {}) {
     const target = sectionOf(view);
     recordNavigation(view, { replace });
+    applyHeaderMode(view);
     SECTION_IDS.forEach((id) => {
         const el = document.getElementById(id);
         if (el) el.classList.toggle('hidden', id !== target);
@@ -196,6 +211,7 @@ function routeToView(view) {
     // Normalize: getCurrentView() returns section IDs like 'muscle-group-detail-section'
     // but callers may pass view names like 'muscle-group-detail'. Handle both.
     const normalized = view.replace(/-section$/, '');
+    applyHeaderMode(normalized);
 
     switch (normalized) {
         case 'dashboard':
@@ -268,7 +284,6 @@ function routeToView(view) {
         // enterSection from exercise-manager-ui); their state is still in place.
         case 'edit-exercise':
             document.getElementById('edit-exercise-section')?.classList.remove('hidden');
-            if (window.setHeaderMode) window.setHeaderMode(false);
             import('./exercise-manager-ui.js')
                 .then(m => m.resumeEditExerciseSection?.())
                 .catch(() => {});
@@ -276,7 +291,6 @@ function routeToView(view) {
 
         case 'equipment-editor':
             document.getElementById('equipment-editor-section')?.classList.remove('hidden');
-            if (window.setHeaderMode) window.setHeaderMode(false);
             break;
 
         case 'templates':
@@ -389,8 +403,6 @@ function showActiveWorkout() {
     // hides the nav, but any route round-trip flipped it back on because
     // this function called setBottomNavVisible(true).
     setBottomNavVisible(false);
-    const { setHeaderMode } = window;
-    if (setHeaderMode) setHeaderMode(false);
 
     // Re-render the wizard so any mutations made elsewhere (equipment library
     // edits, exercise renames, body-weight toggle on a machine, etc.) are
@@ -519,7 +531,6 @@ async function showEquipmentLibrary() {
     if (section) section.classList.remove('hidden');
     setBottomNavVisible(true);
     updateBottomNavActive('more');
-    if (window.setHeaderMode) window.setHeaderMode('equipment');
     const { openEquipmentLibrary } = await import('./equipment-library-ui.js');
     openEquipmentLibrary();
 }
@@ -529,7 +540,6 @@ async function showPlateCalculator() {
     if (section) section.classList.remove('hidden');
     setBottomNavVisible(true);
     updateBottomNavActive('more');
-    if (window.setHeaderMode) window.setHeaderMode('plate-calculator');
     const { initPlateCalculatorPage } = await import('../features/plate-calculator.js');
     initPlateCalculatorPage();
 }
@@ -539,7 +549,6 @@ async function showSettings() {
     if (section) section.classList.remove('hidden');
     setBottomNavVisible(true);
     updateBottomNavActive('more');
-    if (window.setHeaderMode) window.setHeaderMode('settings');
     const { renderSettings } = await import('./settings-ui.js');
     renderSettings();
 }

@@ -1,0 +1,893 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Big Surf — UX deep dive: top 5 improvements, mock-ups (Oct 2026)</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+<style>
+  :root {
+    --bg-app: #05070b;
+    --bg-surface: #0d1218;
+    --bg-card: #111820;
+    --bg-card-hi: #172030;
+    --border-subtle: rgba(255,255,255,0.06);
+    --border-light: rgba(255,255,255,0.10);
+    --text-strong: #f6f9ff;
+    --text-main: #c4cad4;
+    --text-secondary: #9aa3ad;
+    --text-muted: #6b7785;
+    --primary: #1dd3b0;
+    --primary-dark: #0fa48a;
+    --primary-bg: rgba(29,211,176,0.12);
+    --primary-bg-subtle: rgba(29,211,176,0.05);
+    --primary-border: rgba(29,211,176,0.3);
+    --success: #36c46b;
+    --success-bg: rgba(54,196,107,0.12);
+    --success-border: rgba(54,196,107,0.25);
+    --warning: #f0c24b;
+    --warning-bg: rgba(240,194,75,0.12);
+    --warning-border: rgba(240,194,75,0.3);
+    --danger: #e35d6a;
+    --danger-bg: rgba(227,93,106,0.12);
+    --highlight-warm: #f7a865;
+    --highlight-warm-bg: rgba(247,168,101,0.15);
+    --cat-push: #4A90D9; --cat-push-bg: rgba(74,144,217,0.15);
+    --cat-pull: #D94A7A; --cat-pull-bg: rgba(217,74,122,0.15);
+    --cat-legs: #7B4AD9; --cat-legs-bg: rgba(123,74,217,0.15);
+    --cat-core: #4AD9A7;
+    --equip-machine: #4a90d9; --equip-machine-bg: rgba(74,144,217,0.15);
+    --equip-plate: #5b7fb8; --equip-plate-bg: rgba(91,127,184,0.15);
+    --equip-cable: #7b4ad9; --equip-cable-bg: rgba(123,74,217,0.15);
+    --radius-sm: 12px; --radius-md: 16px; --radius-lg: 20px; --radius-pill: 999px;
+    --tap: 44px;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', system-ui, sans-serif; background:#000; padding:24px; min-height:100vh; color:var(--text-main); }
+  h1.section-title { color:var(--text-strong); font-size:1.4rem; margin:48px 0 8px; font-weight:700; text-align:center; }
+  h1.section-title:first-of-type { margin-top:0; }
+  h1.section-title small { display:block; color:var(--text-muted); font-size:0.75rem; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; margin-bottom:6px; }
+  p.section-desc { color:var(--text-secondary); font-size:0.9rem; margin:0 auto 22px; max-width:900px; text-align:center; line-height:1.55; }
+  p.section-desc code { color:var(--primary); font-size:0.85em; }
+  p.section-desc b { color:var(--text-strong); }
+  .row { display:flex; justify-content:center; gap:28px; flex-wrap:wrap; margin-bottom:20px; align-items:flex-start; }
+  .option-wrapper { display:flex; flex-direction:column; align-items:center; gap:10px; }
+  .step-label { background:var(--primary); color:#04201a; font-size:0.75rem; font-weight:700; padding:4px 10px; border-radius:var(--radius-pill); text-transform:uppercase; letter-spacing:0.04em; }
+  .step-label.today { background:var(--bg-card-hi); color:var(--text-secondary); border:1px solid var(--border-light); }
+  .step-label.pick { background:var(--success); color:#04201a; }
+  .option-label { color:var(--text-strong); font-size:0.95rem; font-weight:600; text-align:center; }
+  .option-sub { color:var(--text-muted); font-size:0.75rem; text-align:center; max-width:340px; line-height:1.45; }
+  .option-sub b { color:var(--text-secondary); }
+  .verdict { max-width:900px; margin:6px auto 0; background:var(--bg-card); border:1px solid var(--success-border); border-left:3px solid var(--success); border-radius:var(--radius-sm); padding:12px 16px; font-size:0.84rem; line-height:1.5; color:var(--text-main); }
+  .verdict b { color:var(--success); }
+  .verdict code { color:var(--primary); font-size:0.85em; }
+
+  /* ---- phone frame ---- */
+  .phone { width:340px; height:720px; background:var(--bg-app); border-radius:36px; border:8px solid #1a1f26; overflow:hidden; display:flex; flex-direction:column; position:relative; }
+  .phone.tall { height:760px; }
+  .status-bar { height:28px; background:var(--bg-app); display:flex; justify-content:space-between; align-items:center; padding:0 20px; font-size:0.7rem; color:var(--text-strong); font-weight:600; flex-shrink:0; }
+  .page-header { display:flex; align-items:center; gap:8px; padding:6px 12px 10px; flex-shrink:0; }
+  .page-header__back { width:36px; height:36px; border-radius:50%; background:var(--bg-card); display:grid; place-items:center; color:var(--text-strong); font-size:0.85rem; flex-shrink:0; }
+  .page-header h2 { color:var(--text-strong); font-size:1.15rem; font-weight:700; flex:1; line-height:1.15; }
+  .page-header h2 small { display:block; color:var(--text-muted); font-size:0.68rem; font-weight:500; margin-top:2px; }
+  .page-header .hdr-action { color:var(--primary); font-size:0.8rem; font-weight:600; white-space:nowrap; }
+  .page-header .hdr-icon { width:36px; height:36px; border-radius:50%; background:var(--bg-card); display:grid; place-items:center; color:var(--text-main); font-size:0.8rem; flex-shrink:0; }
+  .page-header .hdr-icon.primary { color:var(--primary); }
+  .content { flex:1; overflow:hidden; padding:0 12px 12px; display:flex; flex-direction:column; gap:10px; position:relative; }
+  .content > * { flex-shrink:0; }
+  .bottom-nav { height:62px; border-top:1px solid var(--border-light); background:var(--bg-surface); display:flex; align-items:center; justify-content:space-around; padding:0 8px 6px; flex-shrink:0; position:relative; }
+  .nav-item { display:flex; flex-direction:column; align-items:center; gap:3px; font-size:0.6rem; color:var(--text-muted); width:56px; }
+  .nav-item i { font-size:1rem; }
+  .nav-item.active { color:var(--primary); }
+  .nav-fab { width:54px; height:54px; border-radius:50%; background:var(--primary); color:#04201a; display:grid; place-items:center; font-size:1.3rem; margin-top:-22px; box-shadow:0 6px 16px rgba(29,211,176,0.35); }
+  .dim { opacity:0.35; filter:blur(0.5px); }
+
+  /* ---- shared bits ---- */
+  .card { background:var(--bg-card); border:1px solid var(--border-subtle); border-radius:var(--radius-md); padding:12px; }
+  .card--hi { background:var(--bg-card-hi); }
+  .eyebrow { font-size:0.66rem; letter-spacing:0.08em; text-transform:uppercase; color:var(--text-muted); font-weight:700; }
+  .sec { display:flex; align-items:baseline; gap:8px; margin-top:4px; }
+  .sec h3 { color:var(--text-strong); font-size:0.82rem; font-weight:700; flex:1; }
+  .sec a { color:var(--primary); font-size:0.7rem; font-weight:600; }
+  .sec .meta { color:var(--text-muted); font-size:0.66rem; }
+  .chip { display:inline-flex; align-items:center; gap:4px; padding:2px 8px; border-radius:var(--radius-pill); font-size:0.65rem; font-weight:600; border:1px solid var(--border-light); color:var(--text-secondary); background:var(--bg-surface); white-space:nowrap; }
+  .chip--ok { color:var(--success); background:var(--success-bg); border-color:var(--success-border); }
+  .chip--warn { color:var(--warning); background:var(--warning-bg); border-color:var(--warning-border); }
+  .chip--bad { color:var(--danger); background:var(--danger-bg); border-color:rgba(227,93,106,0.3); }
+  .chip--primary { color:var(--primary); background:var(--primary-bg); border-color:var(--primary-border); }
+  .chip--warm { color:var(--highlight-warm); background:var(--highlight-warm-bg); border-color:rgba(247,168,101,0.3); }
+  .chip--lg { padding:6px 12px; font-size:0.74rem; min-height:34px; }
+  .btn { display:inline-flex; align-items:center; justify-content:center; gap:6px; min-height:var(--tap); padding:0 16px; border-radius:var(--radius-sm); font-weight:700; font-size:0.85rem; white-space:nowrap; }
+  .btn--primary { background:var(--primary); color:#04201a; }
+  .btn--ghost { background:var(--bg-card); color:var(--text-strong); border:1px solid var(--border-light); }
+  .btn--secondary { background:var(--bg-card-hi); color:var(--text-strong); border:1px solid var(--border-light); }
+  .btn--danger { background:var(--danger-bg); color:var(--danger); border:1px solid rgba(227,93,106,0.3); }
+  .btn--sm { min-height:34px; font-size:0.75rem; padding:0 12px; }
+  .btn--block { width:100%; }
+  .muted { color:var(--text-muted); } .sec-c { color:var(--text-secondary); } .strong { color:var(--text-strong); }
+  .num { font-variant-numeric:tabular-nums; }
+  .up { color:var(--success); } .down { color:var(--danger); } .flat { color:var(--text-muted); }
+  .row-card { display:flex; align-items:center; gap:10px; padding:10px 12px; background:var(--bg-card); border-radius:var(--radius-md); border:1px solid var(--border-subtle); min-height:48px; }
+  .row-card.hi { background:var(--bg-card-hi); }
+  .row-card__icon { width:32px; height:32px; border-radius:10px; display:grid; place-items:center; font-size:0.8rem; flex-shrink:0; background:var(--bg-surface); color:var(--text-secondary); }
+  .row-card__icon.push { background:var(--cat-push-bg); color:var(--cat-push); }
+  .row-card__icon.pull { background:var(--cat-pull-bg); color:var(--cat-pull); }
+  .row-card__icon.legs { background:var(--cat-legs-bg); color:var(--cat-legs); }
+  .row-card__icon.machine { background:var(--equip-machine-bg); color:var(--equip-machine); }
+  .row-card__icon.plate { background:var(--equip-plate-bg); color:var(--equip-plate); }
+  .row-card__icon.cable { background:var(--equip-cable-bg); color:var(--equip-cable); }
+  .row-card__icon.teal { background:var(--primary-bg); color:var(--primary); }
+  .row-card__title { color:var(--text-strong); font-size:0.84rem; font-weight:600; }
+  .row-card__subtitle { color:var(--text-muted); font-size:0.7rem; margin-top:2px; }
+  .row-card .grow { flex:1; min-width:0; }
+  .row-card .val { color:var(--text-main); font-size:0.78rem; white-space:nowrap; }
+  .row-card .chev { color:var(--text-muted); font-size:0.7rem; }
+  .row-card .play { width:36px; height:36px; border-radius:50%; background:var(--primary); color:#04201a; display:grid; place-items:center; font-size:0.75rem; flex-shrink:0; }
+  .row-card .ctl { width:36px; height:36px; border-radius:50%; background:var(--bg-surface); border:1px solid var(--border-light); color:var(--text-main); display:grid; place-items:center; font-size:0.75rem; flex-shrink:0; }
+  .list { display:flex; flex-direction:column; gap:6px; }
+  .annot { position:absolute; background:var(--highlight-warm); color:#1a0d00; font-size:0.62rem; font-weight:700; padding:3px 7px; border-radius:6px; box-shadow:0 2px 8px rgba(0,0,0,0.5); z-index:5; max-width:160px; line-height:1.3; }
+  .annot::before { content:''; position:absolute; left:-6px; top:8px; border:5px solid transparent; border-right-color:var(--highlight-warm); border-left:0; }
+  .annot.left::before { left:auto; right:-6px; border-right:0; border-left:5px solid var(--highlight-warm); }
+  .annot.good { background:var(--success); color:#04201a; }
+  .annot.good::before { border-right-color:var(--success); }
+  .annot.good.left::before { border-left-color:var(--success); }
+  .footer-bar { position:absolute; left:0; right:0; bottom:0; background:var(--bg-app); border-top:1px solid var(--border-subtle); padding:10px 12px 18px; display:flex; gap:8px; }
+  .footer-bar.sa { padding-bottom:26px; }
+  .home-ind { position:absolute; left:50%; bottom:6px; width:110px; height:4px; border-radius:2px; background:rgba(255,255,255,0.35); transform:translateX(-50%); }
+
+  /* ---- sheet ---- */
+  .sheet-backdrop { position:absolute; inset:0; background:rgba(0,0,0,0.6); backdrop-filter:blur(3px); z-index:3; }
+  .sheet { position:absolute; left:0; right:0; bottom:0; background:var(--bg-surface); border-radius:var(--radius-lg) var(--radius-lg) 0 0; padding:8px 14px 20px; display:flex; flex-direction:column; gap:8px; border-top:1px solid var(--border-light); z-index:4; }
+  .sheet .handle { width:36px; height:4px; border-radius:2px; background:var(--border-light); margin:0 auto 4px; }
+  .sheet h3 { color:var(--text-strong); font-size:1rem; font-weight:700; }
+  .sheet .m-group { margin-top:4px; }
+  .sheet .m-item { display:flex; align-items:center; gap:12px; padding:9px 6px; font-size:0.82rem; color:var(--text-strong); border-radius:8px; }
+  .sheet .m-item i { width:18px; text-align:center; color:var(--text-secondary); font-size:0.85rem; }
+  .sheet .m-item .sub { margin-left:auto; color:var(--text-muted); font-size:0.66rem; }
+  .sheet .m-item.dup { opacity:0.55; text-decoration:line-through; text-decoration-color:rgba(227,93,106,0.7); }
+  .sheet .m-grid { display:grid; grid-template-columns:1fr 1fr; gap:6px; }
+  .sheet .m-tile { background:var(--bg-card); border:1px solid var(--border-subtle); border-radius:12px; padding:10px; display:flex; flex-direction:column; gap:4px; font-size:0.78rem; color:var(--text-strong); font-weight:600; min-height:52px; }
+  .sheet .m-tile i { color:var(--primary); font-size:0.9rem; }
+  .sheet .m-tile .sub { color:var(--text-muted); font-size:0.64rem; font-weight:500; }
+  .sheet .user { display:flex; align-items:center; gap:10px; font-size:0.72rem; color:var(--text-muted); padding:8px 6px 0; border-top:1px solid var(--border-subtle); margin-top:4px; }
+  .sheet .user .av { width:26px; height:26px; border-radius:50%; background:var(--primary-bg); color:var(--primary); display:grid; place-items:center; font-weight:700; font-size:0.72rem; }
+  .sheet .user .so { margin-left:auto; color:var(--text-secondary); font-weight:600; }
+  .sheet .actions { display:flex; gap:8px; margin-top:4px; }
+  .sheet .actions .btn { flex:1; }
+
+  /* ---- home ---- */
+  .greet { display:flex; align-items:center; justify-content:space-between; padding:2px 2px 0; }
+  .greet .d { color:var(--text-secondary); font-size:0.78rem; font-weight:600; }
+  .greet .av { width:34px; height:34px; border-radius:50%; background:var(--primary-bg); color:var(--primary); display:grid; place-items:center; font-weight:700; font-size:0.8rem; }
+  .strip { display:flex; gap:8px; align-items:center; color:var(--text-muted); font-size:0.68rem; padding:0 2px; }
+  .strip .dots { display:inline-flex; gap:3px; }
+  .strip .dots i { width:6px; height:6px; border-radius:50%; background:var(--bg-card-hi); display:inline-block; }
+  .strip .dots i.on { background:var(--primary); }
+  .hero { background:linear-gradient(135deg, rgba(29,211,176,0.16), rgba(29,211,176,0.03)); border:1px solid var(--primary-border); border-radius:var(--radius-md); padding:12px; }
+  .hero .ht { color:var(--text-muted); font-size:0.65rem; text-transform:uppercase; letter-spacing:0.08em; font-weight:700; }
+  .hero .hn { color:var(--text-strong); font-size:1.1rem; font-weight:800; margin:4px 0 2px; }
+  .hero .hs { color:var(--text-secondary); font-size:0.72rem; margin-bottom:10px; }
+  .hero .acts { display:flex; gap:8px; }
+  .hero .acts .btn { flex:1; }
+  .plan-line { display:flex; align-items:center; gap:8px; padding:4px 4px; font-size:0.68rem; color:var(--text-secondary); }
+  .plan-line i.ic { color:var(--primary); }
+  .plan-line .chev { margin-left:auto; color:var(--text-muted); }
+
+  /* ---- active workout ---- */
+  .aw-head { display:flex; align-items:center; gap:8px; padding:6px 12px 8px; }
+  .aw-head .t { flex:1; min-width:0; }
+  .aw-head .t b { display:block; color:var(--text-strong); font-size:0.9rem; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .aw-head .t span { display:block; color:var(--text-muted); font-size:0.66rem; }
+  .aw-head .t .el { color:var(--primary); font-size:0.72rem; font-weight:700; font-variant-numeric:tabular-nums; }
+  .pills { display:flex; gap:6px; overflow:hidden; padding:0 2px; }
+  .pill { width:26px; height:26px; border-radius:50%; background:var(--bg-card); border:1px solid var(--border-light); color:var(--text-muted); font-size:0.62rem; font-weight:700; display:grid; place-items:center; flex-shrink:0; }
+  .pill.done { background:var(--success-bg); border-color:var(--success-border); color:var(--success); }
+  .pill.cur { background:var(--primary); border-color:var(--primary); color:#04201a; }
+  .pill.add { border-style:dashed; }
+  .pill.lg { width:34px; height:34px; font-size:0.7rem; }
+  .ex-hero { background:var(--bg-card); border:1px solid var(--border-subtle); border-radius:var(--radius-md); padding:10px 12px; display:flex; flex-direction:column; gap:8px; }
+  .ex-hero .top { display:flex; align-items:center; gap:10px; }
+  .ex-hero .ic { width:36px; height:36px; border-radius:10px; background:var(--cat-push-bg); color:var(--cat-push); display:grid; place-items:center; font-size:0.9rem; flex-shrink:0; }
+  .ex-hero .nm { flex:1; min-width:0; }
+  .ex-hero .nm b { display:block; color:var(--text-strong); font-size:0.95rem; font-weight:700; }
+  .ex-hero .nm span { color:var(--text-muted); font-size:0.68rem; }
+  .ex-hero .ib { width:34px; height:34px; border-radius:50%; background:var(--bg-surface); border:1px solid var(--border-light); color:var(--text-secondary); display:grid; place-items:center; font-size:0.75rem; flex-shrink:0; }
+  .equip-line { display:flex; align-items:center; gap:8px; background:var(--bg-surface); border:1px solid var(--border-subtle); border-radius:10px; padding:8px 10px; font-size:0.74rem; color:var(--text-main); }
+  .equip-line i.l { color:var(--text-muted); font-size:0.7rem; }
+  .equip-line .chev { margin-left:auto; color:var(--text-muted); font-size:0.65rem; }
+  .last { display:flex; align-items:center; gap:8px; font-size:0.7rem; color:var(--text-secondary); padding:2px 2px 0; }
+  .last .nudge { display:block; color:var(--primary); font-weight:600; margin-top:2px; }
+  .last .chev { margin-left:auto; color:var(--text-muted); font-size:0.65rem; }
+  .sets-hd { display:grid; grid-template-columns:28px 1fr 1fr 44px; align-items:center; gap:8px; padding:0 4px; font-size:0.62rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.06em; font-weight:700; }
+  .unit-pill { justify-self:end; font-size:0.62rem; color:var(--primary); background:var(--primary-bg); border:1px solid var(--primary-border); border-radius:var(--radius-pill); padding:3px 9px; text-transform:none; letter-spacing:0; min-height:24px; display:inline-flex; align-items:center; }
+  .unit-seg { justify-self:end; display:inline-flex; border:1px solid var(--border-light); border-radius:var(--radius-pill); overflow:hidden; min-height:36px; align-items:stretch; text-transform:none; letter-spacing:0; }
+  .unit-seg span { padding:0 10px; display:grid; place-items:center; font-size:0.7rem; color:var(--text-muted); font-weight:700; }
+  .unit-seg span.on { background:var(--primary-bg); color:var(--primary); }
+  .set-row { display:grid; grid-template-columns:28px 1fr 1fr 44px; align-items:center; gap:8px; background:var(--bg-card); border:1px solid var(--border-subtle); border-radius:var(--radius-md); padding:8px 10px; }
+  .set-row.done { background:var(--success-bg); border-color:var(--success-border); }
+  .set-row .n { color:var(--text-muted); font-size:0.7rem; font-weight:700; }
+  .set-row .in { background:var(--bg-surface); border:1px solid var(--border-light); border-radius:10px; height:38px; display:grid; place-items:center; color:var(--text-strong); font-size:0.95rem; font-weight:700; font-variant-numeric:tabular-nums; }
+  .set-row .in.ghost { color:var(--text-muted); font-weight:500; border-style:dashed; }
+  .set-row .in .arrow { color:var(--primary); font-size:0.7rem; margin-left:4px; }
+  .set-row .ck { width:44px; height:38px; border-radius:10px; background:var(--bg-surface); border:1px solid var(--border-light); display:grid; place-items:center; color:var(--text-muted); font-size:0.8rem; }
+  .set-row.done .ck { background:var(--success); border-color:var(--success); color:#fff; }
+  .set-row.swipe { position:relative; overflow:hidden; }
+  .set-row.swipe::after { content:'Remove'; position:absolute; right:0; top:0; bottom:0; width:72px; background:var(--danger); color:#fff; display:grid; place-items:center; font-size:0.7rem; font-weight:700; }
+  .set-row.swipe > * { transform:translateX(-60px); }
+  .set-actions { display:flex; justify-content:space-between; padding:0 2px; font-size:0.74rem; color:var(--text-secondary); font-weight:600; }
+  .set-actions .add { color:var(--primary); }
+  .notes { background:var(--bg-surface); border:1px dashed var(--border-light); border-radius:10px; padding:8px 10px; color:var(--text-muted); font-size:0.72rem; }
+  .aw-foot { position:absolute; left:0; right:0; bottom:0; background:var(--bg-app); border-top:1px solid var(--border-subtle); padding:10px 12px 12px; display:flex; gap:8px; }
+  .aw-foot.sa { padding-bottom:28px; }
+  .aw-foot .btn { flex:1; }
+  .aw-foot .btn.all { flex:0 0 auto; }
+  .menu { position:absolute; right:14px; top:68px; background:var(--bg-card-hi); border:1px solid var(--border-light); border-radius:12px; padding:4px; width:200px; box-shadow:0 10px 24px rgba(0,0,0,0.6); z-index:6; }
+  .menu div { padding:8px 10px; font-size:0.76rem; color:var(--text-strong); display:flex; gap:8px; align-items:center; border-radius:8px; }
+  .menu div i { width:14px; color:var(--text-muted); font-size:0.72rem; }
+  .menu div.dng { color:var(--danger); }
+  .menu div.dng i { color:var(--danger); }
+  .menu hr { border:0; border-top:1px solid var(--border-subtle); margin:3px 6px; }
+  .menu div.cut { opacity:0.45; text-decoration:line-through; text-decoration-color:rgba(227,93,106,0.7); }
+
+  /* ---- specimen panels / tables ---- */
+  .panel { width:100%; max-width:980px; margin:0 auto; background:var(--bg-card); border:1px solid var(--border-subtle); border-radius:var(--radius-lg); overflow:hidden; }
+  .panel table { width:100%; border-collapse:collapse; font-size:0.8rem; }
+  .panel th { text-align:left; color:var(--text-muted); font-size:0.66rem; text-transform:uppercase; letter-spacing:0.08em; padding:10px 14px; border-bottom:1px solid var(--border-light); }
+  .panel td { padding:9px 14px; border-bottom:1px solid var(--border-subtle); vertical-align:top; line-height:1.45; }
+  .panel td.old { color:var(--text-muted); text-decoration:line-through; text-decoration-color:rgba(227,93,106,0.6); width:40%; }
+  .panel td.new { color:var(--text-strong); }
+  .panel td.new small { display:block; color:var(--text-secondary); font-size:0.7rem; margin-top:2px; }
+  .panel td code { color:var(--primary); font-size:0.78em; }
+  .panel tr:last-child td { border-bottom:0; }
+  .specimen { display:grid; grid-template-columns:repeat(auto-fit, minmax(300px, 1fr)); gap:14px; padding:14px; }
+  .specimen .sp { background:var(--bg-app); border:1px solid var(--border-subtle); border-radius:12px; padding:10px; display:flex; flex-direction:column; gap:6px; position:relative; }
+  .specimen .sp .lab { color:var(--text-muted); font-size:0.64rem; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; display:flex; justify-content:space-between; gap:6px; }
+  .specimen .sp .lab b { color:var(--text-secondary); font-weight:600; }
+  .specimen .sp .lab .tag { font-family:inherit; font-weight:700; }
+  .specimen .sp .lab .tag.no { color:var(--danger); } .specimen .sp .lab .tag.yes { color:var(--success); } .specimen .sp .lab .tag.hid { color:var(--warning); }
+  /* today's row shapes, drawn the way each class actually renders */
+  .r-exercise-card-new { display:flex; align-items:center; gap:10px; padding:10px 12px; background:var(--bg-card); border:1px solid var(--border-light); border-radius:12px; font-size:0.8rem; color:var(--text-strong); }
+  .r-library-card { display:flex; align-items:center; gap:10px; padding:9px 10px; background:var(--bg-card-hi); border-radius:8px; font-size:0.8rem; color:var(--text-strong); }
+  .r-recent-item { display:flex; align-items:center; gap:10px; padding:8px 10px; border-bottom:1px solid var(--border-subtle); font-size:0.8rem; color:var(--text-strong); }
+  .r-dash-week { display:flex; align-items:center; gap:10px; padding:9px 10px; background:var(--bg-card); border-radius:0; border-bottom:1px solid var(--border-subtle); font-size:0.78rem; color:var(--text-strong); min-height:44px; }
+  .r-detail-row { display:flex; align-items:center; gap:12px; padding:11px 12px; background:var(--bg-card); border:1px solid var(--border-subtle); border-radius:16px; font-size:0.8rem; color:var(--text-strong); }
+  .r-d-pr-row { display:flex; align-items:center; gap:10px; padding:9px 10px; background:var(--bg-card-hi); border-radius:12px; font-size:0.8rem; color:var(--text-strong); }
+  .r-js-row { display:flex; align-items:center; gap:10px; padding:10px 12px; background:var(--bg-card); border-radius:12px; font-size:0.8rem; color:var(--text-strong); }
+  .r-rc-line { display:flex; align-items:baseline; gap:8px; padding:5px 2px; font-size:0.78rem; color:var(--text-strong); }
+  .r-ico { width:30px; height:30px; border-radius:9px; display:grid; place-items:center; font-size:0.75rem; flex-shrink:0; background:var(--cat-push-bg); color:var(--cat-push); }
+  .r-grow { flex:1; min-width:0; } .r-grow small { display:block; color:var(--text-muted); font-size:0.66rem; }
+  .r-val { color:var(--text-secondary); font-size:0.74rem; }
+  .r-chev { color:var(--text-muted); font-size:0.65rem; }
+
+  /* ---- history detail ---- */
+  .ex-card { background:var(--bg-card); border:1px solid var(--border-subtle); border-radius:var(--radius-md); padding:10px 12px; display:flex; flex-direction:column; gap:6px; }
+  .ex-card .hd { display:flex; align-items:center; gap:8px; }
+  .ex-card .hd b { color:var(--text-strong); font-size:0.84rem; flex:1; }
+  .ex-card .hd span { color:var(--text-muted); font-size:0.66rem; }
+  .set-badges { display:flex; gap:5px; flex-wrap:wrap; }
+  .set-badge { font-size:0.66rem; padding:3px 7px; border-radius:6px; background:var(--bg-surface); border:1px solid var(--border-subtle); color:var(--text-main); font-variant-numeric:tabular-nums; }
+  .set-badge.pr { border-color:rgba(255,215,0,0.3); color:#ffd700; }
+  .set-badge.editing { border-color:var(--primary); color:var(--primary); background:var(--primary-bg); }
+  .set-table { display:flex; flex-direction:column; gap:3px; }
+  .set-line { display:grid; grid-template-columns:22px 1fr auto; gap:8px; align-items:center; font-size:0.76rem; color:var(--text-main); padding:4px 4px; border-radius:8px; }
+  .set-line .n { color:var(--text-muted); font-size:0.66rem; font-weight:700; }
+  .set-line .v { font-variant-numeric:tabular-nums; }
+  .set-line .e { color:var(--text-muted); font-size:0.66rem; }
+  .set-line.edit { background:var(--primary-bg); outline:1px solid var(--primary-border); }
+  .set-line.edit .v { color:var(--primary); font-weight:700; }
+  .modal-actions { display:flex; gap:6px; flex-wrap:wrap; }
+  .modal-actions .btn { flex:1 1 40%; min-height:40px; font-size:0.74rem; padding:0 8px; }
+  .kv { display:flex; gap:12px; font-size:0.7rem; color:var(--text-secondary); }
+  .kv b { color:var(--text-strong); font-weight:600; }
+  .stat-strip { display:flex; gap:6px; }
+  .stat-strip .s { flex:1; text-align:center; background:var(--bg-card); border:1px solid var(--border-subtle); border-radius:12px; padding:8px 4px; font-size:0.62rem; color:var(--text-muted); }
+  .stat-strip .s b { display:block; color:var(--text-strong); font-size:0.9rem; font-weight:800; }
+
+  /* ---- equipment ---- */
+  .tabs { display:flex; gap:4px; background:var(--bg-surface); border-radius:10px; padding:3px; }
+  .tabs span { flex:1; text-align:center; padding:7px 4px; font-size:0.7rem; color:var(--text-muted); font-weight:600; border-radius:8px; }
+  .tabs span.on { background:var(--bg-card-hi); color:var(--text-strong); }
+  .gym-ctx { display:flex; align-items:center; gap:8px; background:var(--primary-bg-subtle); border:1px solid var(--primary-border); border-radius:12px; padding:8px 10px; font-size:0.76rem; color:var(--text-strong); }
+  .gym-ctx i.pin { color:var(--primary); }
+  .gym-ctx .sw { margin-left:auto; color:var(--primary); font-size:0.68rem; font-weight:700; }
+  .gym-card { background:var(--bg-card); border:1px solid var(--border-subtle); border-radius:var(--radius-md); padding:10px 12px; display:flex; flex-direction:column; gap:6px; }
+  .gym-card .g1 { display:flex; align-items:center; gap:8px; }
+  .gym-card .g1 b { color:var(--text-strong); font-size:0.86rem; flex:1; }
+  .gym-card .g2 { display:flex; gap:10px; font-size:0.66rem; color:var(--text-muted); }
+  .map { height:86px; border-radius:12px; background:linear-gradient(135deg, #1a2838, #0d1218); position:relative; overflow:hidden; border:1px solid var(--border-subtle); }
+  .map::before { content:''; position:absolute; inset:0; background-image:linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px); background-size:18px 18px; }
+  .map .pin { position:absolute; left:50%; top:50%; transform:translate(-50%,-70%); color:var(--primary); font-size:1.1rem; }
+  .map .rad { position:absolute; left:50%; top:50%; width:70px; height:70px; border-radius:50%; border:1px dashed var(--primary-border); background:var(--primary-bg-subtle); transform:translate(-50%,-50%); }
+  .seg { display:flex; gap:6px; flex-wrap:wrap; }
+  .seg .s { padding:6px 10px; border-radius:10px; border:1px solid var(--border-light); background:var(--bg-card); color:var(--text-secondary); font-size:0.7rem; font-weight:600; }
+  .seg .s.on { background:var(--primary-bg); color:var(--primary); border-color:var(--primary-border); }
+  .search { display:flex; align-items:center; gap:8px; background:var(--bg-surface); border:1px solid var(--border-light); border-radius:12px; padding:9px 12px; color:var(--text-muted); font-size:0.78rem; }
+  .search i.cam { margin-left:auto; color:var(--primary); }
+  .footer { text-align:center; color:var(--text-muted); font-size:0.72rem; margin:48px 0 10px; }
+  .legend { display:flex; justify-content:center; gap:16px; font-size:0.72rem; color:var(--text-muted); margin:-8px auto 22px; }
+  .legend span::before { content:''; display:inline-block; width:10px; height:10px; border-radius:3px; margin-right:6px; vertical-align:middle; }
+  .legend .o::before { background:var(--highlight-warm); } .legend .g::before { background:var(--success); }
+</style>
+</head>
+<body>
+
+<h1 class="section-title"><small>Big Surf · mockups</small>UX deep dive — the five improvements, October 2026</h1>
+<p class="section-desc">Companion to <code>docs/ux-deep-dive-2026-10.md</code>. Each candidate shows <b>Today</b> as the code renders it (callouts cite the file), then two or three options. Dates are set to <b>Mon Oct 26, 2026</b>. Nothing on an option screen says deload, block, e1RM, RPE or template.</p>
+<div class="legend"><span class="o">Orange = what's wrong today</span><span class="g">Green = what the option fixes</span></div>
+
+<!-- ============================================================ -->
+<!-- 1. ONE MAP OF THE APP -->
+<!-- ============================================================ -->
+<h1 class="section-title"><small>Candidate 1 · usability</small>One map of the app — the More menu and the missing doors</h1>
+<p class="section-desc">Plan, Goals, Report card and "log my weight" have no stable door: the plan line vanishes from Home when there's nothing to say, the report card is three taps deep off-Sunday, and More sends "Body measurements" to a chart instead of the form. The More menu itself is the last overlay not on <code>openSheet()</code> — its own drag code, z-index above toasts, and three items that duplicate the tab bar.</p>
+
+<div class="row">
+  <!-- TODAY -->
+  <div class="option-wrapper">
+    <span class="step-label today">Today</span>
+    <div class="phone">
+      <div class="status-bar"><span>9:41</span><span>Mon Oct 26</span></div>
+      <div class="content dim">
+        <div class="greet"><span class="d">Monday, October 26</span><span class="av">K</span></div>
+        <div class="strip"><span><i class="fas fa-fire"></i> 12 day streak</span>·<span class="dots"><i class="on"></i><i class="on"></i><i></i><i></i></span><span>2 of 4</span></div>
+        <div class="hero"><div class="ht">For Monday</div><div class="hn">Push A</div><div class="hs">Last done 7d ago · ~52 min</div><div class="acts"><span class="btn btn--primary btn--sm">Start workout</span><span class="btn btn--ghost btn--sm">Quick start</span></div></div>
+      </div>
+      <div class="sheet-backdrop"></div>
+      <div class="sheet">
+        <div class="handle"></div>
+        <div class="m-group"><div class="eyebrow">Training tools</div>
+          <div class="m-item"><i class="fas fa-list"></i>Exercises</div>
+          <div class="m-item dup"><i class="fas fa-dumbbell"></i>Your workouts</div>
+          <div class="m-item"><i class="fas fa-wrench"></i>Equipment</div></div>
+        <div class="m-group"><div class="eyebrow">Utilities</div>
+          <div class="m-item"><i class="fas fa-calculator"></i>Plate calculator</div>
+          <div class="m-item dup"><i class="fas fa-brain"></i>AI Coach</div></div>
+        <div class="m-group"><div class="eyebrow">Tracking</div>
+          <div class="m-item"><i class="fas fa-chart-line"></i>Progress</div>
+          <div class="m-item"><i class="fas fa-weight-scale"></i>Body measurements</div></div>
+        <div class="m-group"><div class="eyebrow">Manage</div>
+          <div class="m-item" style="opacity:.4"><i class="fas fa-map-marker-alt"></i>Manage locations</div>
+          <div class="m-item"><i class="fas fa-cog"></i>Settings</div>
+          <div class="m-item"><i class="fas fa-bug"></i>Error log</div></div>
+        <div class="user"><span class="av">K</span>kevin@…<span class="so dup">Sign out</span></div>
+      </div>
+      <div class="annot" style="left:150px; top:236px;">Duplicates the FAB (index.html:1384)</div>
+      <div class="annot" style="left:150px; top:322px;">Duplicates the Coach tab (:1401)</div>
+      <div class="annot" style="left:170px; top:420px;">Opens the chart, not the log form (:1414)</div>
+      <div class="annot" style="left:178px; top:500px;">Hidden with 0 gyms — the first-gym path (dashboard-ui.js:1733)</div>
+      <div class="annot left" style="left:14px; top:150px; max-width:150px;">Plan · Goals · Report card: no door here at all</div>
+      <div class="annot" style="left:16px; top:640px; max-width:300px;">Not openSheet(): own drag code (navigation.js:746), z-index 750 &gt; toast 700 (nav.css:195), no Escape, no inert</div>
+      <div class="bottom-nav"><span class="nav-item"><i class="fas fa-home"></i>Home</span><span class="nav-item"><i class="fas fa-robot"></i>Coach</span><span class="nav-fab"><i class="fas fa-dumbbell"></i></span><span class="nav-item"><i class="fas fa-calendar"></i>History</span><span class="nav-item active"><i class="fas fa-ellipsis-h"></i>More</span></div>
+    </div>
+    <div class="option-label">More menu, as shipped</div>
+    <div class="option-sub">11 items in 4 groups; 3 duplicates; the four newest surfaces (Plan, Goals, Report card, Log weight) aren't on it. Body measurements → <code>openMetricDetail</code>.</div>
+  </div>
+
+  <!-- OPTION A -->
+  <div class="option-wrapper">
+    <span class="step-label">A · Grouped sheet</span>
+    <div class="phone">
+      <div class="status-bar"><span>9:41</span><span>Mon Oct 26</span></div>
+      <div class="content dim">
+        <div class="greet"><span class="d">Monday, October 26</span><span class="av">K</span></div>
+        <div class="strip"><span><i class="fas fa-fire"></i> 12 day streak</span>·<span class="dots"><i class="on"></i><i class="on"></i><i></i><i></i></span><span>2 of 4</span></div>
+        <div class="hero"><div class="ht">For Monday</div><div class="hn">Push A</div><div class="hs">Last done 7d ago · ~52 min</div><div class="acts"><span class="btn btn--primary btn--sm">Start workout</span><span class="btn btn--ghost btn--sm">Quick start</span></div></div>
+      </div>
+      <div class="sheet-backdrop"></div>
+      <div class="sheet">
+        <div class="handle"></div>
+        <div class="m-group"><div class="eyebrow">Your training</div>
+          <div class="m-item"><i class="fas fa-calendar-week"></i>Your plan<span class="sub">Build week 3</span></div>
+          <div class="m-item"><i class="fas fa-bullseye"></i>Goals<span class="sub">2 on track</span></div>
+          <div class="m-item"><i class="fas fa-clipboard-check"></i>Report card<span class="sub">Sun Oct 25</span></div>
+          <div class="m-item"><i class="fas fa-chart-line"></i>Progress</div></div>
+        <div class="m-group"><div class="eyebrow">Your body</div>
+          <div class="m-item"><i class="fas fa-weight-scale"></i>Log weight<span class="sub">184.2 lb · 2d ago</span></div>
+          <div class="m-item"><i class="fas fa-person"></i>Body &amp; scans</div></div>
+        <div class="m-group"><div class="eyebrow">Your gym</div>
+          <div class="m-item"><i class="fas fa-list"></i>Exercises</div>
+          <div class="m-item"><i class="fas fa-wrench"></i>Equipment</div>
+          <div class="m-item"><i class="fas fa-map-marker-alt"></i>Gyms<span class="sub">Add your first</span></div>
+          <div class="m-item"><i class="fas fa-calculator"></i>Plate calculator</div></div>
+        <div class="user"><span class="av">K</span>kevin@… <span style="margin-left:6px">· Settings</span><span class="so">Sign out</span></div>
+      </div>
+      <div class="annot good left" style="left:12px; top:188px; max-width:150px;">Plan, Goals, Report card get a permanent door</div>
+      <div class="annot good" style="left:176px; top:446px; max-width:150px;">"Log weight" opens the form; the chart is "Body &amp; scans"</div>
+      <div class="annot good" style="left:160px; top:452px;">Gyms always listed — "Add your first" when empty</div>
+      <div class="annot good" style="left:150px; top:598px;">Settings &amp; Sign out fold into the account row</div>
+      <div class="bottom-nav"><span class="nav-item"><i class="fas fa-home"></i>Home</span><span class="nav-item"><i class="fas fa-robot"></i>Coach</span><span class="nav-fab"><i class="fas fa-dumbbell"></i></span><span class="nav-item"><i class="fas fa-calendar"></i>History</span><span class="nav-item active"><i class="fas fa-ellipsis-h"></i>More</span></div>
+    </div>
+    <div class="option-label">Rebuild More as <code style="color:var(--primary)">openSheet()</code>, regroup by the user's question</div>
+    <div class="option-sub">Groups answer "what am I doing / how's my body / what's at my gym". Duplicates gone (Your workouts, AI Coach, Error log → Settings). Every row can carry a quiet status. <b>Trade-off:</b> 11 rows is still a long sheet; the tab bar is unchanged.</div>
+  </div>
+
+  <!-- OPTION B -->
+  <div class="option-wrapper">
+    <span class="step-label">B · Plan tab</span>
+    <div class="phone">
+      <div class="status-bar"><span>9:41</span><span>Mon Oct 26</span></div>
+      <div class="page-header"><h2>Your plan<small>Strength &amp; summer shape · Build week 3</small></h2><span class="hdr-icon"><i class="fas fa-robot"></i></span><span class="hdr-icon"><i class="fas fa-cog"></i></span></div>
+      <div class="content">
+        <div class="list" style="flex-direction:row; gap:6px;">
+          <span class="chip chip--primary chip--lg"><i class="fas fa-bullseye"></i> Goals · 2 on track</span>
+          <span class="chip chip--lg"><i class="fas fa-clipboard-check"></i> Report card</span>
+        </div>
+        <div class="sec"><h3>This week · Oct 26</h3><span class="meta">1 of 4</span></div>
+        <div class="list">
+          <div class="row-card hi"><span class="row-card__icon push"><i class="fas fa-check"></i></span><div class="grow"><div class="row-card__title">Mon · Push A</div><div class="row-card__subtitle">Done · bench 190 × 6 ✓</div></div><span class="chev"><i class="fas fa-chevron-right"></i></span></div>
+          <div class="row-card"><span class="row-card__icon pull"><i class="fas fa-dumbbell"></i></span><div class="grow"><div class="row-card__title">Tue · Pull A</div><div class="row-card__subtitle">High row 320 × 5 · ~55 min</div></div><span class="play"><i class="fas fa-play"></i></span></div>
+          <div class="row-card"><span class="row-card__icon legs"><i class="fas fa-dumbbell"></i></span><div class="grow"><div class="row-card__title">Thu · Legs A</div><div class="row-card__subtitle">Hack squat 250 × 6</div></div><span class="chev"><i class="fas fa-chevron-right"></i></span></div>
+          <div class="row-card"><span class="row-card__icon push"><i class="fas fa-dumbbell"></i></span><div class="grow"><div class="row-card__title">Sat · Upper B</div><div class="row-card__subtitle">Shoulder press 165 × 8</div></div><span class="chev"><i class="fas fa-chevron-right"></i></span></div>
+        </div>
+        <div class="sec"><h3>Week of Nov 2</h3><span class="chip chip--warn">Lighter week</span></div>
+        <div class="row-card" style="opacity:.7"><div class="grow"><div class="row-card__title">4 sessions · −35% · 12–15 reps</div><div class="row-card__subtitle">Planned from your cadence</div></div><span class="chev"><i class="fas fa-chevron-right"></i></span></div>
+        <div class="sec"><h3>Progress</h3><a>All →</a></div>
+        <div class="row-card"><span class="row-card__icon teal"><i class="fas fa-arrow-trend-up"></i></span><div class="grow"><div class="row-card__title">4 of 6 main lifts up over 4 weeks</div><div class="row-card__subtitle">Bench stuck 3 sessions · leg curl idle</div></div><span class="chev"><i class="fas fa-chevron-right"></i></span></div>
+      </div>
+      <div class="annot good left" style="left:14px; top:40px; max-width:160px;">Coach moves to a header button — same place it already is during a workout</div>
+      <div class="annot good" style="left:160px; top:132px;">Goals + Report card live where the plan lives</div>
+      <div class="bottom-nav"><span class="nav-item"><i class="fas fa-home"></i>Home</span><span class="nav-item active"><i class="fas fa-calendar-week"></i>Plan</span><span class="nav-fab"><i class="fas fa-dumbbell"></i></span><span class="nav-item"><i class="fas fa-calendar"></i>History</span><span class="nav-item"><i class="fas fa-ellipsis-h"></i>More</span></div>
+    </div>
+    <div class="option-label">Plan takes the Coach tab; Coach becomes a header button</div>
+    <div class="option-sub">Matches how you train (think once, execute daily, renegotiate sometimes): the plan is a daily surface, the chat isn't. Goals, Report card and Progress hang off it; More shrinks to gym/body/tools. <b>Trade-off:</b> the coach loses tab-bar billing — a product call, not a UX one.</div>
+  </div>
+</div>
+<div class="verdict"><b>Pick:</b> A now, B when you're ready to decide where the coach lives. A is one evening (<code>openSheet</code> body + regroup + three new rows) and removes the only legacy overlay left; B is the same sheet plus a nav swap and a Plan-page header.</div>
+
+<!-- ============================================================ -->
+<!-- 2. ONE LIFT SCREEN -->
+<!-- ============================================================ -->
+<h1 class="section-title"><small>Candidate 2 · usability</small>One lift screen — one door per action</h1>
+<p class="section-desc">The calm pass got the exercise view to ~22 tappables; it has crept back to 26–29 for a 6-exercise, 3-set workout. Finish has three doors (⋮ menu, footer flip, "All" sheet), Add exercise has three (⋮, the dashed <code>+</code> pill, "All"), equipment has three. The unit toggle you use most is the smallest target on the page (24 px), and the footer is the one bottom bar without a home-indicator inset.</p>
+
+<div class="row">
+  <!-- TODAY -->
+  <div class="option-wrapper">
+    <span class="step-label today">Today</span>
+    <div class="phone">
+      <div class="status-bar"><span>9:41</span><span>Mon Oct 26</span></div>
+      <div class="aw-head"><span class="page-header__back"><i class="fas fa-chevron-left"></i></span><div class="t"><b>Push A <span style="color:var(--text-muted);font-weight:500;font-size:.7rem">· Love Field</span></b><span class="el">14:22</span><span>Exercise 2/6 · build week</span></div><span class="hdr-icon"><i class="fas fa-robot"></i></span><span class="hdr-icon"><i class="fas fa-ellipsis-v"></i></span></div>
+      <div class="content">
+        <div class="pills"><span class="pill done">1</span><span class="pill cur">2</span><span class="pill">3</span><span class="pill">4</span><span class="pill">5</span><span class="pill">6</span><span class="pill add">+</span></div>
+        <div class="ex-hero">
+          <div class="top"><span class="ic"><i class="fas fa-dumbbell"></i></span><div class="nm"><b>Bench press</b><span>Set 1 done · 2 left</span></div><span class="ib"><i class="fas fa-calculator"></i></span><span class="ib"><i class="fas fa-cog"></i></span></div>
+          <div class="equip-line"><i class="fas fa-cog l"></i>Smith machine · 25 lb bar · Seat 4<span class="chev"><i class="fas fa-chevron-right"></i></span></div>
+          <div class="last"><i class="fas fa-history"></i><div>Last: 6×185 · 6×185 · 5×185 lb · 7d ago<span class="nudge"><i class="fas fa-bolt"></i> Bump to 190 — you hit 6 twice</span></div><span class="chev"><i class="fas fa-chevron-right"></i></span></div>
+        </div>
+        <div class="sets-hd"><span></span><span>Reps</span><span>lb</span><span class="unit-pill">lb</span></div>
+        <div class="set-row done"><span class="n">1</span><span class="in">6</span><span class="in">190</span><span class="ck"><i class="fas fa-check"></i></span></div>
+        <div class="set-row"><span class="n">2</span><span class="in ghost">6</span><span class="in ghost">190<i class="fas fa-arrow-up arrow"></i></span><span class="ck"><i class="fas fa-check"></i></span></div>
+        <div class="set-row"><span class="n">3</span><span class="in ghost">6</span><span class="in ghost">190<i class="fas fa-arrow-up arrow"></i></span><span class="ck"><i class="fas fa-check"></i></span></div>
+        <div class="set-actions"><span><i class="fas fa-minus"></i> Remove</span><span class="add"><i class="fas fa-plus"></i> Add set</span></div>
+        <div class="notes">Exercise notes…</div>
+      </div>
+      <div class="aw-foot"><span class="btn btn--ghost all"><i class="fas fa-list"></i> All</span><span class="btn btn--primary">Next exercise <i class="fas fa-arrow-right"></i></span></div>
+      <div class="home-ind"></div>
+      <div class="annot" style="left:222px; top:96px;">3rd add-exercise door (:320)</div>
+      <div class="annot left" style="left:10px; top:300px; max-width:140px;">Unit toggle 24 px — the one you use most (css:520)</div>
+      <div class="annot" style="left:130px; top:452px;">"Remove" deletes the last row — rarely meant (:663)</div>
+      <div class="annot" style="left:112px; top:632px; max-width:200px;">Footer has no safe-area inset (css:732); "Finish" also hides in ⋮ and in "All" (:284, :4049)</div>
+    </div>
+    <div class="option-label">Exercise view, as shipped</div>
+    <div class="option-sub">14 fixed tappables + 6 pills + 9 set cells = 29. Three doors each for Finish, Add exercise and Equipment; four different "cancel" sentences across the app.</div>
+  </div>
+
+  <!-- OPTION A -->
+  <div class="option-wrapper">
+    <span class="step-label">A · Fewest doors</span>
+    <div class="phone">
+      <div class="status-bar"><span>9:41</span><span>Mon Oct 26</span></div>
+      <div class="aw-head"><span class="page-header__back"><i class="fas fa-chevron-left"></i></span><div class="t"><b>Push A <span style="color:var(--text-muted);font-weight:500;font-size:.7rem">· Love Field</span></b><span class="el">14:22</span><span>Exercise 2 of 6 · build week</span></div><span class="hdr-icon"><i class="fas fa-robot"></i></span><span class="hdr-icon"><i class="fas fa-ellipsis-v"></i></span></div>
+      <div class="content">
+        <div class="pills"><span class="pill lg done">1</span><span class="pill lg cur">2</span><span class="pill lg">3</span><span class="pill lg">4</span><span class="pill lg">5</span><span class="pill lg">6</span></div>
+        <div class="ex-hero">
+          <div class="top"><span class="ic"><i class="fas fa-dumbbell"></i></span><div class="nm"><b>Bench press</b><span>Set 1 done · 2 left</span></div><span class="ib"><i class="fas fa-calculator"></i></span><span class="ib"><i class="fas fa-cog"></i></span></div>
+          <div class="equip-line"><i class="fas fa-cog l"></i>Smith machine · 25 lb bar · Seat 4<span class="chev"><i class="fas fa-chevron-right"></i></span></div>
+          <div class="last"><i class="fas fa-history"></i><div>Last: 6×185 · 6×185 · 5×185 lb · 7d ago<span class="nudge"><i class="fas fa-bolt"></i> Bump to 190 — you hit 6 twice</span></div><span class="chev"><i class="fas fa-chevron-right"></i></span></div>
+        </div>
+        <div class="sets-hd"><span></span><span>Reps</span><span>Weight</span><span class="unit-seg"><span class="on">lb</span><span>kg</span></span></div>
+        <div class="set-row done"><span class="n">1</span><span class="in">6</span><span class="in">190</span><span class="ck"><i class="fas fa-check"></i></span></div>
+        <div class="set-row swipe"><span class="n">2</span><span class="in ghost">6</span><span class="in ghost">190<i class="fas fa-arrow-up arrow"></i></span><span class="ck"><i class="fas fa-check"></i></span></div>
+        <div class="set-row"><span class="n">3</span><span class="in ghost">6</span><span class="in ghost">190<i class="fas fa-arrow-up arrow"></i></span><span class="ck"><i class="fas fa-check"></i></span></div>
+        <div class="set-actions"><span></span><span class="add"><i class="fas fa-plus"></i> Add set</span></div>
+        <div class="notes">Exercise notes…</div>
+      </div>
+      <div class="aw-foot sa"><span class="btn btn--ghost all"><i class="fas fa-list"></i> All</span><span class="btn btn--primary">Next exercise <i class="fas fa-arrow-right"></i></span></div>
+      <div class="home-ind"></div>
+      <div class="annot good" style="left:236px; top:96px;">+ pill gone — Add lives in ⋮ only</div>
+      <div class="annot good left" style="left:10px; top:296px; max-width:150px;">lb | kg segmented, 36 px — still visible, now hittable</div>
+      <div class="annot good" style="left:60px; top:398px; max-width:170px;">Swipe a row left to remove it — the "Remove" button goes</div>
+      <div class="annot good" style="left:112px; top:632px; max-width:200px;">Footer clears the home indicator; Finish = footer flip + ⋮, nowhere else</div>
+    </div>
+    <div class="option-label">Remove the duplicate doors, grow the targets</div>
+    <div class="option-sub">Tappables: 29 → 22. The "All" sheet keeps only Reorder / Superset / Close. Equipment edit = the equipment line (picker) + cog "Edit equipment"; the picker row's "⋯" goes. <b>Trade-off:</b> swipe-to-remove needs a one-time hint; a pill-less add is one tap further.</div>
+  </div>
+
+  <!-- OPTION B -->
+  <div class="option-wrapper">
+    <span class="step-label">B · Finish is a button</span>
+    <div class="phone">
+      <div class="status-bar"><span>9:41</span><span>Mon Oct 26</span></div>
+      <div class="aw-head"><span class="page-header__back"><i class="fas fa-chevron-left"></i></span><div class="t"><b>Push A <span style="color:var(--text-muted);font-weight:500;font-size:.7rem">· Love Field</span></b><span class="el">14:22</span><span>Exercise 2 of 6 · build week</span></div><span class="hdr-icon"><i class="fas fa-robot"></i></span><span class="hdr-icon"><i class="fas fa-ellipsis-v"></i></span></div>
+      <div class="content">
+        <div class="pills"><span class="pill lg done">1</span><span class="pill lg cur">2</span><span class="pill lg">3</span><span class="pill lg">4</span><span class="pill lg">5</span><span class="pill lg">6</span></div>
+        <div class="ex-hero">
+          <div class="top"><span class="ic"><i class="fas fa-dumbbell"></i></span><div class="nm"><b>Bench press</b><span>Set 1 done · 2 left</span></div><span class="ib"><i class="fas fa-calculator"></i></span><span class="ib"><i class="fas fa-cog"></i></span></div>
+          <div class="equip-line"><i class="fas fa-cog l"></i>Smith machine · 25 lb bar · Seat 4<span class="chev"><i class="fas fa-chevron-right"></i></span></div>
+          <div class="last"><i class="fas fa-history"></i><div>Last: 6×185 · 6×185 · 5×185 lb · 7d ago<span class="nudge"><i class="fas fa-bolt"></i> Bump to 190 — you hit 6 twice</span></div><span class="chev"><i class="fas fa-chevron-right"></i></span></div>
+        </div>
+        <div class="sets-hd"><span></span><span>Reps</span><span>Weight</span><span class="unit-seg"><span class="on">lb</span><span>kg</span></span></div>
+        <div class="set-row done"><span class="n">1</span><span class="in">6</span><span class="in">190</span><span class="ck"><i class="fas fa-check"></i></span></div>
+        <div class="set-row"><span class="n">2</span><span class="in ghost">6</span><span class="in ghost">190<i class="fas fa-arrow-up arrow"></i></span><span class="ck"><i class="fas fa-check"></i></span></div>
+        <div class="set-row"><span class="n">3</span><span class="in ghost">6</span><span class="in ghost">190<i class="fas fa-arrow-up arrow"></i></span><span class="ck"><i class="fas fa-check"></i></span></div>
+        <div class="set-actions"><span></span><span class="add"><i class="fas fa-plus"></i> Add set</span></div>
+        <div class="notes">Exercise notes…</div>
+      </div>
+      <div class="menu" style="top:64px;">
+        <div><i class="fas fa-plus"></i> Add exercise</div>
+        <div><i class="fas fa-feather"></i> Make this a lighter session</div>
+        <div><i class="fas fa-bookmark"></i> Save as workout</div>
+        <div><i class="fas fa-map-marker-alt"></i> Change gym</div>
+        <hr>
+        <div><i class="fas fa-chart-bar"></i> Session so far</div>
+        <div class="cut"><i class="fas fa-file-export"></i> Export session</div>
+        <hr>
+        <div class="cut"><i class="fas fa-flag-checkered"></i> Finish workout</div>
+        <div class="dng"><i class="fas fa-times"></i> Cancel workout</div>
+      </div>
+      <div class="aw-foot sa"><span class="btn btn--ghost all"><i class="fas fa-list"></i> All</span><span class="btn btn--primary">Next <i class="fas fa-arrow-right"></i></span><span class="btn btn--secondary all"><i class="fas fa-flag-checkered"></i> Finish</span></div>
+      <div class="home-ind"></div>
+      <div class="annot good left" style="left:10px; top:430px; max-width:170px;">⋮ loses Finish and Export (Export → History detail)</div>
+      <div class="annot good" style="left:40px; top:632px; max-width:210px;">One standing Finish — never hidden, never duplicated; flips to primary when every set is done</div>
+    </div>
+    <div class="option-label">Footer: All · Next · Finish — the ⋮ menu shrinks to five</div>
+    <div class="option-sub">Trades one extra standing tappable (23) for zero hidden ones: an early finish is one tap, same place every time. <b>Trade-off:</b> you removed the footer flag in July for calm; this brings a quieter version back as a ghost button, not a flag icon.</div>
+  </div>
+</div>
+
+<div class="panel" style="margin-top:4px;">
+  <table>
+    <tr><th>Four cancel sentences today</th><th>One sentence, everywhere</th></tr>
+    <tr><td class="old">"Logged sets will be saved as a cancelled session" — Keep lifting <small>active-workout-ui.js:1906</small></td><td class="new" rowspan="4">Cancel this workout?<br><small>Sets you've logged are kept as a cancelled session. · Buttons: <b>Cancel workout</b> (red) / <b>Keep lifting</b> — one <code>confirmCancelWorkout()</code> called from the ⋮ menu, the Home hero and "start a new one while one is running"; the dead <code>#resume-workout-banner</code> and its "you'll lose any unsaved progress" copy are deleted.</small></td></tr>
+    <tr><td class="old">"…they'll be saved as a cancelled session" — Keep going <small>workout-session.js:1502</small></td></tr>
+    <tr><td class="old">"Logged sets are saved as an incomplete entry" — Keep going <small>dashboard-ui.js:1777</small></td></tr>
+    <tr><td class="old">"you'll lose any unsaved progress" — Keep current workout <small>workout-session.js:144 — contradicts the other three</small></td></tr>
+  </table>
+</div>
+<div class="verdict"><b>Pick:</b> A, plus the cancel-copy table. B only if the phone session shows people hunting for Finish — today the footer flips the moment the last set is checked, which is the common case. Either way: unit segmented at 36 px, footer inset, swipe-to-remove, pill gone, "All" sheet down to Reorder/Superset.</div>
+
+<!-- ============================================================ -->
+<!-- 3. ONE ROW, ONE HEAD, ONE FIELD -->
+<!-- ============================================================ -->
+<h1 class="section-title"><small>Candidate 3 · style</small>One row, one head, one field — and a rule for what a row promises</h1>
+<p class="section-desc">The same <code>[icon][title/subtitle][trailing]</code> row ships in at least nine classes, five section-head styles and five text-field classes. Worse than the class count: the <b>promise</b> is inconsistent — some rows look tappable and do nothing (<code>.detail-row</code>, <code>.d-pr-row</code>), one is tappable and doesn't look it (<code>.rc-line</code>). The fix is one component plus one rule: <b>chevron = opens a page · value = static · control = acts</b>.</p>
+
+<div class="panel">
+  <table><tr><th colspan="2">Today — the same row, nine ways (rendered as each class actually styles it)</th></tr></table>
+  <div class="specimen">
+    <div class="sp"><div class="lab"><b>.exercise-card-new</b> exercise-manager-ui.js:425 <span class="tag yes">opens</span></div><div class="r-exercise-card-new"><span class="r-ico"><i class="fas fa-dumbbell"></i></span><div class="r-grow">Bench press<small>Chest · 14 sessions</small></div><span class="r-chev"><i class="fas fa-chevron-right"></i></span></div></div>
+    <div class="sp"><div class="lab"><b>.library-exercise-card</b> workout-management-ui.js:502 <span class="tag yes">opens</span></div><div class="r-library-card"><span class="r-ico"><i class="fas fa-dumbbell"></i></span><div class="r-grow">Bench press<small>Chest</small></div></div></div>
+    <div class="sp"><div class="lab"><b>.recent-workout-item</b> workout-history.js:617 <span class="tag yes">opens</span></div><div class="r-recent-item"><span class="r-ico"><i class="fas fa-dumbbell"></i></span><div class="r-grow">Push A<small>Oct 14 · 6 exercises · 42m</small></div><span class="r-val"><i class="fas fa-check-circle" style="color:var(--success)"></i></span></div></div>
+    <div class="sp"><div class="lab"><b>.dash-week-row</b> dashboard-ui.js:1045 <span class="tag yes">opens</span></div><div class="r-dash-week"><span class="r-ico"><i class="fas fa-dumbbell"></i></span><div class="r-grow">Push A<small>Last done 3d ago</small></div><span class="r-chev"><i class="fas fa-chevron-right"></i></span></div></div>
+    <div class="sp"><div class="lab"><b>.detail-row</b> metric-detail-ui.js:228 <span class="tag no">cursor:pointer, no onclick</span></div><div class="r-detail-row"><div class="r-grow">Chest<small>6 sessions · 24 sets</small></div><span class="r-val">18,400 lb <span class="up">↑ 6%</span></span></div></div>
+    <div class="sp"><div class="lab"><b>.d-pr-row</b> muscle-group-detail-ui.js:148 <span class="tag no">looks like .pr-row, doesn't open</span></div><div class="r-d-pr-row"><div class="r-grow">Bench press<small>2026-10-14</small></div><span class="r-val">190 lb × 6</span></div></div>
+    <div class="sp"><div class="lab"><b>.js-row</b> active-workout-ui.js:2742 <span class="tag yes">selects</span></div><div class="r-js-row"><span class="r-ico" style="background:var(--equip-plate-bg);color:var(--equip-plate)"><i class="fas fa-cog"></i></span><div class="r-grow">Smith machine<small>Used 14× here</small></div><span class="r-chev"><i class="fas fa-ellipsis-h"></i></span></div></div>
+    <div class="sp"><div class="lab"><b>.rc-line</b> report-card-ui.js:174 <span class="tag hid">tappable, no affordance</span></div><div class="r-rc-line"><div class="r-grow">Bench press <small>Smith</small></div><span class="r-val">190 → 190</span><span class="flat" style="font-weight:700;font-size:.74rem">stuck</span></div></div>
+    <div class="sp"><div class="lab"><b>.srow</b> (Profile) settings-ui.js:918 <span class="tag hid">onclick, no pressed state</span></div><div class="r-js-row" style="border-radius:0;background:var(--bg-surface)"><div class="r-grow">Height</div><span class="r-val">5′ 11″</span><span class="r-chev"><i class="fas fa-chevron-right"></i></span></div></div>
+  </div>
+</div>
+
+<div class="row" style="margin-top:22px;">
+  <!-- OPTION A -->
+  <div class="option-wrapper">
+    <span class="step-label">A · Titled heads</span>
+    <div class="phone">
+      <div class="status-bar"><span>9:41</span><span>Mon Oct 26</span></div>
+      <div class="page-header"><span class="page-header__back"><i class="fas fa-chevron-left"></i></span><h2>Chest<small>6 sessions · last 3d ago</small></h2></div>
+      <div class="content">
+        <div class="seg"><span class="s">W</span><span class="s on">M</span><span class="s">3M</span><span class="s">Y</span><span class="s">All</span></div>
+        <div class="sec"><h3>Volume</h3><span class="meta">this month</span></div>
+        <div class="row-card"><div class="grow"><div class="row-card__title">18,400 lb</div><div class="row-card__subtitle">24 sets · 6 sessions</div></div><span class="val up">↑ 6% vs last month</span></div>
+        <div class="sec"><h3>Exercises</h3><a>All 5 →</a></div>
+        <div class="list">
+          <div class="row-card"><span class="row-card__icon push"><i class="fas fa-dumbbell"></i></span><div class="grow"><div class="row-card__title">Bench press</div><div class="row-card__subtitle">Smith · best 6 × 190 lb</div></div><span class="chev"><i class="fas fa-chevron-right"></i></span></div>
+          <div class="row-card"><span class="row-card__icon push"><i class="fas fa-dumbbell"></i></span><div class="grow"><div class="row-card__title">Incline press</div><div class="row-card__subtitle">Hammer Strength · best 8 × 140 lb</div></div><span class="chev"><i class="fas fa-chevron-right"></i></span></div>
+          <div class="row-card"><span class="row-card__icon push"><i class="fas fa-dumbbell"></i></span><div class="grow"><div class="row-card__title">Cable fly</div><div class="row-card__subtitle">best 12 × 35 lb</div></div><span class="chev"><i class="fas fa-chevron-right"></i></span></div>
+        </div>
+        <div class="sec"><h3>Records</h3></div>
+        <div class="list">
+          <div class="row-card"><span class="row-card__icon" style="color:#ffd700;background:rgba(255,215,0,0.12)"><i class="fas fa-trophy"></i></span><div class="grow"><div class="row-card__title">Bench press</div><div class="row-card__subtitle">Oct 14 · Smith</div></div><span class="val">6 × 190 lb</span><span class="chev"><i class="fas fa-chevron-right"></i></span></div>
+        </div>
+      </div>
+      <div class="annot good left" style="left:12px; top:206px; max-width:132px;">Value, no chevron = static fact (was .detail-row with a pointer)</div>
+      <div class="annot good left" style="left:12px; top:458px; max-width:132px;">Chevron = opens the lift (was .d-pr-row, dead)</div>
+      <div class="annot good" style="left:150px; top:112px;">h3 + meta / "Label →" — the dashboard's head, everywhere</div>
+      <div class="bottom-nav"><span class="nav-item"><i class="fas fa-home"></i>Home</span><span class="nav-item"><i class="fas fa-robot"></i>Coach</span><span class="nav-fab"><i class="fas fa-dumbbell"></i></span><span class="nav-item"><i class="fas fa-calendar"></i>History</span><span class="nav-item"><i class="fas fa-ellipsis-h"></i>More</span></div>
+    </div>
+    <div class="option-label"><code style="color:var(--primary)">.row-card</code> + <code style="color:var(--primary)">.dash-section-head</code> become the only two</div>
+    <div class="option-sub">Heads keep the dashboard's title-case h3 with a trailing meta or "Label →". Four head classes (<code>.d-sec-head</code>, <code>.sec-head</code>, <code>.detail-breakdown-head</code>, <code>.field-label</code>-as-head) die. <b>Trade-off:</b> drill-down pages lose their quieter uppercase eyebrow.</div>
+  </div>
+
+  <!-- OPTION B -->
+  <div class="option-wrapper">
+    <span class="step-label">B · Eyebrow heads</span>
+    <div class="phone">
+      <div class="status-bar"><span>9:41</span><span>Mon Oct 26</span></div>
+      <div class="page-header"><span class="page-header__back"><i class="fas fa-chevron-left"></i></span><h2>Chest<small>6 sessions · last 3d ago</small></h2></div>
+      <div class="content">
+        <div class="seg"><span class="s">W</span><span class="s on">M</span><span class="s">3M</span><span class="s">Y</span><span class="s">All</span></div>
+        <div class="sec"><span class="eyebrow" style="flex:1">Volume · this month</span></div>
+        <div class="row-card"><div class="grow"><div class="row-card__title">18,400 lb</div><div class="row-card__subtitle">24 sets · 6 sessions</div></div><span class="val up">↑ 6% vs last month</span></div>
+        <div class="sec"><span class="eyebrow" style="flex:1">Exercises</span><a>All 5 →</a></div>
+        <div class="list">
+          <div class="row-card"><span class="row-card__icon push"><i class="fas fa-dumbbell"></i></span><div class="grow"><div class="row-card__title">Bench press</div><div class="row-card__subtitle">Smith · best 6 × 190 lb</div></div><span class="chev"><i class="fas fa-chevron-right"></i></span></div>
+          <div class="row-card"><span class="row-card__icon push"><i class="fas fa-dumbbell"></i></span><div class="grow"><div class="row-card__title">Incline press</div><div class="row-card__subtitle">Hammer Strength · best 8 × 140 lb</div></div><span class="chev"><i class="fas fa-chevron-right"></i></span></div>
+          <div class="row-card"><span class="row-card__icon push"><i class="fas fa-dumbbell"></i></span><div class="grow"><div class="row-card__title">Cable fly</div><div class="row-card__subtitle">best 12 × 35 lb</div></div><span class="chev"><i class="fas fa-chevron-right"></i></span></div>
+        </div>
+        <div class="sec"><span class="eyebrow" style="flex:1">Records</span></div>
+        <div class="list">
+          <div class="row-card"><span class="row-card__icon" style="color:#ffd700;background:rgba(255,215,0,0.12)"><i class="fas fa-trophy"></i></span><div class="grow"><div class="row-card__title">Bench press</div><div class="row-card__subtitle">Oct 14 · Smith</div></div><span class="val">6 × 190 lb</span><span class="chev"><i class="fas fa-chevron-right"></i></span></div>
+        </div>
+      </div>
+      <div class="annot good" style="left:150px; top:112px; max-width:170px;">Uppercase eyebrow everywhere — Home included; the h3 variant dies</div>
+      <div class="bottom-nav"><span class="nav-item"><i class="fas fa-home"></i>Home</span><span class="nav-item"><i class="fas fa-robot"></i>Coach</span><span class="nav-fab"><i class="fas fa-dumbbell"></i></span><span class="nav-item"><i class="fas fa-calendar"></i>History</span><span class="nav-item"><i class="fas fa-ellipsis-h"></i>More</span></div>
+    </div>
+    <div class="option-label">Same row rule; heads become the drill-down eyebrow</div>
+    <div class="option-sub">Quieter pages, more Apple-Health. Home's "This week / Body / Main lifts" heads become eyebrows too, which drops their visual weight next to the hero. <b>Trade-off:</b> an eyebrow can't carry a long title ("Training balance · sets/wk vs target") without wrapping.</div>
+  </div>
+
+  <!-- OPTION C -->
+  <div class="option-wrapper">
+    <span class="step-label">C · One field</span>
+    <div class="phone">
+      <div class="status-bar"><span>9:41</span><span>Mon Oct 26</span></div>
+      <div class="page-header"><span class="page-header__back"><i class="fas fa-chevron-left"></i></span><h2>Edit machine</h2><span class="hdr-action">Save</span></div>
+      <div class="content">
+        <div class="sec"><h3>Name</h3></div>
+        <div class="search" style="color:var(--text-strong)">Hammer Strength Iso-Lateral Chest Press</div>
+        <div class="kv" style="padding:0 2px"><span>Saves as <b>Hammer Strength · Chest press</b></span></div>
+        <div class="sec"><h3>Brand</h3></div>
+        <div class="search" style="color:var(--text-strong)">Hammer Strength <i class="fas fa-chevron-down" style="margin-left:auto;color:var(--text-muted)"></i></div>
+        <div class="sec"><h3>Type</h3></div>
+        <div class="seg"><span class="s on">Plate-loaded</span><span class="s">Selectorized</span><span class="s">Cable</span><span class="s">Barbell</span><span class="s">Dumbbell</span></div>
+        <div class="sec"><h3>Unit · base weight</h3></div>
+        <div class="list" style="flex-direction:row;gap:8px"><span class="unit-seg" style="min-height:44px"><span class="on">lb</span><span>kg</span></span><div class="search" style="flex:1;color:var(--text-strong)">0 <span class="muted" style="margin-left:auto;font-size:.68rem">lb</span></div></div>
+        <div class="sec"><h3>Gyms</h3></div>
+        <div class="seg"><span class="s on"><i class="fas fa-check"></i> Love Field</span><span class="s">24 Hour Fitness</span><span class="s">+ Gym</span></div>
+      </div>
+      <div class="annot good left" style="left:10px; top:168px; max-width:170px;">One <code>.field</code>: label above, 44 px input, same radius — replaces .qe-field__input, .add-field__input, .form-input, .input-field</div>
+      <div class="annot good" style="left:120px; top:362px;">Type is a chip row everywhere (was div-chips / .add-type-chip / &lt;select&gt;)</div>
+      <div class="annot good left" style="left:10px; top:560px; max-width:170px;">"Gyms", never "Locations" (see candidate 5)</div>
+      <div class="footer-bar sa"><span class="btn btn--primary btn--block">Save machine</span></div>
+      <div class="home-ind"></div>
+    </div>
+    <div class="option-label">Form fields: one <code style="color:var(--primary)">.field</code>, one chip, one save</div>
+    <div class="option-sub">Independent of A/B. The equipment quick-edit, add flow, DEXA form, add-location modal and plate calculator all render this way. Save lives in the footer; the header "Save" duplicate (measurements, DEXA, manual entry step 2) goes.</div>
+  </div>
+</div>
+<div class="verdict"><b>Pick:</b> A + C. A keeps Home as designed (the h3+link head was the V3 decision) and only the drill-downs change; the row rule is the real win because it fixes the two "looks tappable / isn't" classes and the one "is tappable / doesn't look it". Add a budget: <code>rowClassesOutsideCardsCss</code> and <code>sectionHeadClasses</code> in design-audit, ratcheting to 1 each.</div>
+
+<!-- ============================================================ -->
+<!-- 4. PAST WORKOUTS -->
+<!-- ============================================================ -->
+<h1 class="section-title"><small>Candidate 4 · usability + style</small>Past workouts — a real page, one way to write a set</h1>
+<p class="section-desc">Workout detail is a <code>full-page-section</code> opened with <code>openModal()</code>, listed in <code>SECTION_IDS</code> but with no route, so system-back from it falls to the dashboard; after an edit the title stays "Edit workout". Delete sits beside Repeat in one button row. And the numbers: dates in three formats on one path, sets written reps×weight here and weight×reps on the exercise and muscle pages, "42m", "RPE 8", hard-coded "lb" for kg users.</p>
+
+<div class="row">
+  <!-- TODAY -->
+  <div class="option-wrapper">
+    <span class="step-label today">Today</span>
+    <div class="phone">
+      <div class="status-bar"><span>9:41</span><span>Mon Oct 26</span></div>
+      <div class="page-header"><span class="page-header__back"><i class="fas fa-chevron-left"></i></span><h2>Edit workout</h2></div>
+      <div class="content">
+        <div class="modal-actions"><span class="btn btn--primary"><i class="fas fa-pen"></i> Edit workout</span><span class="btn btn--secondary"><i class="fas fa-redo"></i> Repeat</span><span class="btn btn--secondary"><i class="fas fa-bookmark"></i> Save as workout</span><span class="btn btn--danger"><i class="fas fa-trash"></i> Delete</span></div>
+        <div style="padding:2px 2px 0"><b class="strong" style="font-size:.95rem">Push A - 10/14/2026</b><div class="kv" style="margin-top:3px"><span>Love Field</span><span>42m</span><span><i class="fas fa-check-circle" style="color:var(--success)"></i> Completed</span></div></div>
+        <div class="sec"><h3>Exercises &amp; Sets</h3></div>
+        <div class="ex-card"><div class="hd"><b>Bench press</b><span>Smith machine</span></div><div class="set-badges"><span class="set-badge">Set 1: 6 × 185 lb · RPE 8</span><span class="set-badge">Set 2: 6 × 185 lb</span><span class="set-badge pr">Set 3: 5 × 185 lb</span></div></div>
+        <div class="ex-card"><div class="hd"><b>Incline press</b><span>Hammer Strength</span></div><div class="set-badges"><span class="set-badge">Set 1: 8 × 140 lb</span><span class="set-badge">Set 2: 8 × 140 lb</span><span class="set-badge">Set 3: 7 × 140 lb</span></div></div>
+        <div class="ex-card"><div class="hd"><b>Cable fly</b><span>Cable stack</span></div><div class="set-badges"><span class="set-badge">Set 1: 12 × 35 lb</span><span class="set-badge">Set 2: 12 × 35 lb</span></div></div>
+      </div>
+      <div class="annot" style="left:130px; top:38px; max-width:180px;">Title stuck after an edit (edit-history-inline.js:732); static "Workout details" otherwise</div>
+      <div class="annot" style="left:120px; top:140px;">Delete in the same row as Repeat (workout-history.js:1303)</div>
+      <div class="annot left" style="left:10px; top:208px; max-width:150px;">"10/14/2026" here, "Oct 14" in the list, "Tuesday, October 14" in the picker</div>
+      <div class="annot" style="left:126px; top:290px; max-width:170px;">"RPE" shipped (:1355); the exercise page writes 185 × 6, Home 6×185</div>
+      <div class="annot left" style="left:10px; top:560px; max-width:190px;">Opened by openModal() yet in SECTION_IDS with no route — back lands on Home (navigation.js:17, :342)</div>
+      <div class="bottom-nav"><span class="nav-item"><i class="fas fa-home"></i>Home</span><span class="nav-item"><i class="fas fa-robot"></i>Coach</span><span class="nav-fab"><i class="fas fa-dumbbell"></i></span><span class="nav-item active"><i class="fas fa-calendar"></i>History</span><span class="nav-item"><i class="fas fa-ellipsis-h"></i>More</span></div>
+    </div>
+    <div class="option-label">Workout detail, as shipped</div>
+    <div class="option-sub">Fixing a typo'd weight is 6 taps (open → Edit → tap value → type → ✓ → Save changes) and lands you back on a read-only page with the wrong title.</div>
+  </div>
+
+  <!-- OPTION A -->
+  <div class="option-wrapper">
+    <span class="step-label">A · Routed page</span>
+    <div class="phone">
+      <div class="status-bar"><span>9:41</span><span>Mon Oct 26</span></div>
+      <div class="page-header"><span class="page-header__back"><i class="fas fa-chevron-left"></i></span><h2>Push A<small>Tue, Oct 14 · Love Field · 42 min</small></h2><span class="hdr-icon"><i class="fas fa-ellipsis-h"></i></span></div>
+      <div class="content">
+        <div class="stat-strip"><div class="s"><b>6</b>exercises</div><div class="s"><b>17</b>sets</div><div class="s"><b>12.4k</b>lb volume</div><div class="s"><b>1</b>record</div></div>
+        <div class="ex-card"><div class="hd"><b>Bench press</b><span>Smith machine</span></div><div class="set-badges"><span class="set-badge">6 × 185 lb · 8/10</span><span class="set-badge">6 × 185 lb</span><span class="set-badge pr">5 × 185 lb · record</span></div></div>
+        <div class="ex-card"><div class="hd"><b>Incline press</b><span>Hammer Strength</span></div><div class="set-badges"><span class="set-badge">8 × 140 lb</span><span class="set-badge">8 × 140 lb</span><span class="set-badge">7 × 140 lb</span></div></div>
+        <div class="ex-card"><div class="hd"><b>Cable fly</b><span>Cable stack</span></div><div class="set-badges"><span class="set-badge">12 × 35 lb</span><span class="set-badge">12 × 35 lb</span></div></div>
+        <div class="ex-card"><div class="hd"><b>Lateral raise</b><span>Dumbbells</span></div><div class="set-badges"><span class="set-badge">12 × 25 lb</span><span class="set-badge">12 × 25 lb</span><span class="set-badge">10 × 25 lb</span></div></div>
+      </div>
+      <div class="menu" style="top:64px; width:180px;"><div><i class="fas fa-bookmark"></i> Save as workout</div><div><i class="fas fa-file-export"></i> Export</div><hr><div class="dng"><i class="fas fa-trash"></i> Delete workout</div></div>
+      <div class="footer-bar sa"><span class="btn btn--secondary" style="flex:1"><i class="fas fa-pen"></i> Edit</span><span class="btn btn--primary" style="flex:1.4"><i class="fas fa-redo"></i> Repeat workout</span></div>
+      <div class="home-ind"></div>
+      <div class="annot good" style="left:176px; top:36px; max-width:140px;">Title = the workout; one date format; "42 min"</div>
+      <div class="annot good left" style="left:10px; top:300px; max-width:150px;">reps × weight + unit, effort "8/10" — same as Home and the lift screen</div>
+      <div class="annot good" style="left:100px; top:590px; max-width:200px;">Repeat is the primary; Edit secondary; Delete lives in ⋯ with the rare actions</div>
+      <div class="annot good" style="left:150px; top:470px; max-width:150px;">navigateTo('workout-detail') — on the stack, back goes to History</div>
+    </div>
+    <div class="option-label">Detail becomes a routed page with a footer pair + overflow</div>
+    <div class="option-sub">Same action set, ranked by frequency. Edit mode is unchanged (<code>.weh-foot</code> Discard / Save changes). Deleting the dead <code>#workoutModal</code> renderers (workout-history.js:745, :1380) comes free.</div>
+  </div>
+
+  <!-- OPTION B -->
+  <div class="option-wrapper">
+    <span class="step-label">B · Edit in place</span>
+    <div class="phone">
+      <div class="status-bar"><span>9:41</span><span>Mon Oct 26</span></div>
+      <div class="page-header"><span class="page-header__back"><i class="fas fa-chevron-left"></i></span><h2>Push A<small>Tue, Oct 14 · Love Field · 42 min</small></h2><span class="hdr-icon"><i class="fas fa-ellipsis-h"></i></span></div>
+      <div class="content">
+        <div class="stat-strip"><div class="s"><b>6</b>exercises</div><div class="s"><b>17</b>sets</div><div class="s"><b>12.4k</b>lb volume</div><div class="s"><b>1</b>record</div></div>
+        <div class="ex-card"><div class="hd"><b>Bench press</b><span>Smith machine</span></div>
+          <div class="set-table">
+            <div class="set-line"><span class="n">1</span><span class="v">6 × 185 lb</span><span class="e">8/10</span></div>
+            <div class="set-line edit"><span class="n">2</span><span class="v">6 × 18<span style="border-right:2px solid var(--primary)">5</span> lb</span><span class="e" style="color:var(--primary)">✓</span></div>
+            <div class="set-line"><span class="n">3</span><span class="v">5 × 185 lb</span><span class="e" style="color:#ffd700">record</span></div>
+          </div></div>
+        <div class="ex-card"><div class="hd"><b>Incline press</b><span>Hammer Strength</span></div>
+          <div class="set-table">
+            <div class="set-line"><span class="n">1</span><span class="v">8 × 140 lb</span><span class="e"></span></div>
+            <div class="set-line"><span class="n">2</span><span class="v">8 × 140 lb</span><span class="e"></span></div>
+            <div class="set-line"><span class="n">3</span><span class="v">7 × 140 lb</span><span class="e"></span></div>
+          </div></div>
+        <div class="ex-card" style="opacity:.75"><div class="hd"><b>Cable fly</b><span>Cable stack</span></div><div class="set-badges"><span class="set-badge">12 × 35 lb</span><span class="set-badge">12 × 35 lb</span></div></div>
+      </div>
+      <div class="annot good" style="left:150px; top:290px; max-width:160px;">Tap a set to edit it right there; ✓ saves that set — no Edit mode, no Save changes</div>
+      <div class="footer-bar sa"><span class="btn btn--primary btn--block"><i class="fas fa-redo"></i> Repeat workout</span></div>
+      <div class="home-ind"></div>
+      <div class="annot good" style="left:60px; top:636px; max-width:200px;">Footer is just Repeat; add/remove exercise and Delete move to ⋯</div>
+    </div>
+    <div class="option-label">Same page; tap-to-edit a set replaces the edit mode</div>
+    <div class="option-sub">Fix a typo: open → tap → type → ✓ = <b>4 taps</b>, and you never leave the page. <b>Trade-off:</b> per-set saves instead of one batch write — reuse <code>once()</code> per row and the existing undo toast; structural edits (add/remove exercise) stay behind ⋯ → "Edit exercises".</div>
+  </div>
+</div>
+
+<div class="panel" style="margin-top:4px;">
+  <table>
+    <tr><th>Numbers &amp; dates today</th><th>One way to write it (copy rule 8, extended)</th></tr>
+    <tr><td class="old">10×135 (Home, muscle rows, history badges) · 135×10 (exercise detail, muscle hero, Plan cells) · <code>· RPE 8</code> (history)</td><td class="new"><b>6 × 185 lb</b> — reps × weight, unit from the display setting, never hard-coded<small>One formatter: <code>formatSet(set, unit)</code> in plain-language.js; the mirror check keeps it honest.</small></td></tr>
+    <tr><td class="old">"Oct 14" · "10/14/2026" · "Tuesday, October 14" · "2026-10-20" (measurements hint) · "3d ago"</td><td class="new"><b>Tue, Oct 14</b> in titles and detail; <b>3d ago</b> in dense rows; <b>Last done 3 days ago</b> in sentences<small><code>formatDateShort</code> / <code>formatRelative</code> from date-helpers; workout-history.js's private copy goes.</small></td></tr>
+    <tr><td class="old">"42m" · "~52 min" · "52 min"</td><td class="new"><b>42 min</b> everywhere ("~" only for an estimate)</td></tr>
+    <tr><td class="old">RPE 8 · @8 · effort 8/10</td><td class="new"><b>8/10</b> (the effortTag formatter already exists)</td></tr>
+    <tr><td class="old">"lb" (muscle, composition) · "lbs" (hints) · <code>${unit}</code></td><td class="new"><b>lb / kg</b> via <code>userWeightUnit()</code> — never a literal in a template</td></tr>
+  </table>
+</div>
+<div class="verdict"><b>Pick:</b> A first (routing + action rank + the formatter table — a day), then B as the follow-up once the page is routed. The formatter table is the cheapest style win in this whole document: five formatters, ~40 call sites, and a copy-lint rule that fails on <code>×\d+ lb</code> literals.</div>
+
+<!-- ============================================================ -->
+<!-- 5. GYMS & MACHINES -->
+<!-- ============================================================ -->
+<h1 class="section-title"><small>Candidate 5 · usability</small>Gyms &amp; machines — one word, one add flow, gym-aware by default</h1>
+<p class="section-desc">The same thing is called <b>location</b> (page, modals, More), <b>gym</b> (Settings subtitle, Equipment tab, aria-labels) and <b>place</b>. Adding a gym has two unrelated flows (GPS/map modal vs name-only prompt). "Add equipment" from the Equipment header creates a machine with <b>no gym</b> and lands on a detail page (≈12 taps to end up where the gym quick-add gets you in 6). The gym detail page with radius, size and "what's here" is built and <b>unreachable</b>. Tapping a Catalog row silently creates an equipment doc.</p>
+
+<div class="row">
+  <!-- TODAY -->
+  <div class="option-wrapper">
+    <span class="step-label today">Today</span>
+    <div class="phone">
+      <div class="status-bar"><span>9:41</span><span>Mon Oct 26</span></div>
+      <div class="page-header"><span class="page-header__back"><i class="fas fa-chevron-left"></i></span><h2>Equipment</h2><span class="hdr-icon primary"><i class="fas fa-camera"></i></span><span class="hdr-action">+ Add equipment</span></div>
+      <div class="content">
+        <div class="tabs"><span class="on">My gyms</span><span>Library</span><span>Catalog</span></div>
+        <div class="stat-strip"><div class="s"><b>2</b>gyms</div><div class="s"><b>38</b>machines</div><div class="s"><b>4</b>orphans</div></div>
+        <div class="gym-card"><div class="g1"><i class="fas fa-map-marker-alt" style="color:var(--primary)"></i><b>Love Field</b><span class="chip chip--primary">Here</span></div><div class="g2"><span>24 machines</span><span>Last: 2d ago</span><span>GPS saved</span></div></div>
+        <div class="gym-card"><div class="g1"><i class="fas fa-map-marker-alt" style="color:var(--text-muted)"></i><b>24 Hour Fitness</b></div><div class="g2"><span>14 machines</span><span>Last: 3 wk ago</span></div></div>
+        <div class="row-card" style="border-style:dashed"><span class="row-card__icon"><i class="fas fa-plus"></i></span><div class="grow"><div class="row-card__title">Add a gym</div><div class="row-card__subtitle">Name only — no address, no GPS</div></div></div>
+        <div class="card" style="background:var(--warning-bg);border-color:var(--warning-border);font-size:.72rem;color:var(--text-main)"><b style="color:var(--warning)">4 machines aren't mapped yet</b><br>No picker can see them, so they can't rotate into your plan.</div>
+      </div>
+      <div class="annot" style="left:120px; top:40px; max-width:180px;">Creates a machine with no gym → detail page → Locations "+ Add" → pick gym (≈12 taps, equipment-library-ui.js:4351)</div>
+      <div class="annot" style="left:172px; top:404px; max-width:150px;">"Orphans" (:2121); "mapped", "picker", "rotate" (:2499) — internal words</div>
+      <div class="annot" style="left:150px; top:338px; max-width:170px;">Second add-gym flow — the real one (GPS/map) is on the Locations page (:2186 vs index.html:589)</div>
+      <div class="annot" style="left:150px; top:262px; max-width:170px;">Tap = equipment list; the gym detail (radius, size, note) is built but has no caller (location-ui.js:927)</div>
+      <div class="bottom-nav"><span class="nav-item"><i class="fas fa-home"></i>Home</span><span class="nav-item"><i class="fas fa-robot"></i>Coach</span><span class="nav-fab"><i class="fas fa-dumbbell"></i></span><span class="nav-item"><i class="fas fa-calendar"></i>History</span><span class="nav-item active"><i class="fas fa-ellipsis-h"></i>More</span></div>
+    </div>
+    <div class="option-label">Equipment · My gyms, as shipped</div>
+    <div class="option-sub">Plus a separate "Locations" page (More → Manage locations) with pen/trash rows whose tap only pans a map. Six names for one thing across five surfaces.</div>
+  </div>
+
+  <!-- OPTION A -->
+  <div class="option-wrapper">
+    <span class="step-label">A · Gym-first</span>
+    <div class="phone">
+      <div class="status-bar"><span>9:41</span><span>Mon Oct 26</span></div>
+      <div class="page-header"><span class="page-header__back"><i class="fas fa-chevron-left"></i></span><h2>Equipment</h2><span class="hdr-icon primary"><i class="fas fa-camera"></i></span></div>
+      <div class="content">
+        <div class="gym-ctx"><i class="fas fa-map-marker-alt pin"></i>At <b>Love Field</b> · 24 machines<span class="sw">Switch gym ▾</span></div>
+        <div class="search"><i class="fas fa-search"></i>Add or find a machine…<i class="fas fa-camera cam"></i></div>
+        <div class="tabs"><span class="on">This gym</span><span>All machines</span><span>Catalog</span></div>
+        <div class="list">
+          <div class="row-card"><span class="row-card__icon plate"><i class="fas fa-cog"></i></span><div class="grow"><div class="row-card__title">Hammer Strength · Chest press</div><div class="row-card__subtitle">Plate-loaded · used 14× here</div></div><span class="chev"><i class="fas fa-chevron-right"></i></span></div>
+          <div class="row-card"><span class="row-card__icon machine"><i class="fas fa-cog"></i></span><div class="grow"><div class="row-card__title">Smith machine</div><div class="row-card__subtitle">25 lb bar · used 31× here</div></div><span class="chev"><i class="fas fa-chevron-right"></i></span></div>
+          <div class="row-card"><span class="row-card__icon cable"><i class="fas fa-cog"></i></span><div class="grow"><div class="row-card__title">Cable stack</div><div class="row-card__subtitle">Selectorized · kg</div></div><span class="chev"><i class="fas fa-chevron-right"></i></span></div>
+          <div class="row-card"><span class="row-card__icon machine"><i class="fas fa-cog"></i></span><div class="grow"><div class="row-card__title">Panatta · Convergent pulldown</div><div class="row-card__subtitle">Selectorized · used 6× here</div></div><span class="chev"><i class="fas fa-chevron-right"></i></span></div>
+        </div>
+        <div class="row-card" style="border-style:dashed"><span class="row-card__icon teal"><i class="fas fa-plus"></i></span><div class="grow"><div class="row-card__title">Add a machine at Love Field</div><div class="row-card__subtitle">Type a name — the same one-tap add as in a workout</div></div></div>
+      </div>
+      <div class="annot good" style="left:150px; top:38px; max-width:170px;">One gym in context; every add on this page lands at it. "Switch gym" opens the gym chooser</div>
+      <div class="annot good left" style="left:10px; top:586px; max-width:160px;">Catalog tab is read-only; each row gets an explicit "Add to Love Field"</div>
+      <div class="bottom-nav"><span class="nav-item"><i class="fas fa-home"></i>Home</span><span class="nav-item"><i class="fas fa-robot"></i>Coach</span><span class="nav-fab"><i class="fas fa-dumbbell"></i></span><span class="nav-item"><i class="fas fa-calendar"></i>History</span><span class="nav-item active"><i class="fas fa-ellipsis-h"></i>More</span></div>
+    </div>
+    <div class="option-label">Equipment opens at the gym you're at; add = the picker you already use</div>
+    <div class="option-sub">Add at current gym: 6–12 taps → <b>3</b> (More → Equipment → type + tap). The header "+ Add equipment" flow and the brand/line/function modal go; <code>planInlineEquipment</code> does the work. <b>Trade-off:</b> no gym stamped → the add row says "Add a machine" and the toast offers "Set gym", exactly as the workout picker does.</div>
+  </div>
+
+  <!-- OPTION B -->
+  <div class="option-wrapper">
+    <span class="step-label">B · Gyms page</span>
+    <div class="phone">
+      <div class="status-bar"><span>9:41</span><span>Mon Oct 26</span></div>
+      <div class="page-header"><span class="page-header__back"><i class="fas fa-chevron-left"></i></span><h2>Love Field<small>Gym · 24 machines · here now</small></h2><span class="hdr-icon"><i class="fas fa-ellipsis-h"></i></span></div>
+      <div class="content">
+        <div class="map"><div class="rad"></div><i class="fas fa-map-marker-alt pin"></i></div>
+        <div class="kv" style="padding:0 2px"><span>Match within <b>150 m</b></span><span>Usual gym <b>✓</b></span><span>Last visit <b>2d ago</b></span></div>
+        <div class="sec"><h3>What's here</h3></div>
+        <div class="seg"><span class="s on">Full gym</span><span class="s">Standard</span><span class="s">Hotel</span><span class="s">Home</span></div>
+        <div class="notes" style="border-style:solid">Cables are kg; the hack squat has a 45° sled.</div>
+        <div class="sec"><h3>Machines</h3><a>All 24 →</a></div>
+        <div class="list">
+          <div class="row-card"><span class="row-card__icon plate"><i class="fas fa-cog"></i></span><div class="grow"><div class="row-card__title">Hammer Strength · Chest press</div><div class="row-card__subtitle">Plate-loaded · used 14× here</div></div><span class="chev"><i class="fas fa-chevron-right"></i></span></div>
+          <div class="row-card"><span class="row-card__icon machine"><i class="fas fa-cog"></i></span><div class="grow"><div class="row-card__title">Smith machine</div><div class="row-card__subtitle">25 lb bar · used 31× here</div></div><span class="chev"><i class="fas fa-chevron-right"></i></span></div>
+        </div>
+        <div class="row-card" style="border-style:dashed"><span class="row-card__icon teal"><i class="fas fa-plus"></i></span><div class="grow"><div class="row-card__title">Add a machine here</div></div></div>
+      </div>
+      <div class="menu" style="top:64px; width:170px;"><div><i class="fas fa-pen"></i> Rename gym</div><div><i class="fas fa-location-crosshairs"></i> Re-pin on map</div><hr><div class="dng"><i class="fas fa-trash"></i> Delete gym</div></div>
+      <div class="annot good left" style="left:10px; top:110px; max-width:160px;">The built-but-dead gym detail (location-ui.js:927), wired to the gym row — radius, level, note, machines</div>
+      <div class="annot good left" style="left:10px; top:300px; max-width:150px;">Rename / delete move off the list row into ⋯</div>
+      <div class="bottom-nav"><span class="nav-item"><i class="fas fa-home"></i>Home</span><span class="nav-item"><i class="fas fa-robot"></i>Coach</span><span class="nav-fab"><i class="fas fa-dumbbell"></i></span><span class="nav-item"><i class="fas fa-calendar"></i>History</span><span class="nav-item active"><i class="fas fa-ellipsis-h"></i>More</span></div>
+    </div>
+    <div class="option-label">"Gyms" is a page of gym detail pages; "Locations" disappears as a word</div>
+    <div class="option-sub">The Locations page becomes the <b>Gyms</b> list (More → Gyms), each row opens this detail; one add-gym flow (GPS → map → name) reachable from here and from Equipment's "Switch gym". Equipment keeps its three tabs. <b>Trade-off:</b> two pages (Gyms, Equipment) still cover one mental model.</div>
+  </div>
+
+  <!-- OPTION C -->
+  <div class="option-wrapper">
+    <span class="step-label">C · Merged</span>
+    <div class="phone">
+      <div class="status-bar"><span>9:41</span><span>Mon Oct 26</span></div>
+      <div class="page-header"><span class="page-header__back"><i class="fas fa-chevron-left"></i></span><h2>Gyms &amp; equipment</h2><span class="hdr-icon primary"><i class="fas fa-camera"></i></span></div>
+      <div class="content">
+        <div class="tabs"><span class="on">Gyms</span><span>All machines</span><span>Catalog</span></div>
+        <div class="gym-card"><div class="g1"><i class="fas fa-map-marker-alt" style="color:var(--primary)"></i><b>Love Field</b><span class="chip chip--primary">Here</span><span class="chev" style="color:var(--text-muted);font-size:.7rem"><i class="fas fa-chevron-right"></i></span></div><div class="g2"><span>24 machines</span><span>Last visit 2d ago</span><span>Full gym</span></div></div>
+        <div class="gym-card"><div class="g1"><i class="fas fa-map-marker-alt" style="color:var(--text-muted)"></i><b>24 Hour Fitness</b><span class="chev" style="margin-left:auto;color:var(--text-muted);font-size:.7rem"><i class="fas fa-chevron-right"></i></span></div><div class="g2"><span>14 machines</span><span>Last visit 3 wk ago</span><span>Standard</span></div></div>
+        <div class="gym-card" style="border-style:dashed;opacity:.8"><div class="g1"><i class="fas fa-plane" style="color:var(--text-muted)"></i><b>Travel gym</b><span class="chev" style="margin-left:auto;color:var(--text-muted);font-size:.7rem"><i class="fas fa-chevron-right"></i></span></div><div class="g2"><span>Hotel level · pick the machine there</span></div></div>
+        <div class="row-card" style="border-style:dashed"><span class="row-card__icon teal"><i class="fas fa-plus"></i></span><div class="grow"><div class="row-card__title">Add a gym</div><div class="row-card__subtitle">Use my location, or pin it on the map</div></div></div>
+        <div class="sec"><h3>Not at a gym yet</h3><span class="meta">4 machines</span></div>
+        <div class="row-card"><span class="row-card__icon machine"><i class="fas fa-cog"></i></span><div class="grow"><div class="row-card__title">Leg extension</div><div class="row-card__subtitle">Added by photo · tap to place it</div></div><span class="chev"><i class="fas fa-chevron-right"></i></span></div>
+      </div>
+      <div class="annot good" style="left:120px; top:40px; max-width:160px;">One More-menu item; one page; "gym" is the only word</div>
+      <div class="annot good left" style="left:10px; top:390px; max-width:150px;">One add-gym flow — the GPS/map one — lives here</div>
+      <div class="annot good left" style="left:10px; top:520px; max-width:170px;">"Orphans" become a plain group with an obvious next step</div>
+      <div class="bottom-nav"><span class="nav-item"><i class="fas fa-home"></i>Home</span><span class="nav-item"><i class="fas fa-robot"></i>Coach</span><span class="nav-fab"><i class="fas fa-dumbbell"></i></span><span class="nav-item"><i class="fas fa-calendar"></i>History</span><span class="nav-item active"><i class="fas fa-ellipsis-h"></i>More</span></div>
+    </div>
+    <div class="option-label">One page: Gyms tab (→ gym detail from B) · All machines · Catalog</div>
+    <div class="option-sub">Locations page and More item deleted; gym cards open B's detail; machines are added from inside a gym (A's row). <b>Trade-off:</b> the biggest refactor of the three — equipment-library-ui.js is 4,500 lines and absorbs location-ui.js.</div>
+  </div>
+</div>
+
+<div class="panel" style="margin-top:4px;">
+  <table>
+    <tr><th>Today's words</th><th>One word</th></tr>
+    <tr><td class="old">Locations · Manage locations · Your gyms · My gyms · location · place · "Add new location" · aria "Rename gym" on a Locations row</td><td class="new"><b>gym</b> — "Gyms", "Add a gym", "Which gym?", "At Love Field"<small>Route and collection names stay <code>location</code>; the user never sees them.</small></td></tr>
+    <tr><td class="old">equipment · machine · gear · "mapped" · "orphans" · "picker"</td><td class="new"><b>machine</b> for a thing, <b>equipment</b> for the page<small>"Not at a gym yet" replaces orphans/mapped; "picker" never ships.</small></td></tr>
+    <tr><td class="old">+ Add equipment · + Add from catalog · + Add · + New · Add a gym</td><td class="new"><b>Add a machine at ‹gym›</b> · <b>Add a gym</b> — as rows, not header links</td></tr>
+  </table>
+</div>
+<div class="verdict"><b>Pick:</b> A + B now (gym context on Equipment, the dead gym detail wired, one add-gym flow, read-only catalog, the word table) — about two evenings, almost all deletion. C is where it should end up, after SH-3b finishes migrating equipment-library-ui's remaining overlays, so the merge isn't fighting that refactor.</div>
+
+<div class="footer">Big Surf · UX deep dive mock-ups · October 2026 · companion to docs/ux-deep-dive-2026-10.md</div>
+</body>
+</html>
