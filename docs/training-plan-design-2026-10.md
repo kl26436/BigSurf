@@ -539,7 +539,7 @@ Kevin planned a new wave with the coach, said "let's apply those recommendations
 - **j** — the action card's re-read could fall back to the stale device cache on gym signal and was accepted as fresh. Now: the server stamps `users/{uid}/meta/sync` after any coach turn that wrote and after a Sunday roll; `js/core/data/server-sync.js` listens (started after first paint), drops the cached week plan / program, re-reads templates from the server, and leaves `AppState._templatesStale` set when the read came from cache so the Workouts tab and Plan page ask again. Every action card goes through the same `refreshAfterServerWrite`.
 - **k** — prompt line under HOW TO ANSWER; eval `change-not-showing`.
 - **l** — `rotatedOutOf` (row `rotatedFrom` + program `rotationsApplied` history, 84-day memory) excluded in `selectRotation`, `rankRotationCandidates` (returns `excluded` with "swapped out YYYY-MM") and the roller; `rotationHistory(programs)`.
-- **m (partly)** — "what's new" rows show *waiting* / *not made* chips. The editor's "was X · date" chip and clearing `rotatedFrom` at wave end are still open (UX pass). **n** open.
+- **m** — "what's new" rows show *waiting* / *not made* chips; the editor's chip is dated and hides after `ROTATION_MEMORY_DAYS` (UX pass, §8.2). **n** — done in the UX pass.
 
 | # | Defect | Evidence | Fix |
 |---|---|---|---|
