@@ -21,11 +21,16 @@ const h = vi.hoisted(() => ({
 }));
 
 vi.mock('../../js/core/utils/app-state.js', () => ({ AppState: h.AppState }));
-vi.mock('../../js/core/ui/ui-helpers.js', () => ({
-    escapeHtml: (s) => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])),
-    escapeAttr: (s) => String(s ?? '').replace(/"/g, '&quot;'),
-    showNotification: vi.fn(),
-}));
+// The real set formatter — the page's target lines are its output.
+vi.mock('../../js/core/ui/ui-helpers.js', async (importOriginal) => {
+    const { formatSet, unitLabel } = await importOriginal();
+    return {
+        formatSet, unitLabel,
+        escapeHtml: (s) => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])),
+        escapeAttr: (s) => String(s ?? '').replace(/"/g, '&quot;'),
+        showNotification: vi.fn(),
+    };
+});
 vi.mock('../../js/core/ui/navigation.js', () => ({ navigateTo: vi.fn() }));
 vi.mock('../../js/core/ui/sheet.js', () => ({
     openSheet: vi.fn((o) => {

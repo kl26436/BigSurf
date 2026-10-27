@@ -68,6 +68,27 @@
 .rc-line--muted {
     color: var(--text-muted);
 }
+/* A strength line opens the lift — it says so with a chevron (DS-1b, UD-3). */
+.rc-line--link {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-8);
+    width: 100%;
+    min-height: var(--tap);
+    padding: 0;
+    background: none;
+    border: 0;
+    text-align: left;
+    font: inherit;
+    cursor: pointer;
+}
+.rc-line--link i {
+    color: var(--text-muted);
+    font-size: var(--font-xs);
+    flex-shrink: 0;
+}
+.rc-line--link:active { opacity: 0.6; }
 .rc-days {
     display: flex;
     flex-wrap: wrap;

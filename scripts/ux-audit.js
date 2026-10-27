@@ -33,12 +33,12 @@ const BUDGETS = {
     // Sections in navigation.js SECTION_IDS with no routeToView case.
     sectionsWithoutRoute: 0,
     // Places that compose "… ago" themselves. Target: one helper.
-    relativeTimeImplementations: 12,
+    relativeTimeImplementations: 4,
     // 'lb' / 'lbs' / 'kg' typed next to a value in visible text — use the unit helper.
     hardcodedUnitLiterals: 2,
     // Words the user never sees (UD-5 word table): location, orphan, mapped,
     // picker, program; and weight-first set notation ("185 lb × 6").
-    uxWordHits: 90,
+    uxWordHits: 25,
 };
 
 // A row is a component name for a list item — set rows and menu rows may

@@ -13,6 +13,7 @@
 import { AppState } from '../utils/app-state.js';
 import { loadWorkoutById, updateHistoricalWorkout } from '../data/data-manager.js';
 import { displayWeight, escapeHtml, escapeAttr, showNotification } from '../ui/ui-helpers.js';
+import { formatDateShort } from '../utils/date-helpers.js';
 import { getCategoryIcon } from '../utils/config.js';
 import { openSharedAddExerciseSheet, openSharedEquipmentSheet } from './active-workout-ui.js';
 import { confirmSheet } from '../ui/confirm-sheet.js';
@@ -280,11 +281,9 @@ function buildEditStateFromWorkout(docId, workoutData) {
         }
         : null;
 
-    let displayDate = '';
-    if (workoutData.date && /^\d{4}-\d{2}-\d{2}$/.test(workoutData.date)) {
-        const safe = new Date(workoutData.date + 'T12:00:00');
-        displayDate = safe.toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: 'numeric' });
-    }
+    const displayDate = workoutData.date && /^\d{4}-\d{2}-\d{2}$/.test(workoutData.date)
+        ? formatDateShort(workoutData.date)
+        : '';
 
     return {
         docId,

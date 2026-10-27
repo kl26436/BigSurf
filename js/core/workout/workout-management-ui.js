@@ -696,7 +696,11 @@ function toggleCreateExMoreDetails() {
     }
 }
 
-export function showCreateExerciseForm() {
+/**
+ * @param {{initialName?: string}} [opts] - B7: the name typed in a search
+ *   that found nothing ("Create “Landmine press”") carries into the form.
+ */
+export function showCreateExerciseForm({ initialName = '' } = {}) {
     // Set flag so we know to refresh library modal after save
     creatingFromLibraryModal = true;
 
@@ -721,7 +725,6 @@ export function showCreateExerciseForm() {
                 <button class="page-header__back" aria-label="Back" onclick="closeCreateExerciseModal()"><i class="fas fa-chevron-left"></i></button>
                 <div class="page-header__title">New exercise</div>
             </div>
-            <button class="page-header__save" id="create-ex-header-save" onclick="createNewExercise(event)">Save</button>
         </div>
         <div class="create-ex-form-body">
             <div class="field">
@@ -822,8 +825,14 @@ export function showCreateExerciseForm() {
         openModal(modal);
     }
 
+    const nameInput = document.getElementById('new-exercise-name');
+    if (nameInput && typeof initialName === 'string' && initialName) {
+        nameInput.value = initialName;
+        updateCreateExerciseSaveState();
+    }
+
     // Focus name field after modal opens
-    setTimeout(() => document.getElementById('new-exercise-name')?.focus(), 100);
+    setTimeout(() => nameInput?.focus(), 100);
 }
 
 /**

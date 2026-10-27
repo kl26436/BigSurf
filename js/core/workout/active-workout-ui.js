@@ -2,7 +2,8 @@
 // Main controller: header, pills, hero, equipment, last session, set rows, footer
 
 import { AppState } from '../utils/app-state.js';
-import { escapeHtml, escapeAttr, showNotification, convertWeight } from '../ui/ui-helpers.js';
+import { escapeHtml, escapeAttr, showNotification, convertWeight, unitLabel, formatSet } from '../ui/ui-helpers.js';
+import { formatRelative } from '../utils/date-helpers.js';
 import { getExerciseName, exerciseNameMatches } from '../utils/workout-helpers.js';
 import { getCategoryIcon, Config, debugLog } from '../utils/config.js';
 import { debouncedSaveWorkoutData, saveWorkoutData, getLastSessionDefaults, loadAllWorkouts } from '../data/data-manager.js';
@@ -932,8 +933,7 @@ function renderLastSessionCard(exerciseName, idx) {
     const lastDefaults = exercise._lastSessionSets;
     if (!lastDefaults || lastDefaults.length === 0) return '';
 
-    const daysAgo = exercise._lastSessionDaysAgo || '?';
-    const daysLabel = daysAgo === 0 ? 'today' : daysAgo === 1 ? 'yesterday' : `${daysAgo}d ago`;
+    const daysLabel = formatRelative(exercise._lastSessionDate, { dense: true });
 
     // Convert each set's weight to the user's display unit so a kg-logged
     // session shows correctly when the user is now in lb mode (and vice versa).
@@ -964,7 +964,7 @@ function renderLastSessionCard(exerciseName, idx) {
         const dw = w > 0 ? convertWeight(w, from, displayUnit) : 0;
         return `${r}×${dw}`;
     }).join(' · ');
-    const unitTag = base > 0 ? `${displayUnit} plates` : displayUnit;
+    const unitTag = base > 0 ? `${unitLabel(displayUnit)} plates` : unitLabel(displayUnit);
 
     // Overload nudge — only for weighted lifts (a bodyweight "try +5" is noise),
     // and never off a different machine's numbers.
@@ -1038,7 +1038,7 @@ function renderLastSessionCard(exerciseName, idx) {
                 aria-label="View ${escapeAttr(exerciseName)} progress">
             <i class="fas fa-history" aria-hidden="true"></i>
             <div class="aw-last__info">
-                <div class="aw-last__val">Last: ${summary} ${unitTag} · ${daysLabel}${fromTag}</div>
+                <div class="aw-last__val">Last: ${summary} ${unitTag}${daysLabel ? ` · ${daysLabel}` : ''}${fromTag}</div>
                 ${nudgeHtml}
                 ${debugHtml}
             </div>
@@ -1468,7 +1468,7 @@ async function maybeCelebratePR(exercise, set, equipName, equipId = null) {
             haptic('pr');
             const unit = set.originalUnit || AppState.globalUnit || 'lbs';
             const what = pr.prType === 'maxWeight' ? 'Weight PR' : 'Rep PR';
-            showNotification(`${what}! ${set.reps}×${Math.round(total * 10) / 10} ${unit}`, 'success', 3500);
+            showNotification(`${what}! ${formatSet({ reps: set.reps, weight: total, originalUnit: unit }, unit, { effort: false })}`, 'success', 3500);
         }
     } catch (e) {
         debugLog('live PR check failed', e);

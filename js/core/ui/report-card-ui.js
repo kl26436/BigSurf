@@ -171,7 +171,7 @@ function pageHTML(d, past) {
     const days = c.showedUp.days.length
         ? `<div class="rc-days">${c.showedUp.days.map(x => `<span class="chip chip--sm">${escapeHtml(`${x.day} ${x.name}`)} ✓</span>`).join('')}</div>` : '';
     const strengthRows = c.strength.length
-        ? c.strength.map(r => `<div class="rc-line" onclick="openExerciseDetailFromReport('${escapeAttr(r.name)}')">${escapeHtml(r.sentence)}</div>`).join('')
+        ? c.strength.map(r => `<button type="button" class="rc-line rc-line--link" onclick="openExerciseDetailFromReport('${escapeAttr(r.name)}')"><span>${escapeHtml(r.sentence)}</span><i class="fas fa-chevron-right" aria-hidden="true"></i></button>`).join('')
         : '<div class="rc-line rc-line--muted">Pick your main lifts in Settings and their strength shows up here.</div>';
     const goalRows = c.goals.length
         ? c.goals.map(g => `<div class="rc-line">${escapeHtml(g.sentence)}</div>`).join('')

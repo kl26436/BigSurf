@@ -365,7 +365,7 @@
     margin-bottom: var(--space-2);
 }
 
-.dexa-regional-item .form-input {
+.dexa-regional-item .field-input {
     padding: var(--space-8) var(--space-10);
     font-size: var(--font-sm);
 }

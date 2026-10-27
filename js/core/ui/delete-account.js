@@ -106,7 +106,7 @@ export async function confirmDeleteAccount({ clearCache = clearDeviceCache, relo
 
     const confirmed = await confirmSheet({
         title: 'Delete your account?',
-        message: 'Your workouts, programs, equipment, gyms, measurements, DEXA scans, ' +
+        message: 'Your workouts, plans, equipment, gyms, measurements, DEXA scans, ' +
             "coach conversations and settings are erased, and you're signed out. " +
             "This can't be undone — export your data first if you want a copy.",
         confirmLabel: 'Delete account',

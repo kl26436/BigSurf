@@ -9,7 +9,6 @@ import {
     getRecentFreestyleExercises,
     freestyleComparisonKey,
     findPriorComparableFreestyle,
-    relativeDaysLabel,
 } from '../../js/core/features/freestyle-memory.js';
 
 const fs = (date, focus, exercises, extra = {}) => ({
@@ -149,17 +148,5 @@ describe('findPriorComparableFreestyle', () => {
         const current = { ...fs('2026-07-01', 'Legs', [ex('Leg curl', 'Legs')], { id: 'w3' }), workoutId: 'w3' };
         const match = findPriorComparableFreestyle([older, newer, current], current);
         expect(match.workout.id).toBe('w2');
-    });
-});
-
-describe('relativeDaysLabel', () => {
-    const now = new Date('2026-07-06T15:00:00');
-    it('labels', () => {
-        expect(relativeDaysLabel('2026-07-06', now)).toBe('today');
-        expect(relativeDaysLabel('2026-07-05', now)).toBe('yesterday');
-        expect(relativeDaysLabel('2026-07-01', now)).toBe('5d ago');
-        expect(relativeDaysLabel('2026-06-15', now)).toBe('3w ago');
-        expect(relativeDaysLabel('2026-04-01', now)).toBe('3mo ago');
-        expect(relativeDaysLabel(null, now)).toBe('');
     });
 });

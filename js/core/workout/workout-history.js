@@ -1,6 +1,6 @@
 // Clean Workout History Module with Calendar View - core/workout-history.js
 import { showNotification, escapeHtml, escapeAttr, displayWeight, formatSet, unitLabel } from '../ui/ui-helpers.js';
-import { getDateString, formatDateShort, formatDuration } from '../utils/date-helpers.js';
+import { getDateString, formatDateShort, formatDuration, formatRelativeDate } from '../utils/date-helpers.js';
 import { enterSection, navigateBack } from '../ui/navigation.js';
 import { getExerciseName, formatStatus, formatCategory, CATEGORY_LABELS } from '../utils/workout-helpers.js';
 import { debugLog, CATEGORY_ICONS } from '../utils/config.js';
@@ -298,7 +298,8 @@ export function getWorkoutHistory(appState) {
             }
 
             // FIX: Duration calculation - handle both minutes and milliseconds
-            const duration = this.formatDuration(this.getWorkoutDuration(workout)) || 'Quick session';
+            const durationMs = this.getWorkoutDuration(workout);
+            const duration = durationMs > 0 ? formatDuration(durationMs / 1000) : '';
 
             // Convert exercise data
             const exercises = [];
@@ -564,7 +565,7 @@ export function getWorkoutHistory(appState) {
 
             visibleWorkouts.forEach((workout) => {
                 const workoutType = resolveWorkoutDisplayName(workout);
-                const displayDate = this.formatRelativeDate(workout.date);
+                const displayDate = formatRelativeDate(workout.date);
                 const exerciseCount = workout.exercises ? Object.keys(workout.exercises).length : 0;
                 const durationMin = workout.totalDuration ? Math.floor(workout.totalDuration / 60) : 0;
                 const docId = workout.docId || workout.id || workout.date;
@@ -605,7 +606,7 @@ export function getWorkoutHistory(appState) {
                         <div class="recent-workout-info">
                             <div class="recent-workout-name">${escapeHtml(workoutType)}</div>
                             ${exerciseNames ? `<div class="recent-workout-exercises">${escapeHtml(exerciseNames)}${extraCount > 0 ? ' +' + extraCount : ''}</div>` : ''}
-                            <div class="recent-workout-meta">${displayDate}${durationMin > 0 ? ' · ' + durationMin + 'm' : ''}${setCount > 0 ? ' · ' + setCount + ' sets' : ''}</div>
+                            <div class="recent-workout-meta">${displayDate}${durationMin > 0 ? ' · ' + formatDuration(workout.totalDuration) : ''}${setCount > 0 ? ' · ' + setCount + ' sets' : ''}</div>
                         </div>
                         <div class="history-workout-status history-workout-status--${status}" aria-label="${status === 'completed' ? 'Completed' : status === 'cancelled' ? 'Cancelled' : 'Incomplete'}">
                             ${status === 'completed' ? '<i class="fas fa-check" aria-hidden="true"></i>' :
@@ -1093,7 +1094,7 @@ export function getWorkoutHistory(appState) {
             if (!workout) return;
 
             const confirmDelete = await confirmSheet({
-                title: `Delete "${resolveWorkoutDisplayName(workout)}" from ${new Date(workout.date).toLocaleDateString()}?`,
+                title: `Delete "${resolveWorkoutDisplayName(workout)}" from ${formatDateShort(workout.date)}?`,
                 message: "This can't be undone.",
                 confirmLabel: 'Delete workout',
                 cancelLabel: 'Keep workout',
@@ -1178,34 +1179,6 @@ export function getWorkoutHistory(appState) {
 
             return 0;
         },
-        formatRelativeDate(dateStr) {
-            if (!dateStr) return '';
-            const today = new Date();
-            const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-            const yesterday = new Date(today);
-            yesterday.setDate(yesterday.getDate() - 1);
-            const yesterdayStr = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, '0')}-${String(yesterday.getDate()).padStart(2, '0')}`;
-
-            if (dateStr === todayStr) return 'Today';
-            if (dateStr === yesterdayStr) return 'Yesterday';
-
-            return new Date(dateStr + 'T12:00:00').toLocaleDateString('en-US', {
-                month: 'short',
-                day: 'numeric',
-            });
-        },
-
-        formatDuration(durationMs) {
-            if (!durationMs || durationMs <= 0) return 'N/A';
-
-            const minutes = Math.floor(durationMs / 60000);
-            const hours = Math.floor(minutes / 60);
-
-            if (hours > 0) {
-                return `${hours}h ${minutes % 60}m`;
-            }
-            return `${minutes}m`;
-        },
     };
 }
 
@@ -1224,7 +1197,7 @@ window.deleteWorkoutById = async function (docId) {
         (w) => w.docId === docId || w.id === docId || w.date === docId
     );
 
-    const displayDate = workout?.date ? new Date(workout.date + 'T12:00:00').toLocaleDateString() : 'this date';
+    const displayDate = workout?.date ? formatDateShort(workout.date) : 'this date';
 
     const confirmDelete = await confirmSheet({
         title: `Delete workout from ${displayDate}?`,

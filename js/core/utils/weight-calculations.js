@@ -89,7 +89,7 @@ export function getSetVolume(set, equipment = null) {
  * Check freshness of a body-weight entry.
  *
  * @param {Object|null} entry - Latest body measurement { date, weight, unit }
- * @returns {{ weight: number, unit: string, ageInDays: number }|null}
+ * @returns {{ weight: number, unit: string, date: string, ageInDays: number }|null}
  */
 export function checkBodyWeightFreshness(entry) {
     if (!entry || entry.weight == null) return null;
@@ -98,6 +98,7 @@ export function checkBodyWeightFreshness(entry) {
     return {
         weight: entry.weight,
         unit: entry.unit || 'lbs',
+        date: entry.date,
         ageInDays: Math.max(0, Math.floor(ageMs / 86400000)),
     };
 }

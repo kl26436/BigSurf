@@ -10,3 +10,5 @@ Standalone (home-screen) app, `?debug` on, build = what you're promoting. Takes 
 6. **Rest banner + a sheet open together:** both usable, nothing stuck behind a backdrop.
 7. **Portrait only** — rotation is not supported; don't test it.
 8. **Save one `shell_snapshot`** (HUD `snap`) on the equipment sheet for the record; paste its line into `docs/bug-log.md` if anything above failed.
+9. **More + a toast:** open More, trigger a toast (e.g. save a setting first, then open More while it shows) — the toast is on top; Escape / system back closes More like any sheet. (UD-1)
+10. **What a row promises:** on a drill-down page, tap one row of each kind — chevron rows open a page, value-only rows don't move or press. On the lift screen, swipe a set row left — it's removed and the toast offers Undo. (UD-3, UD-2)

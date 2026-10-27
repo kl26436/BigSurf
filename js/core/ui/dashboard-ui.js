@@ -2,14 +2,14 @@
 // Sections: Greeting → Active Pill → Hero Chips → Insight → For Today → Training → Composition → Recent PRs
 
 import { StatsTracker } from '../features/stats-tracker.js';
-import { showNotification, setHeaderMode, escapeHtml, escapeAttr, convertWeight } from './ui-helpers.js';
+import { showNotification, setHeaderMode, escapeHtml, escapeAttr, convertWeight, formatSet, unitLabel } from './ui-helpers.js';
 import { once } from './busy.js';
 import { openSheet, closeSheet } from './sheet.js';
 import { setBottomNavVisible, updateBottomNavActive } from './navigation.js';
 import { PRTracker } from '../features/pr-tracker.js';
 import { StreakTracker } from '../features/streak-tracker.js';
 import { AppState } from '../utils/app-state.js';
-import { getDateString, getDayName, formatRelativeDate } from '../utils/date-helpers.js';
+import { getDateString, getDayName, formatRelativeDate, formatRelative, formatDuration } from '../utils/date-helpers.js';
 import { Config, getCategoryIcon, debugLog, perfMark, perfReport } from '../utils/config.js';
 import { FirebaseWorkoutManager } from '../data/firebase-workout-manager.js';
 import { loadAllWorkouts } from '../data/data-manager.js';
@@ -935,7 +935,7 @@ function renderForTodayHero({ template, count, scheduled }, dayName, lastDoneByT
         prHook = `
             <div class="dash-today-hero__pr">
                 <i class="fas fa-trophy"></i>
-                <div class="dash-today-hero__pr-txt"><b>${gap} ${proximity.unit} off your ${escapeHtml(proximity.exercise)} PR</b>${equip} — today's the day</div>
+                <div class="dash-today-hero__pr-txt"><b>${gap} ${unitLabel(proximity.unit)} off your ${escapeHtml(proximity.exercise)} PR</b>${equip} — today's the day</div>
             </div>
         `;
     }
@@ -981,21 +981,17 @@ function renderForTodayAltRow({ template }, lastDoneByType = {}) {
     `;
 }
 
-// "Last done 4d ago · ~52 min" from a {date, duration} record, or '' if never.
+// "Last done 4 days ago · ~52 min" from a {date, duration} record, or '' if never.
 function formatLastDoneMeta(rec) {
     if (!rec || !rec.date) return '';
-    const today = new Date(getDateString());
-    const then = new Date(rec.date);
-    const days = Math.round((today - then) / 86400000);
-    // An unparseable stored date makes `days` NaN, which rendered a literal
-    // "Last done NaNd ago". Bail (and surface the bad doc under ?debug).
-    if (!Number.isFinite(days)) {
+    const when = formatRelative(rec.date);
+    // An unparseable stored date used to render "Last done NaNd ago". Bail
+    // (and surface the bad doc under ?debug).
+    if (!when) {
         debugLog('formatLastDoneMeta: unparseable rec.date →', rec.date);
         return '';
     }
-    const when = days <= 0 ? 'today' : days === 1 ? 'yesterday' : `${days}d ago`;
-    const mins = Math.round((rec.duration || 0) / 60);
-    const durPart = mins > 0 ? ` · ~${mins} min` : '';
+    const durPart = Math.round((rec.duration || 0) / 60) > 0 ? ` · ~${formatDuration(rec.duration)}` : '';
     return `Last done ${when}${durPart}`;
 }
 
@@ -1030,8 +1026,8 @@ function renderThisWeekCard(allWorkouts, recentPRs, excludeKeys, topInsight) {
         const parts = [
             `<b>${escapeHtml(last.workoutType || 'Workout')}</b>`,
             when,
-            mins > 0 ? `${mins} min` : null,
-            volume > 0 ? `${formatVolume(volume)} ${unit}` : null,
+            mins > 0 ? formatDuration(last.totalDuration) : null,
+            volume > 0 ? `${formatVolume(volume)} ${unitLabel(unit)}` : null,
         ].filter(Boolean).join(' · ');
         rows.push(`
             <div class="dash-week-row" onclick="viewWorkout('${escapeAttr(last.id)}')" role="button" tabindex="0">
@@ -1048,7 +1044,7 @@ function renderThisWeekCard(allWorkouts, recentPRs, excludeKeys, topInsight) {
         rows.push(`
             <div class="dash-week-row" onclick="showExerciseDetail('${escapeAttr(pr.exercise)}')" role="button" tabindex="0">
                 <i class="fas fa-trophy dash-week-row__icon dash-week-row__icon--gold"></i>
-                <div class="dash-week-row__txt"><b>${escapeHtml(pr.exercise)} PR</b> · ${convertWeight(pr.weight, pr.unit || 'lbs', unit)} ${unit} · ${prMetaLine(pr)}</div>
+                <div class="dash-week-row__txt"><b>${escapeHtml(pr.exercise)} PR</b> · ${convertWeight(pr.weight, pr.unit || 'lbs', unit)} ${unitLabel(unit)} · ${prMetaLine(pr)}</div>
                 <i class="fas fa-chevron-right dash-chev"></i>
             </div>
         `);
@@ -1184,12 +1180,12 @@ function renderScoreboardCard(allWorkouts) {
             ? `<span class="sb-row__delta sb-row__delta--${trend}">${deltaStr}</span>`
             : '';
         const chips = [
-            p.repPR ? `<span class="vol-badge vol-badge--pr" aria-label="Rep PR ${p.repPR.weight} by ${p.repPR.reps}">Rep PR ${p.repPR.weight}×${p.repPR.reps}</span>` : '',
+            p.repPR ? `<span class="vol-badge vol-badge--pr">Rep PR ${formatSet({ reps: p.repPR.reps, weight: p.repPR.weight, originalUnit: unit }, unit, { effort: false })}</span>` : '',
             p.rung > 0 ? `<span class="vol-badge vol-badge--rung" aria-label="Stuck — ${p.rung === 1 ? 'chase one more rep' : p.rung === 2 ? 'backing off to reset' : 'time to rotate'}">Stuck</span>` : '',
             // AP-22 — effort climbing at the same load: a leading fatigue sign.
             p.fatigue ? `<span class="vol-badge vol-badge--rung" aria-label="${escapeAttr(`Effort rising: ${p.fatigue}`)}">Effort ↑</span>` : '',
         ].join('');
-        const valueStr = value != null ? `${value} ${unit}` : '—';
+        const valueStr = value != null ? `${value} ${unitLabel(unit)}` : '—';
         return `
             <div class="dash-week-row sb-row" onclick="showExerciseDetail('${escapeAttr(p.name)}')" role="button" tabindex="0"
                  aria-label="${escapeAttr(`${p.name}: ${SB_TREND_LABEL[trend]}, estimated max ${valueStr}`)}">
@@ -1235,7 +1231,7 @@ function renderBodyPartCard(s, volumeByPart) {
     // Only render when there's a real change (0 is noise).
     const pd = s.heaviestDeltaWeight;
     const peakDeltaHtml = (pd != null && pd !== 0)
-        ? `<div class="bp-cell__sub ${pd < 0 ? 'down' : ''}">${pd > 0 ? '↑' : '↓'} ${Math.abs(pd)} ${unit}</div>`
+        ? `<div class="bp-cell__sub ${pd < 0 ? 'down' : ''}">${pd > 0 ? '↑' : '↓'} ${Math.abs(pd)} ${unitLabel(unit)}</div>`
         : '';
 
     // Sets/week vs MEV/MRV target (UX-2) — answers "should I care?" directly.
@@ -1255,17 +1251,17 @@ function renderBodyPartCard(s, volumeByPart) {
             <div class="bp-card__grid">
                 <div class="bp-cell">
                     <div class="bp-cell__label"><i class="fas fa-trophy bp-cell__icon--gold"></i> ${heroShort} Max</div>
-                    <div class="bp-cell__val">${hv ? `${hv.reps}<span class="bp-cell__unit">×${hv.weight}</span>` : '—'}</div>
+                    <div class="bp-cell__val">${hv ? formatSet({ reps: hv.reps, weight: hv.weight, originalUnit: unit }, unit, { effort: false }) : '—'}</div>
                     ${peakDeltaHtml}
                 </div>
                 <div class="bp-cell">
                     <div class="bp-cell__label">Volume · wk</div>
-                    <div class="bp-cell__val">${formatVolume(s.volume)}<span class="bp-cell__unit"> ${unit}</span></div>
+                    <div class="bp-cell__val">${formatVolume(s.volume)}<span class="bp-cell__unit"> ${unitLabel(unit)}</span></div>
                     ${s.volumeDeltaPct != null ? `<div class="bp-cell__sub ${s.volumeDeltaPct < 0 ? 'down' : ''}">${s.volumeDeltaPct >= 0 ? '↑' : '↓'} ${Math.abs(s.volumeDeltaPct).toFixed(0)}%</div>` : ''}
                 </div>
             </div>
             ${s.isStale
-                ? `<div class="stale-warn">⚠ Last trained ${s.lastTrained?.daysAgo || '—'} days ago</div>`
+                ? `<div class="stale-warn">⚠ ${s.lastTrained?.date ? `Last trained ${formatRelative(s.lastTrained.date)}` : 'Not trained recently'}</div>`
                 : `<div class="bp-spark">${chartSparkline({ points: s.volumeTrend, color: sparkColor, width: 280, height: 24 })}</div>`
             }
         </div>
@@ -1347,7 +1343,7 @@ function renderBodyCard(bwData, dexaHistory = []) {
 
         weightHtml = `
             <div class="dash-body-card__weight">
-                <span class="bw-card-value">${weightStr} <span class="bw-card-unit">${bwData.unit}</span></span>
+                <span class="bw-card-value">${weightStr} <span class="bw-card-unit">${unitLabel(bwData.unit)}</span></span>
                 ${deltaStr}
                 ${source}
             </div>
@@ -1363,13 +1359,7 @@ function renderBodyCard(bwData, dexaHistory = []) {
             ? Math.round(scan.totalLeanMass / scan.totalWeight * 100)
             : 0;
 
-        let dexaAgo = '';
-        if (scan.date) {
-            const daysAgo = Math.round((Date.now() - new Date(scan.date).getTime()) / 86400000);
-            if (daysAgo <= 1) dexaAgo = 'today';
-            else if (daysAgo < 7) dexaAgo = `${daysAgo} days ago`;
-            else dexaAgo = `${Math.round(daysAgo / 7)} weeks ago`;
-        }
+        const dexaAgo = scan.date ? formatRelative(scan.date) : '';
 
         let muscleDelta = '';
         const prevLean = prevScan?.totalLeanMass;
@@ -1378,8 +1368,8 @@ function renderBodyCard(bwData, dexaHistory = []) {
             // Prefer the scan's own unit; fall back to user's display unit
             // rather than hardcoding 'lb' so kg-mode users don't see "Lean
             // ↑ 1.5 lb" when their scan was in kg.
-            const unit = scan.massUnit || AppState.globalUnit || 'lb';
-            muscleDelta = ` · Lean ${d >= 0 ? '↑' : '↓'} ${Math.abs(d).toFixed(1)} ${unit}`;
+            const unit = scan.massUnit || AppState.globalUnit || 'lbs';
+            muscleDelta = ` · Lean ${d >= 0 ? '↑' : '↓'} ${Math.abs(d).toFixed(1)} ${unitLabel(unit)}`;
         }
 
         const parts = [
@@ -1435,7 +1425,7 @@ function renderTodayPRBanner(recentPRs) {
 
     const first = todays[0];
     const label = todays.length === 1
-        ? `New PR — ${escapeHtml(first.exercise)} · ${first.reps}×${convertWeight(first.weight, first.unit || 'lbs', AppState.globalUnit)} ${AppState.globalUnit}`
+        ? `New PR — ${escapeHtml(first.exercise)} · ${formatSet({ reps: first.reps, weight: first.weight, originalUnit: first.unit || 'lbs' }, AppState.globalUnit || 'lbs', { effort: false })}`
         : `${todays.length} new PRs today!`;
 
     // With multiple PRs, opening an overlay listing all of them beats a
@@ -1480,7 +1470,7 @@ export function showTodaysPRs() {
                 <div class="dash-todays-prs__name">${escapeHtml(pr.exercise)}</div>
                 <div class="dash-todays-prs__meta">${pr.reps} reps</div>
             </div>
-            <div class="dash-todays-prs__val">${convertWeight(pr.weight, pr.unit || 'lbs', unit)} ${unit}</div>
+            <div class="dash-todays-prs__val">${convertWeight(pr.weight, pr.unit || 'lbs', unit)} ${unitLabel(unit)}</div>
             <i class="fas fa-chevron-right dash-chev"></i>
         </button>
     `).join('');
@@ -1524,7 +1514,7 @@ function equipShortName(name) {
 }
 
 /**
- * PR meta line: "3d ago · 6 reps · Hammer Strength". The machine is named
+ * PR meta line: "3 days ago · 6 reps · Hammer Strength". The machine is named
  * (PRTracker segments PRs per equipment, so a PR belongs to a specific
  * machine) unless it's the "Unknown Equipment" fallback (UX-1).
  */
@@ -1594,7 +1584,7 @@ export function renderConditioningLine(c) {
     let title = n === 0
         ? 'No cardio in the last 7 days'
         : `${n} ${n === 1 ? 'session' : 'sessions'} in the last 7 days`;
-    if (n > 0 && c.minutesComplete && c.minutes > 0) title += ` · ${c.minutes} min`;
+    if (n > 0 && c.minutesComplete && c.minutes > 0) title += ` · ${formatDuration(c.minutes * 60)}`;
     const sub = n === 0 ? `Last cardio: ${formatRelativeDate(c.lastDate)}` : '';
     return `
         <div class="row-card row-card--static progress-conditioning">
@@ -1620,7 +1610,7 @@ function renderVolumeTrend(series) {
             <div class="progress-chart">${chartLine({
                 points: series, width: 320, height: 120, color: 'var(--primary)', fill: true,
                 ariaLabel: `Weekly training volume over the last ${series.length} weeks`,
-                axes: { yMax: formatVolume(maxY), yMin: '0', xStart: `${series.length}w ago`, xEnd: 'Now' },
+                axes: { yMax: formatVolume(maxY), yMin: '0', xStart: `${series.length}w ago`, xEnd: 'Now' },  // copy-ok: the axis's span, not when something happened
             })}</div>
         </div>
     `;
@@ -1642,7 +1632,7 @@ function renderPRTable(prs) {
                     <div class="pr-name">${escapeHtml(pr.exercise)}</div>
                     <div class="pr-meta">${prMetaLine(pr)}</div>
                 </div>
-                <div class="pr-val">${convertWeight(pr.weight, pr.unit || 'lbs', AppState.globalUnit)} ${AppState.globalUnit}</div>
+                <div class="pr-val">${convertWeight(pr.weight, pr.unit || 'lbs', AppState.globalUnit)} ${unitLabel(AppState.globalUnit)}</div>
             </div>
         `).join('')}
     `;

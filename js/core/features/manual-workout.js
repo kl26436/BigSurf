@@ -149,7 +149,7 @@ async function loadLocationsForManual() {
         const locations = await workoutManager.getUserLocations();
 
         // Clear existing options except first placeholder
-        locationSelect.innerHTML = '<option value="">Select gym location…</option>';
+        locationSelect.innerHTML = '<option value="">Pick a gym…</option>';
 
         // Add locations
         locations.forEach((loc) => {

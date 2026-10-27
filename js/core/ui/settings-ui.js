@@ -218,7 +218,7 @@ function manualDeloadRowHTML(s) {
 }
 
 function manualDeloadDesc(override, on) {
-    if (!on) return `${Math.abs(MANUAL_DELOAD_WEIGHT_PCT)}% lighter for one week — no program needed`;
+    if (!on) return `${Math.abs(MANUAL_DELOAD_WEIGHT_PCT)}% lighter for one week — no plan needed`;
     const end = manualDeloadEnd(override);
     const endLabel = end ? new Date(`${end}T12:00:00`).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' }) : '';
     const levers = [];
@@ -249,8 +249,9 @@ export function toggleManualDeload(btn) {
 /**
  * Helper: build a toggle button HTML string.
  */
-function toggleBtn(settingKey, isOn) {
-    return `<button class="toggle ${isOn ? 'on' : ''}" onclick="this.classList.toggle('on'); updateSetting('${settingKey}', this.classList.contains('on'));"></button>`;
+function toggleBtn(settingKey, isOn, label) {
+    // A switch needs a name and a state for screen readers (C-10).
+    return `<button class="toggle ${isOn ? 'on' : ''}" aria-label="${escapeAttr(label)}" aria-pressed="${!!isOn}" onclick="this.classList.toggle('on'); this.setAttribute('aria-pressed', this.classList.contains('on')); updateSetting('${settingKey}', this.classList.contains('on'));"></button>`;
 }
 
 /**
@@ -263,9 +264,9 @@ function toggleBtn(settingKey, isOn) {
 function programTrustDesc() {
     const p = AppState._activeProgram;
     if (p === undefined) return 'Checking…';
-    if (!p) return 'No active program — ask the coach to build one';
+    if (!p) return 'No plan yet — ask the coach to build one';
     const auto = (p.trustLevel || 'propose') === 'auto_confirm';
-    return `${p.name || 'Program'} — ${auto ? 'auto mode on, Start confirms each session' : 'propose-only, the coach suggests and you tap'}`;
+    return `${p.name || 'Your plan'} — ${auto ? 'auto mode on, Start confirms each session' : 'propose-only, the coach suggests and you tap'}`;
 }
 
 export function renderSettings() {
@@ -314,6 +315,7 @@ export function renderSettings() {
                         { value: 60, label: '60s' },
                         { value: 90, label: '90s' },
                         { value: 120, label: '120s' },
+                        { value: 180, label: '180s' },
                     ], s.restTimerDuration, 'int')}
                 </div>
                 <div class="srow">
@@ -337,7 +339,7 @@ export function renderSettings() {
                     ${segmented('weightGoal', [
                         { value: '', label: 'Off' },
                         { value: 'lose', label: 'Lose' },
-                        { value: 'maintain', label: 'Keep' },
+                        { value: 'maintain', label: 'Maintain' },
                         { value: 'gain', label: 'Gain' },
                     ], s.weightGoal || '', 'string')}
                 </div>
@@ -373,7 +375,7 @@ export function renderSettings() {
                         <div class="srow-name">Rest timer sound</div>
                         <div class="srow-desc">Chime when rest period ends</div>
                     </div>
-                    ${toggleBtn('restTimerSound', s.restTimerSound)}
+                    ${toggleBtn('restTimerSound', s.restTimerSound, 'Rest timer sound')}
                 </div>
                 <div class="srow">
                     <div class="srow-icon ic-primary"><i class="fas fa-play-circle"></i></div>
@@ -381,7 +383,7 @@ export function renderSettings() {
                         <div class="srow-name">Auto-start timer</div>
                         <div class="srow-desc">Start rest timer after completing a set</div>
                     </div>
-                    ${toggleBtn('restTimerAutoStart', s.restTimerAutoStart)}
+                    ${toggleBtn('restTimerAutoStart', s.restTimerAutoStart, 'Auto-start timer')}
                 </div>
                 <div class="srow">
                     <div class="srow-icon ic-warning"><i class="fas fa-mobile-alt"></i></div>
@@ -389,7 +391,7 @@ export function renderSettings() {
                         <div class="srow-name">Timer vibration</div>
                         <div class="srow-desc">Vibrate when rest timer expires</div>
                     </div>
-                    ${toggleBtn('restTimerVibration', s.restTimerVibration)}
+                    ${toggleBtn('restTimerVibration', s.restTimerVibration, 'Timer vibration')}
                 </div>
                 <div class="srow">
                     <div class="srow-icon ic-primary"><i class="fas fa-gauge-high"></i></div>
@@ -397,7 +399,7 @@ export function renderSettings() {
                         <div class="srow-name">Track effort</div>
                         <div class="srow-desc">Rate how hard your heaviest set felt (6–10) on each exercise</div>
                     </div>
-                    ${toggleBtn('trackRpe', s.trackRpe)}
+                    ${toggleBtn('trackRpe', s.trackRpe, 'Track effort')}
                 </div>
                 ${manualDeloadRowHTML(s)}
                 <div class="srow srow--clickable" onclick="openPrimaryLiftsSheet()">
@@ -420,9 +422,9 @@ export function renderSettings() {
                     <div class="srow-icon ic-purple"><i class="fas fa-map-marker-alt"></i></div>
                     <div class="srow-info">
                         <div class="srow-name">Auto-detect gym</div>
-                        <div class="srow-desc">Use GPS to match saved locations</div>
+                        <div class="srow-desc">Use GPS to match your gyms</div>
                     </div>
-                    ${toggleBtn('autoDetectLocation', s.autoDetectLocation !== false)}
+                    ${toggleBtn('autoDetectLocation', s.autoDetectLocation !== false, 'Auto-detect gym')}
                 </div>
             </div>
 
@@ -446,7 +448,7 @@ export function renderSettings() {
                     <div class="srow-icon ic-warning"><i class="fas fa-band-aid"></i></div>
                     <div class="srow-info">
                         <div class="srow-name">Injuries or limitations</div>
-                        <div class="srow-desc">${escapeHtml(s.coachInjuries || 'None listed — the coach programs around these')}</div>
+                        <div class="srow-desc">${escapeHtml(s.coachInjuries || 'None listed — the coach plans around these')}</div>
                     </div>
                     <i class="fas fa-chevron-right srow-chev"></i>
                 </div>
@@ -472,7 +474,7 @@ export function renderSettings() {
                         <div class="srow-name">Weekly coach review</div>
                         <div class="srow-desc">A short Monday digest of your training week</div>
                     </div>
-                    ${toggleBtn('weeklyCoachReview', s.weeklyCoachReview !== false)}
+                    ${toggleBtn('weeklyCoachReview', s.weeklyCoachReview !== false, 'Weekly coach review')}
                 </div>
                 <div class="srow srow--clickable" onclick="openReportCard()">
                     <div class="srow-icon ic-primary"><i class="fas fa-clipboard-check"></i></div>
@@ -485,7 +487,7 @@ export function renderSettings() {
                 <div class="srow srow--clickable" onclick="settingsProgramRowTap()">
                     <div class="srow-icon ic-primary"><i class="fas fa-flag-checkered"></i></div>
                     <div class="srow-info">
-                        <div class="srow-name">Program</div>
+                        <div class="srow-name">Plan</div>
                         <div class="srow-desc" id="program-trust-desc">${escapeHtml(programTrustDesc())}</div>
                     </div>
                     <i class="fas fa-chevron-right srow-chev"></i>
@@ -527,7 +529,7 @@ export function renderSettings() {
                 <div class="srow srow--clickable" onclick="navigateTo('location')">
                     <div class="srow-icon ic-muted"><i class="fas fa-map-marker-alt"></i></div>
                     <div class="srow-info">
-                        <div class="srow-name">Locations</div>
+                        <div class="srow-name">Gyms</div>
                         <div class="srow-desc">Your gyms</div>
                     </div>
                     <i class="fas fa-chevron-right srow-chev"></i>
@@ -933,7 +935,7 @@ export function renderProfileDetail() {
 
             <div class="group-label">Account</div>
             <div class="group">
-                <div class="srow" onclick="editProfileName()">
+                <div class="srow srow--clickable" onclick="editProfileName()">
                     <div class="srow-icon ic-primary"><i class="fas fa-user"></i></div>
                     <div class="srow-info">
                         <div class="srow-name">Name</div>
@@ -947,7 +949,7 @@ export function renderProfileDetail() {
 
             <div class="group-label">Fitness profile</div>
             <div class="group">
-                <div class="srow" onclick="editProfileHeight()">
+                <div class="srow srow--clickable" onclick="editProfileHeight()">
                     <div class="srow-icon ic-blue"><i class="fas fa-ruler-vertical"></i></div>
                     <div class="srow-info">
                         <div class="srow-name">Height</div>
@@ -957,7 +959,7 @@ export function renderProfileDetail() {
                         <i class="fas fa-chevron-right srow-chev"></i>
                     </div>
                 </div>
-                <div class="srow" onclick="editProfileBirthday()">
+                <div class="srow srow--clickable" onclick="editProfileBirthday()">
                     <div class="srow-icon ic-warm"><i class="fas fa-birthday-cake"></i></div>
                     <div class="srow-info">
                         <div class="srow-name">Birthday</div>
@@ -967,7 +969,7 @@ export function renderProfileDetail() {
                         <i class="fas fa-chevron-right srow-chev"></i>
                     </div>
                 </div>
-                <div class="srow" onclick="editProfileExperience()">
+                <div class="srow srow--clickable" onclick="editProfileExperience()">
                     <div class="srow-icon ic-purple"><i class="fas fa-medal"></i></div>
                     <div class="srow-info">
                         <div class="srow-name">Experience</div>
@@ -997,7 +999,7 @@ export async function editCoachInjuries() {
     const s = AppState.settings || DEFAULT_SETTINGS;
     const next = await promptSheet({
         title: 'Injuries or limitations',
-        message: 'The coach never programs exercises that load these without flagging it.',
+        message: 'The coach never plans exercises that load these without flagging it.',
         initialValue: s.coachInjuries || '',
         placeholder: 'e.g. bad left shoulder, no deep squats',
         confirmLabel: 'Save',

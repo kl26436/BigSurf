@@ -119,10 +119,8 @@
     display: flex;
     align-items: center;
     gap: var(--space-12);
-    cursor: pointer;
-    transition: transform var(--anim-fast);
 }
-.detail-row:active { transform: scale(0.98); }
+/* B18 — a weigh-in row is a value row: it doesn't press; its trash button acts (DS-1b). */
 .detail-row svg { flex-shrink: 0; }
 .detail-row__info { flex: 1; min-width: 0; }
 .detail-row__name { font-size: var(--font-sm); color: var(--text-strong); font-weight: 600; }

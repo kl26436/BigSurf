@@ -5,7 +5,8 @@
 
 import { AppState } from '../utils/app-state.js';
 import { getLatestBodyWeight, saveBodyWeight } from './body-measurements.js';
-import { convertWeight } from '../ui/ui-helpers.js';
+import { convertWeight, unitLabel } from '../ui/ui-helpers.js';
+import { formatRelative } from '../utils/date-helpers.js';
 import { BW_STALENESS_DAYS, checkBodyWeightFreshness } from '../utils/weight-calculations.js';
 import { openSheet, closeSheet } from '../ui/sheet.js';
 
@@ -58,10 +59,10 @@ function showBodyWeightPrompt(stale) {
     if (_pendingPrompt) return _pendingPrompt;
     _pendingPrompt = new Promise((resolve) => {
         const displayUnit = AppState.globalUnit || 'lbs';
-        const unitLabel = displayUnit === 'kg' ? 'kg' : 'lb';
+        const unitText = unitLabel(displayUnit);
         const prefillValue = stale ? stale.weight.toFixed(1) : '';
         const lastInfo = stale
-            ? `Last entry: ${stale.weight.toFixed(1)} ${stale.unit} · ${stale.ageInDays} days ago`
+            ? `Last entry: ${stale.weight.toFixed(1)} ${unitLabel(stale.unit)} · ${formatRelative(stale.date)}`
             : '';
 
         let settled = false;
@@ -95,8 +96,8 @@ function showBodyWeightPrompt(stale) {
                            class="bw-prompt__input" id="bw-prompt-input"
                            value="${prefillValue}"
                            placeholder="${displayUnit === 'kg' ? '83.0' : '184.0'}"
-                           aria-label="Body weight in ${unitLabel}">
-                    <span class="bw-prompt__unit">${unitLabel}</span>
+                           aria-label="Body weight in ${unitText}">
+                    <span class="bw-prompt__unit">${unitText}</span>
                 </div>
                 ${lastInfo ? `<div class="bw-prompt__hint">${lastInfo}</div>` : ''}
                 <button class="btn btn-primary bw-prompt__save" id="bw-prompt-save">

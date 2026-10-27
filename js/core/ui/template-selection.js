@@ -3,7 +3,8 @@
 
 import { AppState } from '../utils/app-state.js';
 import { getCategoryIcon, CATEGORY_COLORS } from '../utils/config.js';
-import { showNotification, escapeHtml, escapeAttr } from './ui-helpers.js';
+import { showNotification, escapeHtml, escapeAttr, formatSet, unitLabel } from './ui-helpers.js';
+import { formatRelative, formatDuration } from '../utils/date-helpers.js';
 import { confirmSheet } from './confirm-sheet.js';
 import { openSheet, closeSheet } from './sheet.js';
 import { getExerciseName } from '../utils/workout-helpers.js';
@@ -474,17 +475,9 @@ function hydrateLastSession() {
             el.remove();
             return;
         }
-        const setStr = last.sets.slice(0, 3).map(s => {
-            const w = s.weight || 0;
-            const r = s.reps || 0;
-            return `${r}×${w}`;
-        }).join(' · ');
-        let daysAgoStr = '';
-        if (last.daysAgo != null) {
-            daysAgoStr = last.daysAgo === 0 ? 'today'
-                : last.daysAgo === 1 ? '1d ago'
-                : `${last.daysAgo}d ago`;
-        }
+        const unit = AppState.globalUnit || 'lbs';
+        const setStr = last.sets.slice(0, 3).map(s => formatSet(s, unit, { effort: false })).join(' · ');
+        const daysAgoStr = formatRelative(last.date, { dense: true });
         el.textContent = `Last: ${setStr}${daysAgoStr ? ` · ${daysAgoStr}` : ''}`;
     });
 }
@@ -556,19 +549,6 @@ function getLastWorkoutForTemplate(templateName, templateId = null) {
 function getLastWorkoutDate(templateName, templateId = null) {
     const last = getLastWorkoutForTemplate(templateName, templateId);
     return last?.date || null;
-}
-
-function formatTimeAgo(dateStr) {
-    if (!dateStr) return '';
-    const date = new Date(dateStr + 'T00:00:00');
-    const now = new Date();
-    const diffMs = now - date;
-    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-    if (diffDays === 0) return 'Today';
-    if (diffDays === 1) return 'Yesterday';
-    if (diffDays < 7) return `${diffDays} days ago`;
-    if (diffDays < 30) return `${Math.floor(diffDays / 7)} week${Math.floor(diffDays / 7) > 1 ? 's' : ''} ago`;
-    return `${Math.floor(diffDays / 30)} month${Math.floor(diffDays / 30) > 1 ? 's' : ''} ago`;
 }
 
 function renderTemplateRows(container, templates, isFiltered, archivedTemplates = [], olderTemplates = []) {
@@ -738,7 +718,7 @@ async function hydrateQuickStartMemory() {
         const shown = names.slice(0, 3).join(' · ');
         const more = names.length > 3 ? ` +${names.length - 3} more` : '';
         const label = last.focus ? `Last ${last.focus}` : 'Last freestyle';
-        const rel = mem.relativeDaysLabel(last.date);
+        const rel = formatRelative(last.date, { dense: true });
         target.innerHTML = `
             <div class="qs-memory">
                 <div class="qs-memory__info">
@@ -940,7 +920,7 @@ function renderSingleTemplateRow(template) {
     // row opens the editor page; the play button starts now.
     const lastWorkout = getLastWorkoutForTemplate(templateName, templateId);
     const lastDone = lastWorkout?.date
-        ? `Last done ${formatTimeAgo(lastWorkout.date).toLowerCase()}`
+        ? `Last done ${formatRelative(lastWorkout.date)}`
         : 'Not done yet';
 
     return `
@@ -1230,7 +1210,7 @@ function renderTemplateSummary(template) {
         `<span class="te-cat te-cat--${escapeAttr(cat)}">${escapeHtml(catLabel)}</span>`,
         scheduleText ? escapeHtml(scheduleText) : null,
         `${exCount} exercise${exCount === 1 ? '' : 's'}`,
-        estMin ? `~${estMin} min` : null,
+        estMin ? `~${formatDuration(estMin * 60)}` : null,
     ].filter(Boolean);
     return parts.join(' · ');
 }
@@ -1319,7 +1299,7 @@ function renderTemplateExerciseRow(ex, idx, total, templateId, isExpanded) {
         : '';
     const summary = (equipment
         ? `${sets} × ${reps} · ${escapeHtml(equipment)}`
-        : `${sets} × ${reps}${weight ? ` · ${weight} ${unit}` : ''}`) + (altChip || rotatedChip);
+        : `${sets} × ${reps}${weight ? ` · ${weight} ${unitLabel(unit)}` : ''}`) + (altChip || rotatedChip);
 
     // Real tap targets around each value (mockup: workout-editor-ergonomics).
     // Tap the value itself for keyboard entry; +/− for one-handed adjustment.

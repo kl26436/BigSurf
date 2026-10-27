@@ -2,7 +2,7 @@
 // Handles workout session lifecycle: start, pause, complete, cancel, resume, edit
 
 import { AppState } from '../utils/app-state.js';
-import { showNotification, setHeaderMode, stopActiveWorkoutRestTimer, escapeAttr, escapeHtml, openModal, closeModal } from '../ui/ui-helpers.js';
+import { showNotification, setHeaderMode, stopActiveWorkoutRestTimer, escapeAttr, escapeHtml, openModal, closeModal, formatSet, unitLabel } from '../ui/ui-helpers.js';
 import { setBottomNavVisible, navigateTo, setWorkoutActiveState, enterSection } from '../ui/navigation.js';
 import { saveWorkoutData, clearLastSessionCache, clearAllWorkoutsCache, loadAllWorkouts } from '../data/data-manager.js';
 import {
@@ -738,8 +738,8 @@ async function hydratePriorComparison(workoutData, currentVolume) {
         const dir = pct > 0 ? 'up' : pct < 0 ? 'down' : 'flat';
         const icon = dir === 'up' ? 'fa-arrow-trend-up' : dir === 'down' ? 'fa-arrow-trend-down' : 'fa-equals';
         const label = pct === 0
-            ? `Same volume as last ${escapeHtml(compareName)} — ${priorStr} ${unit}`
-            : `${pct > 0 ? '+' : ''}${pct}% volume vs. last ${escapeHtml(compareName)} · ${priorStr} ${unit}`;
+            ? `Same volume as last ${escapeHtml(compareName)} — ${priorStr} ${unitLabel(unit)}`
+            : `${pct > 0 ? '+' : ''}${pct}% volume vs. last ${escapeHtml(compareName)} · ${priorStr} ${unitLabel(unit)}`;
 
         el.innerHTML = `<i class="fas ${icon}"></i> ${label}`;
         el.classList.add(`completion-compare--${dir}`);
@@ -814,11 +814,7 @@ export function showWorkoutSummary(workoutData, newPRs = [], templateChanges = n
     }
 
     // Format duration
-    const duration = workoutData.totalDuration || 0;
-    const dMin = Math.floor(duration / 60);
-    const durationStr = dMin >= 60
-        ? `${Math.floor(dMin / 60)}h ${dMin % 60}m`
-        : `${dMin}m`;
+    const durationStr = formatDuration(workoutData.totalDuration || 0);
 
     // Format volume — the summary sums raw reps×weight, so label it with the
     // user's working unit rather than leaving a bare number (18,420 — of what?).
@@ -836,7 +832,7 @@ export function showWorkoutSummary(workoutData, newPRs = [], templateChanges = n
                 ${newPRs.map(pr => `
                     <div class="completion-pr-item">
                         <strong>${escapeHtml(pr.exercise)}</strong>
-                        <span class="completion-pr-item__value">${pr.weight} ${pr.unit} &times; ${pr.reps}</span>
+                        <span class="completion-pr-item__value">${formatSet({ reps: pr.reps, weight: pr.weight, originalUnit: pr.unit }, volumeUnit, { effort: false })}</span>
                     </div>
                 `).join('')}
             </div>
@@ -865,7 +861,7 @@ export function showWorkoutSummary(workoutData, newPRs = [], templateChanges = n
                 </div>
                 <div class="completion-stat">
                     <span class="completion-stat-value">${volumeStr}</span>
-                    <span class="completion-stat-label">Volume · ${volumeUnit}</span>
+                    <span class="completion-stat-label">Volume · ${unitLabel(volumeUnit)}</span>
                 </div>
                 <div class="completion-stat">
                     <span class="completion-stat-value">${exerciseCount}</span>

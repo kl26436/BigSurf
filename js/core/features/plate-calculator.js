@@ -101,7 +101,7 @@ export function initPlateCalculatorPage() {
     container.innerHTML = `
         <div class="plate-calc-section">
             <label class="plate-calc-label">Target weight (${unit})</label>
-            <input type="number" id="plate-calc-target" class="form-input plate-calc-input"
+            <input type="number" id="plate-calc-target" class="field-input plate-calc-input"
                    inputmode="decimal" placeholder="e.g. ${isKg ? '100' : '225'}" autocomplete="off">
         </div>
 
@@ -141,7 +141,7 @@ function getBarOptions(isKg, selectedBar) {
 
     return `${buttons}
         <div class="plate-calc-bar-custom">
-            <input type="number" id="plate-calc-bar-custom" class="form-input"
+            <input type="number" id="plate-calc-bar-custom" class="field-input"
                    inputmode="decimal" placeholder="Custom"
                    value="${isCustom ? selectedBar : ''}">
             <span>${unit}</span>
@@ -379,7 +379,7 @@ export async function openPlateCalcPopover(exerciseIndex) {
 
     const bodyHTML = `
             <div class="plate-calc-popover-input-row">
-                <input type="number" id="popover-plate-target" class="form-input"
+                <input type="number" id="popover-plate-target" class="field-input"
                        inputmode="decimal" value="${targetWeight || ''}" placeholder="Weight">
                 <span class="plate-calc-popover-unit">${unit}</span>
             </div>

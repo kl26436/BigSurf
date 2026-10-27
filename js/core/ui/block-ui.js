@@ -9,7 +9,7 @@
 // shows the notice, the waiting accessory swaps, and undo.
 
 import { AppState } from '../utils/app-state.js';
-import { escapeHtml, escapeAttr, showNotification } from './ui-helpers.js';
+import { escapeHtml, escapeAttr, showNotification, formatSet, unitLabel } from './ui-helpers.js';
 import { navigateTo } from './navigation.js';
 import { debugLog } from '../utils/config.js';
 import { buildBlockSession } from '../features/block-view.js';
@@ -243,16 +243,22 @@ const STATUS_ICON = {
     done: 'fa-check', missed: 'fa-times', today: 'fa-play', upcoming: 'fa-circle', projected: 'fa-circle',
 };
 
+// Block targets and results are already in the plan's unit — no conversion.
+function blockSet(x, unit) {
+    if (!x) return '—';
+    if (!x.reps) return `${x.weight} ${unitLabel(unit)}`;
+    return formatSet({ reps: x.reps, weight: x.weight, originalUnit: unit }, unit, { effort: false });
+}
+
 function primaryLine(cell, unit) {
     const p = cell.primary;
     if (cell.status === 'projected') return '';
     if (!p) return '';
-    const fmt = (x) => (x ? `${x.weight}${x.reps ? `×${x.reps}` : ''}` : '—');
     if (cell.status === 'done' && p.logged) {
         const mark = p.result === 'hit' ? ' ✓' : p.result === 'below' ? ' ↓' : '';
-        return `${p.name} ${fmt(p.logged)} ${unit}${p.target ? ` · target ${fmt(p.target)}` : ''}${mark}`;
+        return `${p.name} ${blockSet(p.logged, unit)}${p.target ? ` · target ${blockSet(p.target, unit)}` : ''}${mark}`;
     }
-    return p.target ? `${p.name} · target ${fmt(p.target)} ${unit}` : `${p.name} · no history yet`;
+    return p.target ? `${p.name} · target ${blockSet(p.target, unit)}` : `${p.name} · no history yet`;
 }
 
 /** TP-7 c — the trip a date falls on (the plan keeps the session; the gym changes). */
@@ -336,7 +342,7 @@ export function openBlockSession(weekIdx, cellIdx) {
         const i = (template.exercises || []).findIndex(ex => (ex.machine || ex.name) === name || (ex.alternates || []).some(a => a?.name === name));
         return i >= 0 && inferRole(template.exercises[i], i) !== 'primary' ? i : -1;
     };
-    const fmt = (x) => (x ? `${x.weight}${x.reps ? ` × ${x.reps}` : ''}` : '—');
+    const fmt = (x) => blockSet(x, _ctx?.unit || 'lbs');
     const status = { done: `Done ${cell.doneOn ? fmtDate(cell.doneOn) : ''}`, missed: 'Missed', today: 'Today', upcoming: fmtDate(cell.date), projected: `${fmtDate(cell.date)} · projected` }[cell.status];
     const startable = ['today', 'upcoming', 'missed', 'projected'].includes(cell.status);
     const primaryAction = startable
@@ -351,7 +357,7 @@ export function openBlockSession(weekIdx, cellIdx) {
                 <div class="js-row">
                     <div class="js-row__info">
                         <div class="js-row__name">${escapeHtml(r.name)}${r.primary ? ' <span class="block-session__main">Main lift</span>' : ''}</div>
-                        <div class="js-row__meta">${r.sets} sets${w.projected ? ' · targets fill in when these weeks are set' : ` · target ${escapeHtml(fmt(r.target))} ${escapeHtml(_ctx.unit)}`}${r.logged ? ` · logged ${escapeHtml(fmt(r.logged))}` : ''}${r.variantOf ? ` · in place of ${escapeHtml(r.variantOf)}` : ''}${escapeHtml(switchText(r))}${escapeHtml(tripText(r))}</div>
+                        <div class="js-row__meta">${r.sets} sets${w.projected ? ' · targets fill in when these weeks are set' : ` · target ${escapeHtml(fmt(r.target))}`}${r.logged ? ` · logged ${escapeHtml(fmt(r.logged))}` : ''}${r.variantOf ? ` · in place of ${escapeHtml(r.variantOf)}` : ''}${escapeHtml(switchText(r))}${escapeHtml(tripText(r))}</div>
                     </div>
                     ${swapIndex(r.name) >= 0 ? `<button class="btn btn-secondary btn-sm" onclick="closeBlockSession({ immediate: true }); openRotateSheet('${escapeAttr(template.id)}', ${swapIndex(r.name)})" aria-label="${escapeAttr(`Swap ${r.name}`)}"><i class="fas fa-arrow-right-arrow-left" aria-hidden="true"></i></button>` : ''}
                 </div>`).join('') : `
@@ -467,7 +473,7 @@ function planSettingsBody() {
     return `
         <div class="plan-settings">
             <label class="field-label" for="plan-set-name">Name</label>
-            <input id="plan-set-name" class="form-input" value="${escapeAttr(_draft.name)}" maxlength="60">
+            <input id="plan-set-name" class="field-input" value="${escapeAttr(_draft.name)}" maxlength="60">
             <button class="row-card plan-settings__row" onclick="closePlanSettings(); openWeekPlanSheet()">
                 <span class="row-card__content"><span class="row-card__title">Training days</span><span class="row-card__subtitle">${escapeHtml(trainingDaysText())}</span></span>
                 <i class="fas fa-chevron-right row-card__action" aria-hidden="true"></i>

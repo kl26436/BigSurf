@@ -4,6 +4,7 @@
 import { AppState } from '../utils/app-state.js';
 import { db } from '../data/firebase-config.js';
 import { showNotification, setHeaderMode, escapeAttr } from './ui-helpers.js';
+import { formatDateShort } from '../utils/date-helpers.js';
 import { confirmSheet } from './confirm-sheet.js';
 import { openSheet, closeSheet } from './sheet.js';
 import { setBottomNavVisible, updateBottomNavActive } from './navigation.js';
@@ -162,7 +163,7 @@ export async function resumeWorkout(workoutId) {
     // Confirm and resume
     const workoutDate = workout.rawData?.date || workoutId;
     const ok = await confirmSheet({
-        title: `Resume "${workoutName}" from ${new Date(workoutDate + 'T12:00:00').toLocaleDateString()}?`,
+        title: `Resume "${workoutName}" from ${formatDateShort(workoutDate)}?`,
         confirmLabel: 'Resume workout',
         cancelLabel: 'Not now',
     });

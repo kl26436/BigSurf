@@ -2,8 +2,8 @@
 // Dashboard widget, weight entry modal, Stats chart, body measurements modal
 
 import { AppState } from '../utils/app-state.js';
-import { escapeHtml, escapeAttr, showNotification, formatHeight, parseHeightToCm } from '../ui/ui-helpers.js';
-import { getDateString } from '../utils/date-helpers.js';
+import { escapeHtml, escapeAttr, showNotification, formatHeight, parseHeightToCm, unitLabel } from '../ui/ui-helpers.js';
+import { getDateString, formatDateShort, formatRelative } from '../utils/date-helpers.js';
 import { navigateTo, navigateBack } from '../ui/navigation.js';
 import { once } from '../ui/busy.js';
 import {
@@ -36,13 +36,13 @@ export function showWeightEntryModal({ keepUnitOverride = false } = {}) {
 
     if (!keepUnitOverride) entryUnitOverride = null;
     const unit = entryUnitOverride || AppState.globalUnit || 'lbs';
-    const unitLabel = unit === 'kg' ? 'kg' : 'lb';
+    const unitWord = unitLabel(unit);
     const circumUnit = unit === 'kg' ? 'cm' : 'in';
     const today = AppState.getTodayDateString?.() || getDateString(new Date());
 
     const lastEntry = AppState._lastBodyWeight;
     const lastValueStr = lastEntry
-        ? `${lastEntry.weight} ${lastEntry.unit}${lastEntry.date ? ' · ' + lastEntry.date : ''}`
+        ? `${lastEntry.weight} ${unitLabel(lastEntry.unit)}${lastEntry.date ? ' · ' + formatDateShort(lastEntry.date) : ''}`
         : '—';
 
     const circumFields = [
@@ -73,7 +73,7 @@ export function showWeightEntryModal({ keepUnitOverride = false } = {}) {
                     <input type="number" id="body-weight-input" class="bm-weight-card__input"
                            placeholder="${unit === 'kg' ? '83.0' : '184.0'}"
                            step="0.1" min="0" max="999" inputmode="decimal" autofocus>
-                    <span class="bm-weight-card__unit">${unitLabel}</span>
+                    <span class="bm-weight-card__unit">${unitWord}</span>
                     <div class="bm-weight-card__last">
                         <div class="bm-weight-card__last-label">Last</div>
                         <div class="bm-weight-card__last-val">${escapeHtml(lastValueStr)}</div>
@@ -88,7 +88,7 @@ export function showWeightEntryModal({ keepUnitOverride = false } = {}) {
             <!-- Body composition -->
             <div class="sec-head"><h3>Body composition <span class="count">(optional)</span></h3></div>
             ${renderBmRow('body-fat-input', 'Body fat', 'fa-percent', '%')}
-            ${renderBmRow('muscle-mass-input', 'Muscle mass', 'fa-fire', unitLabel)}
+            ${renderBmRow('muscle-mass-input', 'Muscle mass', 'fa-fire', unitWord)}
 
             <!-- Height — stored on the user profile (not a dated entry).
                  Displayed and entered in ft/in; stored as cm. -->
@@ -151,32 +151,11 @@ async function refreshWithingsFreshnessLabel() {
             el.textContent = 'Connected · never synced';
             return;
         }
-        el.textContent = `Synced ${formatRelativeTimestamp(status.lastSync)}`;
+        el.textContent = `Synced ${formatRelative(status.lastSync, { dense: true }) || 'at an unknown time'}`;
     } catch (err) {
         // Non-fatal — leave the default text
         console.warn('Could not refresh Withings freshness label:', err);
     }
-}
-
-/** Format an ISO timestamp as a short relative string ("2h ago", "3d ago"). */
-function formatRelativeTimestamp(iso) {
-    if (!iso) return 'unknown';
-    const now = Date.now();
-    const then = new Date(iso).getTime();
-    if (isNaN(then)) return 'unknown';
-    const seconds = Math.max(0, Math.floor((now - then) / 1000));
-    if (seconds < 60) return 'just now';
-    const minutes = Math.floor(seconds / 60);
-    if (minutes < 60) return `${minutes}m ago`;
-    const hours = Math.floor(minutes / 60);
-    if (hours < 24) return `${hours}h ago`;
-    const days = Math.floor(hours / 24);
-    if (days < 7) return `${days}d ago`;
-    const weeks = Math.floor(days / 7);
-    if (weeks < 5) return `${weeks}w ago`;
-    const months = Math.floor(days / 30);
-    if (months < 12) return `${months}mo ago`;
-    return `${Math.floor(days / 365)}y ago`;
 }
 
 function renderBmRow(inputId, label, icon, unit) {
@@ -202,7 +181,7 @@ function renderHeightRow(currentCm) {
         ? (usesImperial ? formatHeight(currentCm, 'lbs') : String(Math.round(currentCm)))
         : '';
     const placeholder = usesImperial ? "5'10\"" : '178';
-    const unitLabel = usesImperial ? 'ft/in' : 'cm';
+    const heightUnit = usesImperial ? 'ft/in' : 'cm';
     const inputType = usesImperial ? 'text' : 'number';
     return `
         <div class="bm-row">
@@ -214,7 +193,7 @@ function renderHeightRow(currentCm) {
                    placeholder="${escapeAttr(placeholder)}" value="${escapeAttr(display)}"
                    inputmode="${usesImperial ? 'text' : 'decimal'}"
                    aria-label="Height">
-            <div class="bm-row__unit">${unitLabel}</div>
+            <div class="bm-row__unit">${heightUnit}</div>
         </div>
     `;
 }
@@ -397,7 +376,7 @@ export async function renderBodyWeightChart() {
             labels,
             datasets: [
                 {
-                    label: `Weight (${unit})`,
+                    label: `Weight (${unitLabel(unit)})`,
                     data: converted.map(e => e.weight),
                     borderColor: 'rgba(0, 200, 180, 0.5)',
                     backgroundColor: 'rgba(0, 200, 180, 0.05)',
@@ -445,7 +424,7 @@ export async function renderBodyWeightChart() {
                     displayColors: false,
                     callbacks: {
                         title: (items) => items[0]?.label || '',
-                        label: (item) => `${item.dataset.label}: ${item.raw} ${unit}`,
+                        label: (item) => `${item.dataset.label}: ${item.raw} ${unitLabel(unit)}`,
                     },
                 },
             },

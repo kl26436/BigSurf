@@ -166,21 +166,3 @@ export function findPriorComparableFreestyle(workouts = [], current) {
         .sort((a, b) => (b.completedAt || '').localeCompare(a.completedAt || ''))[0];
     return prior ? { workout: prior, key } : null;
 }
-
-/**
- * Short relative label for a workout date string: "today", "yesterday",
- * "5d ago", "3w ago", "2mo ago". `now` injectable for tests.
- */
-export function relativeDaysLabel(dateStr, now = new Date()) {
-    if (!dateStr) return '';
-    const then = new Date(`${dateStr}T12:00:00`);
-    if (isNaN(then.getTime())) return '';
-    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-    const today = new Date(`${todayStr}T12:00:00`);
-    const days = Math.round((today - then) / 86400000);
-    if (days <= 0) return 'today';
-    if (days === 1) return 'yesterday';
-    if (days < 14) return `${days}d ago`;
-    if (days < 60) return `${Math.round(days / 7)}w ago`;
-    return `${Math.round(days / 30)}mo ago`;
-}

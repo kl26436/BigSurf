@@ -2,7 +2,8 @@
 // Gym-centric equipment management page
 
 import { AppState } from '../utils/app-state.js';
-import { showNotification, escapeHtml, escapeAttr, openModal, closeModal, displayWeight } from './ui-helpers.js';
+import { showNotification, escapeHtml, escapeAttr, openModal, closeModal, displayWeight, formatSet, unitLabel } from './ui-helpers.js';
+import { formatRelative } from '../utils/date-helpers.js';
 import { confirmSheet, promptSheet } from './confirm-sheet.js';
 import { openSheet, closeSheet } from './sheet.js';
 import { navigateBack } from './navigation.js';
@@ -322,7 +323,7 @@ async function scanForUnlinkedEquipment() {
                 const sets = (ex.sets || [])
                     .filter(s => s && (s.reps || s.weight))
                     .slice(0, 3)
-                    .map(s => `${s.reps || '?'}×${s.weight || 'BW'}${s.weight && s.originalUnit ? ` ${s.originalUnit}` : ''}`);
+                    .map(s => formatSet(s, AppState.globalUnit || 'lbs', { effort: false }));
                 entry.lastSets = sets.length > 0 ? sets.join(' · ') : null;
             }
             entry.count++;
@@ -403,7 +404,7 @@ function renderScanReview() {
         const locationStr = [...item.locations].join(', ');
         const metaParts = [
             `${item.count} session${item.count !== 1 ? 's' : ''}`,
-            item.lastDate ? `last ${relativeTime(item.lastDate)}` : null,
+            item.lastDate ? `last used ${formatRelative(item.lastDate, { dense: true })}` : null,
             locationStr,
         ].filter(Boolean).join(' · ');
 
@@ -426,7 +427,7 @@ function renderScanReview() {
                 </div>`;
 
         // Sample sets from the most recent session help concretize the
-        // identity — concrete numbers like "10×135 lbs" make it easy to
+        // identity — concrete numbers like "10 × 135 lb" make it easy to
         // remember which machine.
         const lastSetsHTML = item.lastSets
             ? `<div class="scan-review-row__sets">
@@ -941,7 +942,7 @@ function renderGymDetail(container) {
         const brandSet = new Set();
         items.forEach((it) => { if (it.brand) brandSet.add(it.brand); });
         const lastVisit = currentGymDetail.lastVisit
-            ? `· ${relativeTime(currentGymDetail.lastVisit)}`
+            ? `· ${formatRelative(currentGymDetail.lastVisit, { dense: true })}`
             : '';
         const subtitle = `${machineCount} machine${machineCount !== 1 ? 's' : ''} · ${brandSet.size} brand${brandSet.size !== 1 ? 's' : ''} ${lastVisit}`.trim();
         header.innerHTML = `
@@ -1060,7 +1061,7 @@ function renderGymDetailRow(item) {
                 ${metaParts ? `<div class="equip-row__meta">${escapeHtml(metaParts)}</div>` : ''}
             </div>
             <span class="equip-row__type-pill ${typeColorClass}">${escapeHtml(item.type || 'Other')}</span>
-            <span class="equip-row__last">${item.lastUsed ? relativeTime(item.lastUsed) : ''}</span>
+            <span class="equip-row__last">${item.lastUsed ? formatRelative(item.lastUsed, { dense: true }) : ''}</span>
         </div>
     `;
 }
@@ -2350,7 +2351,7 @@ function renderGymCard(gym) {
     // placeholder when the data isn't there.
     const metaParts = [
         gym.locationStr,
-        gym.lastVisit ? `Last visit ${relativeTime(gym.lastVisit)}` : null,
+        gym.lastVisit ? `Last visit ${formatRelative(gym.lastVisit)}` : null,
     ].filter(Boolean).join(' · ');
 
     const onclickArg = gym.id ? `'${escapeAttr(gym.id)}'` : `null, '${escapeAttr(gym.name)}'`;
@@ -2754,7 +2755,7 @@ function renderPopularAtGym(gymName) {
                     <div class="equip-row__name">${escapeHtml(displayName)}</div>
                     <div class="equip-row__meta">${escapeHtml(eq.brand || 'Unknown')}${eq.line ? ' · ' + escapeHtml(eq.line) : ''}</div>
                 </div>
-                <span class="equip-row__last">${eq.lastUsed ? relativeTime(eq.lastUsed) : ''}</span>
+                <span class="equip-row__last">${eq.lastUsed ? formatRelative(eq.lastUsed, { dense: true }) : ''}</span>
             </div>
         `;
     }).join('');
@@ -2832,22 +2833,8 @@ function computeEquipmentDetailStats(equipment) {
     return {
         sessions,
         pr,
-        lastRel: equipment.lastUsed ? relativeTime(equipment.lastUsed) : '',
+        lastRel: equipment.lastUsed ? formatRelative(equipment.lastUsed, { dense: true }) : '',
     };
-}
-
-function relativeTime(iso) {
-    if (!iso) return '';
-    const then = new Date(iso).getTime();
-    if (isNaN(then)) return '';
-    const diffMs = Date.now() - then;
-    const day = 1000 * 60 * 60 * 24;
-    const days = Math.floor(diffMs / day);
-    if (days < 1) return 'today';
-    if (days < 7) return `${days}d`;
-    if (days < 30) return `${Math.floor(days / 7)} wk`;
-    if (days < 365) return `${Math.floor(days / 30)} mo`;
-    return `${Math.floor(days / 365)} yr`;
 }
 
 /**
@@ -3126,7 +3113,7 @@ export async function openEquipmentDetail(equipmentId, { fromElsewhere = false }
     let prSub = '';
     if (detailStats.pr) {
         const dw = displayWeight(detailStats.pr.weight, detailStats.pr.unit || 'lbs', AppState.globalUnit || 'lbs');
-        prVal = `${dw.value} <span class="detail-stat-grid__unit">${dw.label}</span>`;
+        prVal = `${dw.value} <span class="detail-stat-grid__unit">${unitLabel(dw.label)}</span>`;
         prSub = `<div class="detail-stat-grid__sub">× ${detailStats.pr.reps} reps</div>`;
     }
 
@@ -3167,7 +3154,7 @@ export async function openEquipmentDetail(equipmentId, { fromElsewhere = false }
                     </div>
                     <div class="detail-stat-grid__card">
                         <div class="detail-stat-grid__label">Last used</div>
-                        <div class="detail-stat-grid__value">${detailStats.lastRel ? `${detailStats.lastRel} <span class="detail-stat-grid__unit">ago</span>` : '—'}</div>
+                        <div class="detail-stat-grid__value">${detailStats.lastRel || '—'}</div>
                     </div>
                 </div>
 

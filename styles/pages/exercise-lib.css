@@ -477,15 +477,22 @@
 }
 
 /* Location Items */
+/* UD-5 — a gym row is a .row-card that opens the gym's page (chevron =
+   opens a page, DS-1b); this class only spaces the list and marks "here now". */
 .location-management-item {
-    background: var(--bg-card);
-    border-radius: var(--radius-md);
-    padding: var(--space-16);
     margin-bottom: var(--space-10);
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: var(--space-12);
+}
+.location-item-chev {
+    color: var(--text-muted);
+    font-size: var(--font-xs);
+}
+.location-management-item--add {
+    background: transparent;
+    border: 1px dashed var(--border-light);
+}
+.location-management-item--add .location-item-name {
+    margin: 0;
+    color: var(--primary);
 }
 .location-management-item.active {
     border: 1px solid var(--primary);
@@ -493,9 +500,9 @@
 }
 .location-item-info {
     display: flex;
+    align-items: center;
     gap: var(--space-12);
     flex: 1;
-    cursor: pointer;
 }
 .location-item-icon {
     width: var(--icon-md);
@@ -523,7 +530,6 @@
     padding: var(--space-2) var(--space-6);
     border-radius: var(--radius-xs);
     margin-left: var(--space-8);
-    text-transform: uppercase;
 }
 .location-item-address {
     font-size: var(--font-sm);
@@ -534,45 +540,6 @@
     font-size: var(--font-xs);
     color: var(--text-muted);
 }
-.location-item-actions {
-    display: flex;
-    gap: var(--space-8);
-}
-.location-item-actions button {
-    /* Rename/delete on a real data record — full 44px targets, not 36. */
-    width: var(--tap);
-    height: var(--tap);
-    background: var(--bg-card-hi);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
-    color: var(--text-muted);
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-.location-item-actions button:hover {
-    border-color: var(--primary);
-    color: var(--primary);
-}
-.location-item-actions button.delete-btn:hover {
-    border-color: var(--danger);
-    color: var(--danger);
-}
-
-.input-field {
-    padding: var(--space-12);
-    background: var(--bg-surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
-    color: var(--text-strong);
-    font-size: var(--font-md);
-}
-.input-field:focus {
-    outline: none;
-    border-color: var(--primary);
-}
-
 /* Add Location Modal Enhancements */
 .location-method-tabs {
     display: flex;
@@ -629,7 +596,7 @@
     display: flex;
     gap: var(--space-8);
 }
-.search-input-wrapper .form-input {
+.search-input-wrapper .field-input {
     flex: 1;
 }
 .search-btn {

@@ -58,16 +58,14 @@ export async function showLocationManagement() {
         // returning from a detail view that mutated it).
         const staticHeader = section.querySelector('.page-header');
         if (staticHeader) {
+            // UD-5 — "Gyms"; adding one is a row in the list, not a header link.
             staticHeader.innerHTML = `
                 <div class="page-header__left">
                     <button class="page-header__back" onclick="navigateBack()" aria-label="Back">
                         <i class="fas fa-chevron-left"></i>
                     </button>
-                    <div class="page-header__title">Locations</div>
+                    <div class="page-header__title">Gyms</div>
                 </div>
-                <button class="page-header__save" onclick="detectAndAddLocation()">
-                    <i class="fas fa-plus"></i> New
-                </button>
             `;
         }
     }
@@ -146,10 +144,10 @@ function renderGPSStatusPill(state, opts = {}) {
         html = '<i class="fas fa-spinner fa-spin"></i><span>Detecting your location…</span>';
     } else if (state === 'matched') {
         pill.className = 'location-gps-status location-gps-status--ok';
-        html = `<i class="fas fa-check-circle"></i><span>At ${escapeHtml(opts.name || 'a saved location')}</span>`;
+        html = `<i class="fas fa-check-circle"></i><span>At ${escapeHtml(opts.name || 'a saved gym')}</span>`;
     } else if (state === 'unmatched') {
         pill.className = 'location-gps-status location-gps-status--ok';
-        html = '<i class="fas fa-location-crosshairs"></i><span>Location detected — not near a saved gym</span>';
+        html = '<i class="fas fa-location-crosshairs"></i><span>Not near a saved gym</span>';
     } else {
         pill.className = 'location-gps-status location-gps-status--err';
         const label = opts.error?.label || 'unknown';
@@ -232,6 +230,16 @@ function updateCurrentLocationDisplay() {
     }
 }
 
+// UD-5 — adding a gym is a row at the end of the list (one add flow: GPS,
+// address or map → name), not a header link.
+const ADD_GYM_ROW = `
+    <div class="row-card location-management-item location-management-item--add" data-action="addGym" role="button" tabindex="0">
+        <div class="location-item-info">
+            <div class="location-item-icon"><i class="fas fa-plus"></i></div>
+            <div class="location-item-details"><div class="location-item-name">Add a gym</div></div>
+        </div>
+    </div>`;
+
 /**
  * Render the locations list for management
  */
@@ -243,7 +251,7 @@ function renderLocationManagementList() {
 
     // Update count
     if (countSpan) {
-        countSpan.textContent = `${cachedLocations.length} location${cachedLocations.length !== 1 ? 's' : ''}`;
+        countSpan.textContent = `${cachedLocations.length} gym${cachedLocations.length !== 1 ? 's' : ''}`;
     }
 
     if (cachedLocations.length === 0) {
@@ -254,9 +262,10 @@ function renderLocationManagementList() {
         container.innerHTML = `
             <div class="location-empty-state">
                 <i class="fas fa-map-marker-alt"></i>
-                <p>No saved locations yet</p>
-                <p class="loc-empty-subtitle">Add your gym locations below</p>
+                <p>No gyms yet</p>
+                <p class="loc-empty-subtitle">Add the gym you train at — workouts there pick it up from GPS when you start.</p>
             </div>
+            ${ADD_GYM_ROW}
         `;
         return;
     }
@@ -287,15 +296,15 @@ function renderLocationManagementList() {
             }
 
             return `
-            <div class="location-management-item ${isCurrent ? 'active' : ''}">
-                <div class="location-item-info" data-action="showLocationOnMap" data-location-id="${escapeAttr(location.id)}">
+            <div class="row-card location-management-item ${isCurrent ? 'active' : ''}" data-action="showLocationDetail" data-location-id="${escapeAttr(location.id)}" role="button" tabindex="0">
+                <div class="location-item-info">
                     <div class="location-item-icon">
                         <i class="fas fa-map-marker-alt"></i>
                     </div>
                     <div class="location-item-details">
                         <div class="location-item-name">
                             ${escapeHtml(location.name)}
-                            ${isCurrent ? '<span class="current-badge">CURRENT</span>' : ''}
+                            ${isCurrent ? '<span class="current-badge">Here now</span>' : ''}
                         </div>
                         <div class="location-item-address">
                             ${gpsDisplay}
@@ -305,18 +314,11 @@ function renderLocationManagementList() {
                         </div>
                     </div>
                 </div>
-                <div class="location-item-actions">
-                    <button data-action="editLocationName" data-location-id="${escapeAttr(location.id)}" title="Rename" aria-label="Rename gym">
-                        <i class="fas fa-pen"></i>
-                    </button>
-                    <button class="delete-btn" data-action="deleteLocation" data-location-id="${escapeAttr(location.id)}" title="Delete" aria-label="Delete gym">
-                        <i class="fas fa-trash"></i>
-                    </button>
-                </div>
+                <i class="fas fa-chevron-right location-item-chev" aria-hidden="true"></i>
             </div>
         `;
         })
-        .join('');
+        .join('') + ADD_GYM_ROW;
 
     // Event delegation for location actions — attach the click listener
     // ONCE per container. renderLocationManagementList is called many times
@@ -330,14 +332,11 @@ function renderLocationManagementList() {
         container.addEventListener('click', (e) => {
             const target = e.target.closest('[data-action]');
             if (!target) return;
-            // Stop the row's outer click (showLocationOnMap) from also firing
-            // when the user tapped a child action button (rename / delete).
             e.stopPropagation();
             const action = target.dataset.action;
             const locationId = target.dataset.locationId;
-            if (action === 'showLocationOnMap' && window.showLocationOnMapById) window.showLocationOnMapById(locationId);
-            else if (action === 'editLocationName' && window.editLocationName) window.editLocationName(locationId);
-            else if (action === 'deleteLocation' && window.deleteLocation) window.deleteLocation(locationId);
+            if (action === 'showLocationDetail') showLocationDetail(locationId);
+            else if (action === 'addGym') detectAndAddLocation();
         });
     }
 }
@@ -395,7 +394,7 @@ export function showLocationOnMapById(locationId) {
     if (location.latitude && location.longitude) {
         showLocationOnMap(location.latitude, location.longitude, location.name);
     } else {
-        showNotification('No GPS saved for this location', 'info');
+        showNotification('No GPS saved for this gym', 'info');
     }
 }
 
@@ -508,13 +507,13 @@ async function addNewLocationFromManagementNow() {
     const locationName = input.value.trim();
 
     if (!locationName) {
-        showNotification('Add a location name', 'warning');
+        showNotification('Add a gym name', 'warning');
         return;
     }
 
     // Check if location already exists
     if (cachedLocations.some((loc) => loc.name.toLowerCase() === locationName.toLowerCase())) {
-        showNotification('Location already exists', 'warning');
+        showNotification('You already have a gym with that name', 'warning');
         return;
     }
 
@@ -565,7 +564,7 @@ async function addNewLocationFromManagementNow() {
         updateCurrentLocationDisplay();
     } catch (error) {
         console.error('Error adding location:', error);
-        showNotification('Error adding location', 'error');
+        showNotification("Couldn't add the gym — try again", 'error');
     }
 }
 
@@ -861,13 +860,13 @@ async function saveNewLocationFromModalNow() {
     const locationName = input?.value?.trim();
 
     if (!locationName) {
-        showNotification('Add a location name', 'warning');
+        showNotification('Add a gym name', 'warning');
         return;
     }
 
     // Check if name already exists
     if (cachedLocations.some((loc) => loc.name.toLowerCase() === locationName.toLowerCase())) {
-        showNotification('A location with that name already exists', 'warning');
+        showNotification('You already have a gym with that name', 'warning');
         return;
     }
 
@@ -913,7 +912,7 @@ async function saveNewLocationFromModalNow() {
         showNotification(`Added ${locationName}`, 'success');
     } catch (error) {
         console.error('Error adding location:', error);
-        showNotification('Error adding location', 'error');
+        showNotification("Couldn't add the gym — try again", 'error');
     }
 }
 
@@ -944,7 +943,6 @@ export function showLocationDetail(locationId) {
                 </button>
                 <div class="page-header__title">${escapeHtml(location.name)}</div>
             </div>
-            <button class="page-header__save" onclick="showLocationManagement()">Done</button>
         `;
     }
 
@@ -975,8 +973,8 @@ export function showLocationDetail(locationId) {
                     <div class="loc-map-card__address">${escapeHtml(address)}</div>
                     ${hasGPS ? `<div class="loc-map-card__coords">${location.latitude.toFixed(4)}° N, ${location.longitude.toFixed(4)}° W</div>` : ''}
                 </div>
-                <button class="loc-map-card__use-current" onclick="detectAndAddLocation()">
-                    <i class="fas fa-crosshairs"></i> Use current
+                <button class="loc-map-card__use-current" onclick="repinGymHere('${escapeAttr(locationId)}')">
+                    <i class="fas fa-crosshairs"></i> Pin it here
                 </button>
             </div>
         </div>
@@ -1005,7 +1003,7 @@ export function showLocationDetail(locationId) {
         </div>
 
         <!-- Equipment at this location -->
-        <div class="sec-head"><h4>Equipment here <span class="count">${locationEquip.length} items</span></h4></div>
+        <div class="sec-head"><h4>Machines here <span class="count">${locationEquip.length}</span></h4></div>
         ${locationEquip.map(eq => `
             <div class="link-row">
                 <div class="srow-icon ic-muted"><i class="fas fa-dumbbell"></i></div>
@@ -1013,12 +1011,12 @@ export function showLocationDetail(locationId) {
                 <button class="link-row-action" onclick="openEquipmentDetail('${escapeAttr(eq.id)}')">View</button>
             </div>
         `).join('')}
-        ${locationEquip.length === 0 ? '<div class="loc-equip-empty">No equipment linked to this location</div>' : ''}
+        ${locationEquip.length === 0 ? '<div class="loc-equip-empty">No machines saved here yet — they\'re added as you log sets at this gym.</div>' : ''}
 
         <!-- Delete -->
         <div class="danger-action-row">
             <button class="danger-action-btn" onclick="deleteLocation('${escapeAttr(locationId)}')">
-                <i class="fas fa-trash"></i> Delete location
+                <i class="fas fa-trash"></i> Delete gym
             </button>
         </div>
     `;
@@ -1066,6 +1064,37 @@ export function showLocationDetail(locationId) {
         setTimeout(() => initLocationDetailMiniMap(location.latitude, location.longitude), 0);
     }
 }
+
+/**
+ * "Pin it here" on a gym's page: move THIS gym's pin to where the phone is
+ * now (a fresh fix — a cached one may be from another gym), then repaint the
+ * page. Matching uses the default radius again.
+ */
+export async function repinGymHere(locationId) {
+    const location = cachedLocations.find((loc) => loc.id === locationId);
+    if (!location) return;
+    showNotification('Getting GPS…', 'info');
+    const coords = await getCurrentPosition();
+    if (!coords) {
+        showNotification("Couldn't get your position — check location access", 'error');
+        return;
+    }
+    try {
+        await getWorkoutManager().updateLocation(locationId, {
+            latitude: coords.latitude,
+            longitude: coords.longitude,
+            radius: null,
+        });
+        Object.assign(location, { latitude: coords.latitude, longitude: coords.longitude, radius: null });
+        window.currentGPSCoords = coords;
+        showNotification(`${location.name} pinned here`, 'success');
+        showLocationDetail(locationId);
+    } catch (error) {
+        console.error('❌ Re-pin failed:', error);
+        showNotification("Couldn't move the pin — try again", 'error');
+    }
+}
+if (typeof window !== 'undefined') window.repinGymHere = repinGymHere;
 
 /** One-shot init for the read-only Leaflet preview inside .loc-map-card__canvas. */
 function initLocationDetailMiniMap(lat, lon) {
@@ -1134,7 +1163,7 @@ export async function editLocationName(locationId) {
 
     const newName = await promptSheet({
         title: `Rename "${location.name}"`,
-        placeholder: 'Location name',
+        placeholder: 'Gym name',
         initialValue: location.name,
         confirmLabel: 'Rename',
     });
@@ -1147,7 +1176,7 @@ export async function editLocationName(locationId) {
     if (
         cachedLocations.some((loc) => loc.name.toLowerCase() === newName.trim().toLowerCase() && loc.id !== locationId)
     ) {
-        showNotification('A location with that name already exists', 'warning');
+        showNotification('You already have a gym with that name', 'warning');
         return;
     }
 
@@ -1169,7 +1198,7 @@ export async function editLocationName(locationId) {
         updateCurrentLocationDisplay();
     } catch (error) {
         console.error('Error renaming location:', error);
-        showNotification('Error renaming location', 'error');
+        showNotification("Couldn't rename the gym — try again", 'error');
     }
 }
 
@@ -1181,15 +1210,15 @@ export async function deleteLocation(locationId) {
     if (!location) return;
 
     if (location.name === currentLocationName) {
-        showNotification('Pick another location first, then delete this one', 'warning');
+        showNotification("You're at this gym now — pick another first, then delete this one", 'warning');
         return;
     }
 
     const confirmed = await confirmSheet({
         title: `Delete "${location.name}"?`,
         message: "Equipment tagged here loses this gym. Workout history isn't affected.",
-        confirmLabel: 'Delete location',
-        cancelLabel: 'Keep location',
+        confirmLabel: 'Delete gym',
+        cancelLabel: 'Keep gym',
         destructive: true,
     });
     if (!confirmed) {
@@ -1246,7 +1275,7 @@ function showLocationUndoToast(location, originalIndex) {
                 const insertAt = Math.min(originalIndex, cachedLocations.length);
                 cachedLocations.splice(insertAt, 0, restore);
                 renderLocationManagementList();
-                showNotification("Couldn't delete location — restored", 'error');
+                showNotification("Couldn't delete the gym — it's back", 'error');
             }
         },
         cancel: () => {
@@ -1311,7 +1340,7 @@ function updateLocationMap() {
         container.innerHTML = `
             <div class="location-map-placeholder">
                 <i class="fas fa-map-marked-alt"></i>
-                <p>Location map</p>
+                <p>Gym map</p>
                 <p class="map-hint">Tap "Use current GPS" to show the map</p>
             </div>
         `;

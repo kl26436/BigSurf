@@ -20,7 +20,7 @@ import {
     getDocFromCache,
 } from './firebase-config.js';
 import { readWithCacheFallback } from './offline.js';
-import { showNotification, convertWeight, escapeHtml } from '../ui/ui-helpers.js';
+import { showNotification, convertWeight, escapeHtml, formatSet } from '../ui/ui-helpers.js';
 import { validateWorkoutData } from '../utils/validation.js';
 import { plateRelativeWeight } from '../utils/weight-calculations.js';
 import { getDateString } from '../utils/date-helpers.js';
@@ -781,12 +781,11 @@ export async function loadExerciseHistory(exerciseName, exerciseIndex, state) {
             // Show PR if available (only max weight with 5+ reps counts as a real PR)
             if (prs && prs.maxWeight && prs.maxWeight.reps >= 5) {
                 const prStoredUnit = prs.maxWeight.unit || 'lbs';
-                const prDisplayWeight = convertWeight(prs.maxWeight.weight, prStoredUnit, unit);
                 historyHTML += `
                     <div class="exercise-history-content__pr">
                         <i class="fas fa-trophy exercise-history-content__pr-icon"></i>
                         <span class="exercise-history-content__pr-label">PR:</span>
-                        <span>${prDisplayWeight} ${unit} × ${prs.maxWeight.reps}</span>
+                        <span>${formatSet({ reps: prs.maxWeight.reps, weight: prs.maxWeight.weight, originalUnit: prStoredUnit }, unit, { effort: false })}</span>
                     </div>`;
             }
 
@@ -822,7 +821,7 @@ export async function loadExerciseHistory(exerciseName, exerciseIndex, state) {
 
                     historyHTML += `
                         <div class="exercise-history-content__set-chip">
-                            Set ${index + 1}: ${set.reps} × ${displayWeight} ${unit}
+                            Set ${index + 1}: ${formatSet({ reps: set.reps, weight: displayWeight, originalUnit: unit }, unit, { effort: false })}
                         </div>
                     `;
                 }

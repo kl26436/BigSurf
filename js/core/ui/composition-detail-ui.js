@@ -2,6 +2,8 @@
 // Shows DEXA summary, body weight trend, and links to upload/history
 
 import { AppState } from '../utils/app-state.js';
+import { unitLabel } from './ui-helpers.js';
+import { formatDateShort } from '../utils/date-helpers.js';
 import { chartDonut } from '../features/charts/chart-donut.js';
 import { chartSparkline } from '../features/charts/chart-sparkline.js';
 
@@ -43,7 +45,7 @@ export async function renderCompositionDetail() {
                 <div class="d-header-icon ic-core"><i class="fas fa-circle-nodes"></i></div>
                 <div>
                     <div class="d-title">Composition</div>
-                    <div class="d-subtitle">${hasDexa ? `Last scan: ${formatDate(scan.date)}` : 'No DEXA data yet'}</div>
+                    <div class="d-subtitle">${hasDexa ? `Last scan: ${formatDateShort(scan.date)}` : 'No DEXA data yet'}</div>
                 </div>
             </div>
         </div>
@@ -63,6 +65,7 @@ function renderDexaSummary(scan, prev) {
     const totalWeight = scan.totalWeight || 0;
     const musclePct = totalWeight > 0 ? Math.round((leanMass / totalWeight) * 100) : 0;
     const waterPct = Math.max(0, 100 - fatPct - musclePct);
+    const mass = ` ${scanUnit(scan)}`;
 
     const segments = [
         { label: `Muscle ${musclePct}%`, value: musclePct, color: 'var(--cat-legs)' },
@@ -78,12 +81,12 @@ function renderDexaSummary(scan, prev) {
             </div>
         </div>
 
-        <div class="d-sec-head">Summary${prev ? ` <span class="d-sec-head__meta">vs ${formatDate(prev.date)}</span>` : ''}</div>
+        <div class="d-sec-head">Summary${prev ? ` <span class="d-sec-head__meta">vs ${formatDateShort(prev.date)}</span>` : ''}</div>
         <div class="comp-stats-grid">
             ${renderStatCard('Body fat', fatPct, '%', prev ? Math.round(prev.totalBodyFat || 0) : null, true)}
-            ${renderStatCard('Lean mass', Math.round(leanMass * 10) / 10, ` ${scan.unit || 'lb'}`, prev?.totalLeanMass || prev?.leanMass, false)}
-            ${renderStatCard('Fat mass', Math.round(fatMass * 10) / 10, ` ${scan.unit || 'lb'}`, prev?.totalFatMass || prev?.fatMass, true)}
-            ${renderStatCard('Bone', Math.round(boneMass * 10) / 10, ` ${scan.unit || 'lb'}`, prev?.boneMass, false)}
+            ${renderStatCard('Lean mass', Math.round(leanMass * 10) / 10, mass, prev?.totalLeanMass || prev?.leanMass, false)}
+            ${renderStatCard('Fat mass', Math.round(fatMass * 10) / 10, mass, prev?.totalFatMass || prev?.fatMass, true)}
+            ${renderStatCard('Bone', Math.round(boneMass * 10) / 10, mass, prev?.boneMass, false)}
         </div>
 
         ${renderInsight(scan, prev)}
@@ -117,13 +120,14 @@ function renderInsight(scan, prev) {
     const leanDelta = (scan.totalLeanMass || scan.leanMass || 0) - (prev.totalLeanMass || prev.leanMass || 0);
     const fatDelta = (scan.totalFatMass || scan.fatMass || 0) - (prev.totalFatMass || prev.fatMass || 0);
 
+    const u = scanUnit(scan);
     let message = '';
     if (leanDelta > 0 && fatDelta < 0) {
-        message = `Strong recomp trend: you added <strong>${leanDelta.toFixed(1)} lb of lean mass</strong> while losing <strong>${Math.abs(fatDelta).toFixed(1)} lb of fat</strong>.`;
+        message = `Strong recomp trend: you added <strong>${leanDelta.toFixed(1)} ${u} of lean mass</strong> while losing <strong>${Math.abs(fatDelta).toFixed(1)} ${u} of fat</strong>.`;
     } else if (leanDelta > 0) {
-        message = `You gained <strong>${leanDelta.toFixed(1)} lb of lean mass</strong> since your last scan.`;
+        message = `You gained <strong>${leanDelta.toFixed(1)} ${u} of lean mass</strong> since your last scan.`;
     } else if (fatDelta < 0) {
-        message = `You lost <strong>${Math.abs(fatDelta).toFixed(1)} lb of fat</strong> since your last scan.`;
+        message = `You lost <strong>${Math.abs(fatDelta).toFixed(1)} ${u} of fat</strong> since your last scan.`;
     }
     if (!message) return '';
 
@@ -156,9 +160,9 @@ function renderRegionalBars(scan) {
         <div class="d-sec-head">Regional lean mass</div>
         <div class="stat-card comp-boxed">
             <div class="regional-bars">
-                ${renderBarRow('Trunk', trunk, maxVal, 'var(--cat-push)')}
-                ${renderBarRow('Arms', arms, maxVal, 'var(--cat-arms)')}
-                ${renderBarRow('Legs', legs, maxVal, 'var(--cat-legs)')}
+                ${renderBarRow('Trunk', trunk, maxVal, 'var(--cat-push)', scanUnit(scan))}
+                ${renderBarRow('Arms', arms, maxVal, 'var(--cat-arms)', scanUnit(scan))}
+                ${renderBarRow('Legs', legs, maxVal, 'var(--cat-legs)', scanUnit(scan))}
                 <div class="regional-bar-row">
                     <div class="regional-bar-label">L/R bal.</div>
                     <div class="regional-balance-status ${isBalanced ? 'balanced' : 'imbalanced'}">${isBalanced ? 'Balanced' : 'Imbalanced'}</div>
@@ -169,14 +173,14 @@ function renderRegionalBars(scan) {
     `;
 }
 
-function renderBarRow(label, value, maxVal, color) {
+function renderBarRow(label, value, maxVal, color, unit) {
     const pct = maxVal > 0 ? (value / maxVal) * 100 : 0;
     // width + color are genuinely dynamic — route via CSS custom properties
     return `
         <div class="regional-bar-row">
             <div class="regional-bar-label">${label}</div>
             <div class="regional-bar-track"><div class="regional-bar-fill" style="--bar-width:${pct.toFixed(0)}%;--bar-color:${color};"></div></div>
-            <div class="regional-bar-value">${value.toFixed(1)} lb</div>
+            <div class="regional-bar-value">${value.toFixed(1)} ${unit}</div>
         </div>
     `;
 }
@@ -191,7 +195,7 @@ function renderVisceralFat(scan) {
         <div class="stat-card comp-boxed">
             <div class="vat-row">
                 <div class="vat-info">
-                    <div class="stat-val comp-vat-val">${vat}<span class="stat-unit">lb</span></div>
+                    <div class="stat-val comp-vat-val">${vat}<span class="stat-unit">${scanUnit(scan)}</span></div>
                     <div class="vat-status ${statusClass}">${status}</div>
                 </div>
             </div>
@@ -230,8 +234,8 @@ function renderBodyWeightSection(entries, unit) {
         <div class="d-sec-head">Body weight</div>
         <div class="stat-card comp-boxed comp-boxed--clickable" onclick="openMetricDetail('body-weight')">
             <div class="comp-bw-head">
-                <div class="stat-val">${latestW.toFixed(1)}<span class="stat-unit">${unit}</span></div>
-                <div class="stat-delta ${delta <= 0 ? 'down' : 'up'}">${delta < 0 ? '↓' : '↑'} ${Math.abs(delta).toFixed(1)} ${unit} · 90d</div>
+                <div class="stat-val">${latestW.toFixed(1)}<span class="stat-unit">${unitLabel(unit)}</span></div>
+                <div class="stat-delta ${delta <= 0 ? 'down' : 'up'}">${delta < 0 ? '↓' : '↑'} ${Math.abs(delta).toFixed(1)} ${unitLabel(unit)} · 90d</div>
             </div>
             ${chartSparkline({ points, color: 'var(--cat-shoulders)', width: 280, height: 48 })}
             <div class="comp-boxed__more">View details <i class="fas fa-chevron-right"></i></div>
@@ -287,10 +291,8 @@ function renderActions(hasDexa) {
     `;
 }
 
-function formatDate(dateStr) {
-    if (!dateStr) return '';
-    const parts = dateStr.split('-');
-    if (parts.length < 3) return dateStr;
-    const d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
-    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+// DEXA masses stay in the unit the scan was entered in (massUnit) — label
+// them with it rather than converting.
+function scanUnit(scan) {
+    return unitLabel(scan?.massUnit || 'lbs');
 }

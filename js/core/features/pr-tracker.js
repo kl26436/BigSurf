@@ -6,6 +6,7 @@ import { db, doc, setDoc, getDoc } from '../data/firebase-config.js';
 import { getDateString } from '../utils/date-helpers.js';
 import { Config } from '../utils/config.js';
 import { getSetTotalWeight } from '../utils/weight-calculations.js';
+import { formatSet, unitLabel } from '../ui/ui-helpers.js';
 
 // ===================================================================
 // PR CUTOFF DATE - Only count PRs from this date onwards
@@ -565,17 +566,19 @@ export function getPRDisplayText(exerciseName, equipment = null) {
     if (!prs) return null;
 
     const displays = [];
+    // In the PR's own unit — the volume is stored unconverted, so the set beside it stays unconverted too.
+    const asLogged = (pr) => formatSet({ ...pr, originalUnit: pr.unit || 'lbs' }, pr.unit || 'lbs', { effort: false });
 
     if (prs.maxWeight) {
-        displays.push(`Max weight: ${prs.maxWeight.weight} lbs × ${prs.maxWeight.reps}`);
+        displays.push(`Max weight: ${asLogged(prs.maxWeight)}`);
     }
 
     if (prs.maxReps && prs.maxReps !== prs.maxWeight) {
-        displays.push(`Max reps: ${prs.maxReps.reps} @ ${prs.maxReps.weight} lbs`);
+        displays.push(`Max reps: ${asLogged(prs.maxReps)}`);
     }
 
     if (prs.maxVolume) {
-        displays.push(`Max volume: ${prs.maxVolume.volume} lbs (${prs.maxVolume.reps} × ${prs.maxVolume.weight})`);
+        displays.push(`Max volume: ${prs.maxVolume.volume} ${unitLabel(prs.maxVolume.unit)} (${asLogged(prs.maxVolume)})`);
     }
 
     return displays.join(' | ');

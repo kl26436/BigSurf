@@ -271,7 +271,7 @@ export function showLocationPrompt(onSave, onSkip) {
     const handleSave = () => {
         const name = input?.value.trim();
         if (!name) {
-            showNotification('Add a location name', 'warning');
+            showNotification('Add a gym name', 'warning');
             return;
         }
         closeModal(modal);
@@ -332,7 +332,7 @@ export function updateLocationIndicator(locationName) {
     if (locationName) {
         if (nameSpan) nameSpan.textContent = locationName;
     } else {
-        if (nameSpan) nameSpan.textContent = 'Tap to set location';
+        if (nameSpan) nameSpan.textContent = 'Tap to pick a gym';
     }
 }
 

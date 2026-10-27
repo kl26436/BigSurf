@@ -117,7 +117,7 @@ export function programCompletionForToday(program, today) {
     if (!program?.startDate || program.active === false) return null;
     const { week, finished } = deriveProgramWeek(program, today);
     if (!Number.isFinite(week) || !finished || week < 1) return null;
-    return { id: program.id, name: program.name || 'Your program', weeks: program.weeks || 1 };
+    return { id: program.id, name: program.name || 'Your plan', weeks: program.weeks || 1 };
 }
 
 /**
@@ -393,7 +393,7 @@ export async function applyProgramWeekAndStart(templateName) {
  */
 export function askCoachAboutProgramWeek() {
     import('./ai-coach-ui.js').then(m => {
-        m.showAICoach({ prefill: "What's today's session on my program? Propose the adjustments." }); // AU-14: prefill, never send
+        m.showAICoach({ prefill: "What's today's session on my plan? Propose the adjustments." }); // AU-14: prefill, never send
     }).catch(e => debugLog('program week ask failed:', e));
 }
 
@@ -403,7 +403,7 @@ export function askCoachAboutProgramWeek() {
  */
 export function askCoachToReflow() {
     import('./ai-coach-ui.js').then(m => {
-        m.showAICoach({ prefill: 'I trained fewer days than planned recently — can you reflow my program so this week still makes sense?' }); // AU-14: prefill, never send
+        m.showAICoach({ prefill: 'I trained fewer days than planned recently — can you reflow my plan so this week still makes sense?' }); // AU-14: prefill, never send
     }).catch(e => debugLog('reflow ask failed:', e));
 }
 
@@ -459,7 +459,7 @@ export function editProgramSchedule() {
 export function discussProgramWithCoach() {
     closeProgramDetailSheet();
     import('./ai-coach-ui.js').then(m => {
-        m.showAICoach({ prefill: "Let's review my program — walk me through the coming weeks, and what we could change." }); // AU-14: prefill, never send
+        m.showAICoach({ prefill: "Let's review my plan — walk me through the coming weeks, and what we could change." }); // AU-14: prefill, never send
     }).catch(e => debugLog('program discuss failed:', e));
 }
 

@@ -1564,7 +1564,7 @@ function renderEquipmentEditorLocations() {
     if (!container) return;
 
     if (editingEquipmentLocations.length === 0) {
-        container.innerHTML = '<div class="equipment-locations-empty">No locations added</div>';
+        container.innerHTML = '<div class="equipment-locations-empty">No gyms yet</div>';
         return;
     }
 
@@ -1608,7 +1608,7 @@ function renderEquipmentExerciseVideos() {
             <div class="equipment-video-row">
                 <div class="equipment-video-info">
                     <span class="equipment-video-exercise">${escapeHtml(exName)}</span>
-                    <input type="url" class="form-input equipment-video-input"
+                    <input type="url" class="field-input equipment-video-input"
                            id="equip-video-${safeExName}"
                            data-exercise="${safeExName}"
                            value="${escapeAttr(videoUrl)}"
@@ -1652,14 +1652,14 @@ export function addLocationToEquipmentEditor() {
     const locationName = input?.value.trim();
 
     if (!locationName) {
-        showNotification('Enter a location name', 'warning');
+        showNotification('Add a gym name', 'warning');
         input?.focus();
         return;
     }
 
     // Check for duplicate
     if (editingEquipmentLocations.includes(locationName)) {
-        showNotification('Location already added', 'warning');
+        showNotification("That gym's already here", 'warning');
         return;
     }
 

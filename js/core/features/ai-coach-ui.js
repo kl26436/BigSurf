@@ -87,7 +87,7 @@ function getContextualPrompts() {
                 prompts.push({
                     icon: 'fa-balance-scale',
                     iconClass: 'coach-prompt-card__icon--warning',
-                    text: `My ${low.bodyPart} volume is only ${low.avgWeeklySets} working sets per week (average over the last ${low.weeks} week${low.weeks === 1 ? '' : 's'}). How should I rebalance my program to hit all muscle groups?`,
+                    text: `My ${low.bodyPart} volume is only ${low.avgWeeklySets} working sets per week (average over the last ${low.weeks} week${low.weeks === 1 ? '' : 's'}). How should I rebalance my plan to hit all muscle groups?`,
                     html: `My <strong>${escapeHtml(low.bodyPart)}</strong> volume is low — how do I rebalance?`,
                 });
             } else if (high) {
@@ -874,7 +874,7 @@ function handleCoachActionCard(card, streamingBubble) {
                 <div class="coach-program-card__head">
                     <div class="coach-action-card__icon coach-action-card__icon--other"><i class="fas fa-flag-checkered"></i></div>
                     <div class="coach-action-card__body">
-                        <div class="coach-program-card__title">${escapeHtml(p.name || 'Program set')}</div>
+                        <div class="coach-program-card__title">${escapeHtml(p.name || 'Plan set')}</div>
                         <div class="coach-program-card__meta">${p.weeks} weeks${throughStr} · ${escapeHtml(p.goal || '')}${p.deloadWeek ? ` · lighter week is week ${p.deloadWeek}` : ''}</div>
                     </div>
                     <span class="coach-receipt-tag">Applied</span>
@@ -1122,7 +1122,7 @@ export async function undoProgramCreate(cardId) {
                 <div class="coach-action-card coach-action-card--undone">
                     <div class="coach-action-card__icon coach-action-card__icon--other"><i class="fas fa-rotate-left"></i></div>
                     <div class="coach-action-card__body">
-                        <div class="coach-action-card__title">Program undone</div>
+                        <div class="coach-action-card__title">Plan undone</div>
                         <div class="coach-action-card__desc">Week plan restored${u.priorProgramId ? ' · previous program reactivated' : ''}${restored.length ? ` · ${restored.length} workout${restored.length === 1 ? '' : 's'} un-rotated` : ''}</div>
                     </div>
                 </div>`;
@@ -1136,7 +1136,7 @@ export async function undoProgramCreate(cardId) {
                 sel.acceptCoachTemplateRefresh?.();
             } catch (e) { debugLog('coach: workoutPlans refresh after program undo failed', e); }
         }
-        showNotification('Program undone', 'success');
+        showNotification('Plan undone', 'success');
     } catch (e) {
         console.error('❌ Program undo failed:', e);
         showNotification("Couldn't undo — ask the coach to revert it", 'error');

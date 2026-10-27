@@ -9,6 +9,7 @@ import {
     escapeHtml,
     escapeAttr,
     openModal,
+    formatSet,
 } from '../ui/ui-helpers.js';
 import { getExerciseName } from '../utils/workout-helpers.js';
 import { groupExercises, ungroupExercise } from '../features/superset-manager.js';
@@ -519,7 +520,7 @@ export function createExerciseCard(exercise, index) {
             .map(s => {
                 let w = s.weight;
                 if (unit === 'kg') w = convertWeight(w, 'lbs', 'kg');
-                return `${s.reps}×${w}`;
+                return formatSet({ reps: s.reps, weight: w, originalUnit: unit }, unit, { effort: false });
             })
             .join(', ');
     }
@@ -626,7 +627,7 @@ export function createExerciseCard(exercise, index) {
                 .map(s => {
                     let w = s.weight;
                     if (unit === 'kg') w = convertWeight(w, 'lbs', 'kg');
-                    return `${s.reps}×${w}`;
+                    return formatSet({ reps: s.reps, weight: w, originalUnit: unit }, unit, { effort: false });
                 })
                 .join(', ');
             if (preview) {

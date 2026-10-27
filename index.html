@@ -170,8 +170,6 @@
         <link rel="modulepreload" href="js/core/features/charts/chart-sparkline.js">
         <link rel="modulepreload" href="js/core/features/charts/chart-line.js">
         <link rel="modulepreload" href="js/core/ui/dashboard-ui.js">
-        <link rel="modulepreload" href="js/core/features/charts/chart-area-stacked.js">
-        <link rel="modulepreload" href="js/core/features/charts/chart-donut.js">
         <link rel="modulepreload" href="js/core/ui/metric-detail-ui.js">
         <link rel="modulepreload" href="js/core/features/plan-roller.js">
         <link rel="modulepreload" href="js/core/ui/block-ui.js">
@@ -302,11 +300,8 @@
                             <button class="page-header__back" onclick="navigateBack()" aria-label="Back">
                                 <i class="fas fa-chevron-left"></i>
                             </button>
-                            <div class="page-header__title">Locations</div>
+                            <div class="page-header__title">Gyms</div>
                         </div>
-                        <button class="page-header__save" onclick="detectAndAddLocation()">
-                            <i class="fas fa-plus"></i> New
-                        </button>
                     </div>
 
                     <div class="location-management-content">
@@ -314,7 +309,7 @@
                         <div id="location-map-container" class="location-map-container">
                             <div class="location-map-placeholder">
                                 <i class="fas fa-map-marked-alt"></i>
-                                <span>Select a location to view on map</span>
+                                <span>Your gyms show up on the map</span>
                             </div>
                         </div>
 
@@ -472,7 +467,7 @@
                             </div>
 
                             <div class="filter-row">
-                                <select id="body-part-filter" class="form-input">
+                                <select id="body-part-filter" class="field-input">
                                     <option value="">All body parts</option>
                                     <option value="chest">Chest</option>
                                     <option value="back">Back</option>
@@ -482,7 +477,7 @@
                                     <option value="core">Core</option>
                                 </select>
 
-                                <select id="equipment-filter" class="form-input">
+                                <select id="equipment-filter" class="field-input">
                                     <option value="">All equipment</option>
                                     <option value="machine">Machine</option>
                                     <option value="dumbbell">Dumbbell</option>
@@ -566,7 +561,7 @@
         <dialog id="add-location-modal" class="modal">
             <div class="modal-content modal-medium">
                 <div class="modal-header">
-                    <h3>Add new location</h3>
+                    <h3>Add a gym</h3>
                     <button class="close-btn" aria-label="Close" onclick="closeAddLocationModal()">
                         <i class="fas fa-times"></i>
                     </button>
@@ -574,11 +569,11 @@
                 <div class="modal-body">
                     <!-- Location Name -->
                     <div class="form-group">
-                        <label>Location name</label>
+                        <label>Gym name</label>
                         <input
                             type="text"
                             id="add-location-name-input"
-                            class="form-input"
+                            class="field-input"
                             placeholder="e.g., LA Fitness Downtown"
                             autocomplete="off"
                         />
@@ -621,7 +616,7 @@
                                 <input
                                     type="text"
                                     id="location-address-search"
-                                    class="form-input"
+                                    class="field-input"
                                     placeholder="Enter address, city, or place name…"
                                     autocomplete="off"
                                     onkeydown="
@@ -645,7 +640,7 @@
 
                     <!-- Map Pin Method -->
                     <div id="location-method-map" class="location-method-content hidden">
-                        <p class="method-description">Drag the pin or tap on the map to set location</p>
+                        <p class="method-description">Drag the pin or tap the map where the gym is</p>
                         <div id="add-location-map-container" class="add-location-map">
                             <div class="map-placeholder">
                                 <i class="fas fa-map-marked-alt"></i>
@@ -658,13 +653,13 @@
                     <!-- Selected Coordinates Display -->
                     <div id="selected-coords-display" class="selected-coords hidden">
                         <i class="fas fa-map-marker-alt"></i>
-                        <span id="selected-coords-text">No location selected</span>
+                        <span id="selected-coords-text">No spot picked yet</span>
                     </div>
 
                     <div class="modal-actions">
                         <button class="btn btn-secondary" onclick="closeAddLocationModal()">Close</button>
                         <button class="btn btn-primary" onclick="saveNewLocationFromModal()">
-                            <i class="fas fa-plus"></i> Add location
+                            <i class="fas fa-plus"></i> Add gym
                         </button>
                     </div>
                 </div>
@@ -744,7 +739,6 @@
                             <div class="page-header__title" id="manual-workout-title-display">Your workout</div>
                         </div>
                     </div>
-                    <button class="page-header__save" onclick="saveManualWorkout()">Save</button>
                 </div>
                 <div class="content-section-body">
                     <!-- Inline date + duration editors (no prompt). The date chip uses
@@ -766,9 +760,9 @@
 
                     <!-- Location Selector -->
                     <div class="field">
-                        <div class="field-label"><i class="fas fa-map-marker-alt"></i> Location</div>
+                        <div class="field-label"><i class="fas fa-map-marker-alt"></i> Gym</div>
                         <select id="manual-workout-location" class="field-input">
-                            <option value="">Select gym location…</option>
+                            <option value="">Pick a gym…</option>
                             <!-- Populated dynamically -->
                         </select>
                     </div>
@@ -950,16 +944,16 @@
         <dialog id="location-prompt-modal" class="modal">
             <div class="modal-content modal-content-small">
                 <div class="modal-header">
-                    <h3><i class="fas fa-map-marker-alt"></i> New location detected</h3>
+                    <h3><i class="fas fa-map-marker-alt"></i> New gym?</h3>
                 </div>
                 <div class="modal-body">
-                    <p class="location-prompt-text">You're at a new location! What gym is this?</p>
+                    <p class="location-prompt-text">You're somewhere new. What gym is this?</p>
 
                     <div class="form-group">
                         <input
                             type="text"
                             id="new-location-name"
-                            class="input-field"
+                            class="field-input"
                             list="saved-locations-list"
                             placeholder="e.g., Planet Fitness Downtown"
                             autocomplete="off"
@@ -972,7 +966,7 @@
                     <div class="modal-actions">
                         <button type="button" id="skip-location-btn" class="btn btn-secondary">Skip</button>
                         <button type="button" id="save-location-btn" class="btn btn-primary">
-                            <i class="fas fa-check"></i> Save location
+                            <i class="fas fa-check"></i> Save gym
                         </button>
                     </div>
                 </div>
@@ -983,7 +977,7 @@
         <dialog id="workout-location-selector-modal" class="modal">
             <div class="modal-content modal-content-small">
                 <div class="modal-header">
-                    <h3><i class="fas fa-map-marker-alt"></i> Change location</h3>
+                    <h3><i class="fas fa-map-marker-alt"></i> Change gym</h3>
                     <button class="close-btn" aria-label="Close" onclick="closeWorkoutLocationSelector()">
                         <i class="fas fa-times"></i>
                     </button>
@@ -994,15 +988,15 @@
                     </div>
 
                     <div class="form-section-divider">
-                        <span>Or add new location</span>
+                        <span>Or add a new gym</span>
                     </div>
 
                     <div class="form-group">
                         <input
                             type="text"
                             id="workout-location-new-name"
-                            class="input-field"
-                            placeholder="Enter new location name"
+                            class="field-input"
+                            placeholder="New gym name"
                         />
                     </div>
 
@@ -1011,7 +1005,7 @@
                             Keep current
                         </button>
                         <button type="button" class="btn btn-primary" onclick="confirmWorkoutLocationChange()">
-                            <i class="fas fa-check"></i> Set location
+                            <i class="fas fa-check"></i> Set gym
                         </button>
                     </div>
                 </div>
@@ -1067,7 +1061,7 @@
 
                 <!-- Section 3: Locations -->
                 <div class="edit-section">
-                    <h3 class="edit-section-title">Locations</h3>
+                    <h3 class="edit-section-title">Gyms</h3>
                     <p class="edit-section-hint">Gyms where you use this equipment</p>
 
                     <div id="equipment-editor-locations" class="equipment-locations-list">
@@ -1081,13 +1075,13 @@
                                 type="text"
                                 id="equipment-editor-new-location"
                                 class="edit-input-full"
-                                placeholder="Add location (e.g., Planet Fitness)"
+                                placeholder="Add a gym (e.g., Planet Fitness)"
                                 list="equipment-editor-location-list"
                             />
                             <datalist id="equipment-editor-location-list"></datalist>
                         </div>
                         <button type="button" class="exlib-add-btn" onclick="addLocationToEquipmentEditor()">
-                            <i class="fas fa-plus"></i> Add location
+                            <i class="fas fa-plus"></i> Add gym
                         </button>
                     </div>
                 </div>

@@ -1,7 +1,8 @@
 // Muscle Group Detail — Level 2 drill-down from dashboard body-part cards
 
 import { AppState } from '../utils/app-state.js';
-import { escapeHtml, escapeAttr } from './ui-helpers.js';
+import { escapeHtml, escapeAttr, formatSet, unitLabel } from './ui-helpers.js';
+import { formatDateShort } from '../utils/date-helpers.js';
 import {
     aggregateBodyPartStats, getExercisesForBodyPart, getPRsForBodyPart,
     formatVolume, capitalize,
@@ -23,6 +24,11 @@ function bodyPartColor(bp) {
     const map = { chest: 'var(--cat-push)', back: 'var(--cat-pull)', legs: 'var(--cat-legs)', shoulders: 'var(--cat-shoulders)', arms: 'var(--cat-arms)', core: 'var(--cat-core)' };
     return map[bp] || 'var(--text-muted)';
 }
+
+// The aggregators sum stored weights as logged (no unit conversion), so these
+// numbers are labeled, not converted.
+const mgUnit = () => unitLabel(AppState.globalUnit);
+const mgSet = ({ reps, weight }) => formatSet({ reps, weight, originalUnit: AppState.globalUnit || 'lbs' }, AppState.globalUnit || 'lbs', { effort: false });
 
 /** "2026-06-29" → "Jun 29" for chart x-axis labels. Safe on empty input. */
 function mgShortDate(dateStr) {
@@ -64,11 +70,11 @@ export function renderMuscleGroupDetail(bodyPart) {
             <div class="d-hero-stats">
                 <div class="d-stat">
                     <div class="d-stat__label"><i class="fas fa-trophy text-badge-gold"></i> Heaviest · ${heroShort}</div>
-                    <div class="d-stat__val">${stats.heaviest ? `${stats.heaviest.weight}<span class="d-stat__unit">× ${stats.heaviest.reps}</span>` : '—'}</div>
+                    <div class="d-stat__val">${stats.heaviest ? mgSet(stats.heaviest) : '—'}</div>
                 </div>
                 <div class="d-stat">
                     <div class="d-stat__label">Total volume</div>
-                    <div class="d-stat__val">${formatVolume(stats.volume)}<span class="d-stat__unit"> lb</span></div>
+                    <div class="d-stat__val">${formatVolume(stats.volume)}<span class="d-stat__unit"> ${mgUnit()}</span></div>
                     ${stats.volumeDeltaPct != null ? `<div class="d-stat__delta ${stats.volumeDeltaPct >= 0 ? 'up' : 'down'}">${stats.volumeDeltaPct >= 0 ? '↑' : '↓'} ${Math.abs(stats.volumeDeltaPct).toFixed(0)}% vs prev</div>` : ''}
                 </div>
             </div>
@@ -133,10 +139,10 @@ function renderExerciseRow(ex, bodyPart) {
             <div class="d-ex-spark">${chartSparkline({ points: ex.trend, color, width: 54, height: 24 })}</div>
             <div class="d-ex-info">
                 <div class="d-ex-name">${escapeHtml(ex.name)}</div>
-                <div class="d-ex-meta">${ex.sessions} sessions · ${ex.sets} sets · best ${ex.heaviest ? `${ex.heaviest.reps}×${ex.heaviest.weight}` : '—'}</div>
+                <div class="d-ex-meta">${ex.sessions} sessions · ${ex.sets} sets · best ${ex.heaviest ? mgSet(ex.heaviest) : '—'}</div>
             </div>
             <div class="d-ex-right">
-                <div class="d-ex-val">${formatVolume(ex.volume)} lb</div>
+                <div class="d-ex-val">${formatVolume(ex.volume)} ${mgUnit()}</div>
                 ${ex.volumeDeltaPct != null ? `<div class="d-ex-delta ${ex.volumeDeltaPct >= 0 ? '' : 'down'}">${ex.volumeDeltaPct >= 0 ? '↑' : '↓'} ${Math.abs(ex.volumeDeltaPct).toFixed(0)}%</div>` : ''}
             </div>
         </div>
@@ -149,9 +155,9 @@ function renderPRRow(pr) {
             <div class="pr-badge"><i class="fas fa-trophy"></i></div>
             <div class="pr-info">
                 <div class="pr-name">${escapeHtml(pr.exercise)}</div>
-                <div class="pr-meta">${pr.date} · ${pr.reps} reps</div>
+                <div class="pr-meta">${formatDateShort(pr.date)} · ${pr.reps} reps</div>
             </div>
-            <div class="pr-val">${pr.weight} lb</div>
+            <div class="pr-val">${pr.weight} ${mgUnit()}</div>
         </div>
     `;
 }

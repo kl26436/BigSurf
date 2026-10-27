@@ -164,12 +164,12 @@ export function showDexaUploadModal() {
 
             <div class="form-group">
                 <label class="form-label">Scan date</label>
-                <input type="date" id="dexa-date" class="form-input" value="${AppState.getTodayDateString()}">
+                <input type="date" id="dexa-date" class="field-input" value="${AppState.getTodayDateString()}">
             </div>
 
             <div class="form-group">
                 <label class="form-label">Facility <span class="optional-label">(optional)</span></label>
-                <input type="text" id="dexa-provider" class="form-input"
+                <input type="text" id="dexa-provider" class="field-input"
                        placeholder="e.g. DexaFit Boston" value="">
             </div>
 
@@ -417,7 +417,7 @@ export function showDexaReviewForm(scanId, prefillData = {}, isManual = false) {
 
             <div class="form-group ${lowConf('totalBodyFat')}">
                 <label>Total body fat % ${reviewBadge('totalBodyFat')}</label>
-                <input type="number" id="dexa-total-bf" class="form-input"
+                <input type="number" id="dexa-total-bf" class="field-input"
                        placeholder="e.g. 18.5" step="0.1" min="0" max="100" inputmode="decimal"
                        value="${data.totalBodyFat ?? ''}">
             </div>
@@ -425,13 +425,13 @@ export function showDexaReviewForm(scanId, prefillData = {}, isManual = false) {
             <div class="dexa-form-row">
                 <div class="form-group ${lowConf('totalWeight')}">
                     <label>Total weight (${unit}) ${reviewBadge('totalWeight')}</label>
-                    <input type="number" id="dexa-total-weight" class="form-input"
+                    <input type="number" id="dexa-total-weight" class="field-input"
                            placeholder="0" step="0.1" min="0" max="999" inputmode="decimal"
                            value="${data.totalWeight ?? ''}">
                 </div>
                 <div class="form-group">
                     <label>Lean mass (${unit})</label>
-                    <input type="number" id="dexa-total-lean" class="form-input"
+                    <input type="number" id="dexa-total-lean" class="field-input"
                            placeholder="0" step="0.1" min="0" max="999" inputmode="decimal"
                            value="${data.totalLeanMass ?? ''}">
                 </div>
@@ -440,13 +440,13 @@ export function showDexaReviewForm(scanId, prefillData = {}, isManual = false) {
             <div class="dexa-form-row">
                 <div class="form-group">
                     <label>Fat mass (${unit})</label>
-                    <input type="number" id="dexa-total-fat" class="form-input"
+                    <input type="number" id="dexa-total-fat" class="field-input"
                            placeholder="0" step="0.1" min="0" max="999" inputmode="decimal"
                            value="${data.totalFatMass ?? ''}">
                 </div>
                 <div class="form-group">
                     <label>Bone mass (${unit})</label>
-                    <input type="number" id="dexa-bone-mass" class="form-input"
+                    <input type="number" id="dexa-bone-mass" class="field-input"
                            placeholder="0" step="0.1" min="0" max="99" inputmode="decimal"
                            value="${data.boneMass ?? ''}">
                 </div>
@@ -475,13 +475,13 @@ export function showDexaReviewForm(scanId, prefillData = {}, isManual = false) {
                     <div class="dexa-form-row ${lowConf('boneDensity')}">
                         <div class="form-group">
                             <label>T-Score ${reviewBadge('boneDensity')}</label>
-                            <input type="number" id="dexa-t-score" class="form-input"
+                            <input type="number" id="dexa-t-score" class="field-input"
                                    placeholder="e.g. 1.2" step="0.1" min="-5" max="5" inputmode="decimal"
                                    value="${data.boneDensity?.tScore ?? ''}">
                         </div>
                         <div class="form-group">
                             <label>Z-Score</label>
-                            <input type="number" id="dexa-z-score" class="form-input"
+                            <input type="number" id="dexa-z-score" class="field-input"
                                    placeholder="e.g. 1.5" step="0.1" min="-5" max="5" inputmode="decimal"
                                    value="${data.boneDensity?.zScore ?? ''}">
                         </div>
@@ -492,7 +492,7 @@ export function showDexaReviewForm(scanId, prefillData = {}, isManual = false) {
             <!-- VAT -->
             <div class="form-group ${lowConf('vat')}">
                 <label>Visceral fat ${reviewBadge('vat')} <span class="optional-label">(optional)</span></label>
-                <input type="number" id="dexa-vat" class="form-input"
+                <input type="number" id="dexa-vat" class="field-input"
                        placeholder="e.g. 0.8" step="0.1" min="0" max="50" inputmode="decimal"
                        value="${data.vat ?? ''}">
             </div>
@@ -503,37 +503,37 @@ export function showDexaReviewForm(scanId, prefillData = {}, isManual = false) {
                 <div class="dexa-regional-grid">
                     <div class="dexa-regional-item">
                         <label>RMR (cal/day)</label>
-                        <input type="number" id="dexa-rmr" class="form-input"
+                        <input type="number" id="dexa-rmr" class="field-input"
                                placeholder="e.g. 1671" step="1" min="0" max="9999" inputmode="numeric"
                                value="${data.rmr ?? ''}">
                     </div>
                     <div class="dexa-regional-item">
                         <label>A/G ratio</label>
-                        <input type="number" id="dexa-ag-ratio" class="form-input"
+                        <input type="number" id="dexa-ag-ratio" class="field-input"
                                placeholder="e.g. 0.71" step="0.01" min="0" max="5" inputmode="decimal"
                                value="${data.agRatio ?? ''}">
                     </div>
                     <div class="dexa-regional-item">
                         <label>Android fat %</label>
-                        <input type="number" id="dexa-android-fat" class="form-input"
+                        <input type="number" id="dexa-android-fat" class="field-input"
                                placeholder="e.g. 12.8" step="0.1" min="0" max="100" inputmode="decimal"
                                value="${data.androidFatPct ?? ''}">
                     </div>
                     <div class="dexa-regional-item">
                         <label>Gynoid fat %</label>
-                        <input type="number" id="dexa-gynoid-fat" class="form-input"
+                        <input type="number" id="dexa-gynoid-fat" class="field-input"
                                placeholder="e.g. 18.0" step="0.1" min="0" max="100" inputmode="decimal"
                                value="${data.gynoidFatPct ?? ''}">
                     </div>
                     <div class="dexa-regional-item">
                         <label>Bone mineral content (${unit})</label>
-                        <input type="number" id="dexa-total-bmc" class="form-input"
+                        <input type="number" id="dexa-total-bmc" class="field-input"
                                placeholder="e.g. 6.2" step="0.1" min="0" max="50" inputmode="decimal"
                                value="${data.totalBMC ?? ''}">
                     </div>
                     <div class="dexa-regional-item">
                         <label>VAT volume (in³)</label>
-                        <input type="number" id="dexa-vat-volume" class="form-input"
+                        <input type="number" id="dexa-vat-volume" class="field-input"
                                placeholder="e.g. 33.7" step="0.1" min="0" max="999" inputmode="decimal"
                                value="${data.vatVolume ?? ''}">
                     </div>
@@ -542,7 +542,7 @@ export function showDexaReviewForm(scanId, prefillData = {}, isManual = false) {
 
             <div class="form-group">
                 <label>Notes <span class="optional-label">(optional)</span></label>
-                <input type="text" id="dexa-notes" class="form-input"
+                <input type="text" id="dexa-notes" class="field-input"
                        placeholder="e.g. Post-bulk, morning scan" value="${escapeAttr(data.notes || '')}">
             </div>
 
@@ -582,7 +582,7 @@ function renderRegionalFields(prefix, label, data, lowConfClass) {
                 ${regions.map(([key, name]) => `
                     <div class="dexa-regional-item">
                         <label>${name}</label>
-                        <input type="number" id="dexa-${prefix}-${key}" class="form-input"
+                        <input type="number" id="dexa-${prefix}-${key}" class="field-input"
                                placeholder="—" step="0.1" min="0" max="999" inputmode="decimal"
                                value="${d[key] ?? ''}">
                     </div>

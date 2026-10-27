@@ -94,7 +94,7 @@ export function getDayName(date, format = 'long') {
 
 /**
  * Format a date as a relative label: "Today", "Yesterday", optionally
- * "N days ago" / "N weeks ago", else "MMM d".
+ * formatRelative's sentence form ("3 days ago", "last week"), else "MMM d".
  * @param {Date|string|number} dateLike
  * @param {{ daysAgo?: boolean, weeksAgo?: boolean }} [options]
  *   daysAgo: use "N days ago" for 2-6 days (default false)
@@ -102,20 +102,18 @@ export function getDayName(date, format = 'long') {
  */
 export function formatRelativeDate(dateLike, { daysAgo = false, weeksAgo = false } = {}) {
     const date = toLocalDate(dateLike);
-    if (!date) return '';
+    if (!date || isNaN(date)) return '';
 
-    const todayStr = getDateString(new Date());
-    const dateStr = getDateString(date);
-    if (dateStr === todayStr) return 'Today';
-
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    if (dateStr === getDateString(yesterday)) return 'Yesterday';
-
+    // Local calendar days — getDateString is UTC, so after ~5 pm in the US
+    // today's workout lost its "Today".
     const now = new Date();
-    const diffDays = Math.floor((now - date) / 86400000);
-    if (daysAgo && diffDays > 0 && diffDays < 7) return `${diffDays} days ago`;
-    if (weeksAgo && diffDays >= 7 && diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`;
+    const startOf = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+    const days = Math.round((startOf(now) - startOf(date)) / 86400000);
+    if (days === 0) return 'Today';
+    if (days === 1) return 'Yesterday';
+    if ((daysAgo && days > 1 && days < 7) || (weeksAgo && days >= 7 && days < 30)) {
+        return formatRelative(dateLike, { now });
+    }
 
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }

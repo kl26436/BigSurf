@@ -20,7 +20,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Backend**: Firebase (Firestore for data, Firebase Auth for authentication)
 - **Testing**: Vitest (`npm test` to run, `npm run test:watch` for watch mode)
 - **No build process**: Direct ES6 module imports in browser
-- **CDN**: Firebase SDK 10.7.1, Font Awesome 6.0.0, Chart.js 4.4.1 (used ONLY by the body-weight chart in body-measurements-ui.js — all other charts are hand-rolled inline SVG in `js/core/features/charts/`), Leaflet 1.9.4
+- **CDN**: Firebase SDK 10.7.1, Font Awesome 6.0.0, Chart.js 4.4.1 (loaded but no live chart uses it — every chart is hand-rolled inline SVG in `js/core/features/charts/`; the old body-weight Chart.js chart had no canvas left), Leaflet 1.9.4
 
 ## Application Architecture
 
@@ -65,7 +65,7 @@ js/
     │   ├── ai-coach-ui.js          # AI Coach modal, prompt cards, history
     │   ├── block-view.js           # AP-24: pure Block page model (week × day cells, targets via progressionTarget)
     │   ├── body-measurements.js    # Body weight/measurements data layer
-    │   ├── body-measurements-ui.js # Weight entry page, Chart.js weight chart (the ONLY Chart.js usage)
+    │   ├── body-measurements-ui.js # Weight entry page (Log weight)
     │   ├── bodyweight-prompt.js    # Prompt for bodyweight on BW exercises
     │   ├── charts/                 # Hand-rolled inline-SVG chart primitives (no library)
     │   │   ├── chart-line.js           # Line chart w/ optional goal line + gradient fill
@@ -129,7 +129,8 @@ js/
     │   ├── equipment-quick-edit.js # Quick-edit bottom sheet (name/brand/line/function, exercise + gym chips)
     │   ├── exercise-manager-ui.js  # Exercise library modal
     │   ├── error-log-ui.js         # Error log page (More menu)
-    │   ├── navigation.js           # Bottom nav, routing, navStack (10 deep), enterSection, system-back guard wiring
+    │   ├── navigation.js           # Bottom nav, routing, navStack (10 deep), enterSection, system-back guard wiring, the logo-bar rule (LOGO_VIEWS)
+    │   ├── more-menu.js            # UD-1: the More tab — openSheet() rendered from moreMenuGroups() (the app's map)
     │   ├── back-guard.js           # SH-6: one history entry so Android back / iOS edge swipe does an in-app back
     │   ├── settings-ui.js          # Settings page, onboarding flow, profile detail
     │   ├── confirm-sheet.js        # confirmSheet()/promptSheet() — promise-based replacement for native confirm/prompt
@@ -176,7 +177,7 @@ There is no Stats tab — `stats-ui.js`, `exercise-progress.js`, and `styles/pag
 2. **Muscle group detail** (`muscle-group-detail-ui.js`) → tap an exercise to
 3. **Exercise detail** (`exercise-detail-ui.js`)
 
-Plus `metric-detail-ui.js` / `composition-detail-ui.js` for metric-card drill-downs and `renderProgressPage()` (in dashboard-ui.js, `#progress-section`) as a consolidated view. All math comes from `js/core/features/metrics/aggregators.js`; all charts are the SVG primitives in `js/core/features/charts/` — NOT Chart.js (only the body-weight chart in body-measurements-ui.js uses Chart.js). Back navigation uses the navStack in navigation.js.
+Plus `metric-detail-ui.js` / `composition-detail-ui.js` for metric-card drill-downs and `renderProgressPage()` (in dashboard-ui.js, `#progress-section`) as a consolidated view. All math comes from `js/core/features/metrics/aggregators.js`; all charts are the SVG primitives in `js/core/features/charts/` — NOT Chart.js. Back navigation uses the navStack in navigation.js.
 
 ### CSS Architecture
 
@@ -194,7 +195,7 @@ styles/
 │   ├── fields.css         # .field-search, .field-label, form fields
 │   ├── forms.css          # Inputs, selects, toggles
 │   ├── modals.css         # Modal overlay, content, animations
-│   ├── nav.css            # Bottom nav (5-tab), More menu (bottom sheet with grouped sections)
+│   ├── nav.css            # Bottom nav (5-tab); the More menu is an openSheet (more-menu.js) with .srow rows
 │   ├── page-header.css    # .section-header-row, .page-header__*, .sec-head
 │   ├── empty-states.css   # Empty state patterns
 │   ├── charts.css         # Chart container/legend chrome for the SVG chart primitives
@@ -526,6 +527,7 @@ These rules are canonical for all new CSS and JS that renders markup. When in do
 3b. **One button vocabulary (DS-3).** `.btn` + `.btn-primary` | `.btn-secondary` | `.btn-ghost` | `.btn-success` | `.btn-danger`; `.btn-text` / `.btn-text-small`; `.btn-icon` (+ `.btn-icon--filled`, always with `aria-label`); sizes `.btn-sm` / `.btn-lg`, width `.btn-block`. All defined in [components/buttons.css](styles/components/buttons.css) and nowhere else (`buttonRulesOutsideButtonsCss: 0`; [button-vocab.test.js](tests/unit/button-vocab.test.js) checks markup). A component's own button shape gets a component name (`.tpl-start`, `.exlib-add-btn`), never `.btn-*`. Dismiss buttons are `.btn-secondary` / `.btn-ghost`, never red — see the color semantics at the top of [tokens.css](styles/tokens.css).
 4. **One search field.** Every search input is a `.field-search` (icon + input, `--sticky` when pinned, `.field-search__clear` + `--with-clear` for a clear button) from [components/fields.css](styles/components/fields.css); `openSheet({ search })` renders it for sheets. `searchInputsOutsideFieldSearch: 0`.
 
+1b. **What a row promises (UD-3).** A list item is a `.row-card` (grouped settings / menus: `.srow` inside `.group`). Its trailing slot says what a tap does: **chevron = opens a page · value only = static · control (play / toggle / ⋯) = acts on the row.** No `cursor: pointer` / `:active` press on a row without a handler; no handler on a row without a chevron or a control. Menus in sheets are `<button class="srow srow--clickable srow--button">` rows.
 4b. **One shell (SH-5).** New bottom sheet → `openSheet()` ([sheet.js](js/core/ui/sheet.js)). New page header → `.page-header`. Never write `env(safe-area-inset-top)` (use `var(--safe-top)`), a new `position: fixed; bottom: 0` overlay root, or `body.style.overflow` outside the primitives (`sheet.css`, `page-header.css`, `tokens.css`, `page-lock.js`). `npm run audit:design:strict` now includes the shell budgets from [shell-audit.js](scripts/shell-audit.js); they only go down. Before a prod promote, run [docs/ux-shell-checklist.md](docs/ux-shell-checklist.md) on the phone.
 
 ### Token rules (what to never hard-code)
@@ -624,6 +626,18 @@ Never just say "Nothing here" or show an icon alone.
 
 Numbers stay; jargon goes. Say **estimated max**, **effort (out of 10)**, **lighter week**, **build week / push week**, **stuck**, **main lifts**, **plan** — never e1RM, RPE, deload, block, rung, MEV/MRV, accumulate/intensify, primaries. Use the formatters in [plain-language.js](js/core/features/plain-language.js) (`effortTag`, `weekKindLabel`, `describeStuck`, `describeStrengthChange`…). Identifiers keep their names (`isDeloadTarget`, `intent.mode === 'deload'`). `npm run audit:design:strict` fails on any banned word in visible text (budget `jargonInUiStrings: 0`, [scripts/jargon-audit.js](scripts/jargon-audit.js)); a deliberate exception carries `// copy-ok: <reason>`. The same words govern every context line the coach is told to quote — the eval's `no-jargon` checks cover the answer and the context.
 
+### 8c. Never compose a number in a template — call the formatter (UD-4)
+
+| What | Formatter | Reads |
+|---|---|---|
+| a set | `formatSet(set, unit)` (ui-helpers.js) | `6 × 185 lb` · `6 × 185 lb · effort 8/10` · `12 reps` — reps first, always |
+| a unit word | `unitLabel(unit)` (ui-helpers.js) | `lb` / `kg` — never a literal `lb`/`lbs` in a template |
+| a date | `formatDateShort(d)` (date-helpers.js) | `Tue, Oct 14` (year added when it isn't this year) |
+| "… ago" | `formatRelative(d, { dense })` (date-helpers.js) | dense `3d ago` (data rows) · sentence `3 days ago` / `yesterday` (Intl.RelativeTimeFormat) |
+| a duration | `formatDuration(seconds)` (date-helpers.js) | `42 min` · `1 h 5 min` |
+
+Mirrored modules (functions/ copies) can't import these; their few "… ago" strings are counted in `relativeTimeImplementations` ([scripts/ux-audit.js](scripts/ux-audit.js)). That audit's budgets (rows, heads, backs, routes, "… ago" builders, unit literals, the word table below) ride `audit:design:strict` and only go down.
+
 ### 9. Terminology
 
 The user thinks "workouts." Keep "template" as a code-side concept; never expose it.
@@ -634,6 +648,11 @@ The user thinks "workouts." Keep "template" as a code-side concept; never expose
 | `Workout Library` | `your workouts` |
 | `superset group A/B/C` | `Superset A` |
 | `defaultReps`, `defaultSets` | `Default reps`, `Default sets` |
+| `location`, `locations[]` (the place you train) | `gym` — "location" only for the phone's position (GPS, permission) |
+| `equipment` doc | `machine` (the thing) · `Equipment` (the page) |
+| `program`, `block` | `plan` |
+| weigh-in entry | `Log weight` |
+| AI coach | `Coach` |
 
 ### 10. Aria and accessibility copy
 

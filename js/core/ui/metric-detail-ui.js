@@ -1,41 +1,23 @@
 // Metric Detail UI — drill-down detail views for tappable metric cards
 
 import { AppState } from '../utils/app-state.js';
-import { escapeHtml, displayWeight } from './ui-helpers.js';
+import { escapeHtml } from './ui-helpers.js';
 import { navigateTo, navigateBack } from './navigation.js';
 import { confirmSheet } from './confirm-sheet.js';
 import { formatRelativeDate as formatRelativeDateShared } from '../utils/date-helpers.js';
 
-import { renderRangeFilter, getRangeBounds, getPreviousRangeBounds, rangeLabel, DEFAULT_RANGE, persistRange } from '../features/metrics/range-filter.js';
-import {
-    aggregateVolumeByBodyPart, aggregateVolumeTimeseries,
-    aggregate1RMSeries, countSessionsAndSets, bodyPartTrendPoints,
-    formatNumber, formatVolume, capitalize, BP_TO_CAT,
-} from '../features/metrics/aggregators.js';
-import { chartSparkline } from '../features/charts/chart-sparkline.js';
-
-// Volumes and estimated 1RMs are computed in lbs by the aggregators; the
-// body-weight path in this file already converts for display — these two
-// helpers give the volume/strength paths the same honesty for kg users.
-function toUserWeight(lbsValue) {
-    return displayWeight(lbsValue || 0, 'lbs', AppState.globalUnit || 'lbs').value;
-}
-function userWeightUnit() {
-    return (AppState.globalUnit || 'lbs') === 'kg' ? 'kg' : 'lb';
-}
+import { renderRangeFilter, getRangeBounds, rangeLabel, DEFAULT_RANGE, persistRange } from '../features/metrics/range-filter.js';
 import { chartLine } from '../features/charts/chart-line.js';
-import { chartAreaStacked } from '../features/charts/chart-area-stacked.js';
-import { chartDonut } from '../features/charts/chart-donut.js';
 
 // ===================================================================
 // DETAIL RENDERERS REGISTRY
 // ===================================================================
 
+// Only body weight has a door (Home's Body card, More → Body & scans). The
+// volume / strength / composition renderers were reachable only from
+// metric-card-base.js, which nothing imported — deleted with it (UD-6).
 const DETAIL_RENDERERS = {
-    'volume-by-body-part': renderVolumeBodyPartDetail,
-    'strength-top-lifts': renderStrengthDetail,
     'body-weight': renderBodyWeightDetail,
-    'body-composition': renderBodyCompositionDetail,
 };
 
 // ===================================================================
@@ -171,152 +153,6 @@ function renderUnknownMetric(id) {
             Detail view coming soon.
         </div>
     `;
-}
-
-// Range-scoped empty with a one-tap "widen" — matches the exercise/muscle-group
-// drill-down empty states so every "nothing in this range" surface behaves the
-// same. Omits the button when already on All time.
-function mdEmptyRange(message, range) {
-    const cta = range !== 'All'
-        ? `<button class="btn btn-secondary md-empty-cta" onclick="setDetailRange('All')">View all time</button>`
-        : '';
-    return `<div class="md-empty-range"><div class="md-empty-line">${message}</div>${cta}</div>`;
-}
-
-// ===================================================================
-// VOLUME BY BODY PART DETAIL
-// ===================================================================
-
-async function renderVolumeBodyPartDetail(container, range) {
-    container.innerHTML = '<div class="skeleton skeleton-card md-skel-tall"></div>';
-
-    try {
-        const { StatsTracker } = await import('../features/stats-tracker.js');
-        const workouts = await StatsTracker.getRecentWorkouts(100);
-
-        const bounds = getRangeBounds(range);
-        const prevBounds = getPreviousRangeBounds(range);
-        const cur = aggregateVolumeByBodyPart(workouts, bounds);
-        const prev = prevBounds ? aggregateVolumeByBodyPart(workouts, prevBounds) : null;
-        const series = aggregateVolumeTimeseries(workouts, bounds, range === 'W' ? 'day' : 'week');
-
-        const total = Object.values(cur).reduce((s, v) => s + v, 0);
-        const prevTotal = prev ? Object.values(prev).reduce((s, v) => s + v, 0) : null;
-        const deltaPct = prevTotal ? Math.round((total - prevTotal) / prevTotal * 100) : null;
-
-        // Generate insight
-        const bodyParts = ['chest', 'back', 'legs', 'arms', 'core', 'shoulders'];
-        let insight = '';
-        if (prev) {
-            const changes = bodyParts.map(bp => ({
-                bp,
-                cur: cur[bp] || 0,
-                prev: prev[bp] || 0,
-                pct: prev[bp] ? Math.round((cur[bp] - prev[bp]) / prev[bp] * 100) : 0,
-            })).filter(c => c.prev > 0);
-            const best = changes.reduce((max, c) => c.pct > max.pct ? c : max, { pct: -Infinity });
-            const worst = changes.reduce((min, c) => c.pct < min.pct ? c : min, { pct: Infinity });
-            if (best.bp && worst.bp && best.bp !== worst.bp) {
-                insight = `Your <strong>${best.bp}</strong> volume is up <strong>${best.pct}%</strong> this ${rangeLabel(range)} while <strong>${worst.bp}</strong> is ${worst.pct >= 0 ? 'up' : 'down'} ${Math.abs(worst.pct)}%.`;
-            }
-        }
-
-        const breakdownItems = bodyParts.map(part => {
-            const { sessions, sets } = countSessionsAndSets(workouts, part, bounds);
-            const trend = bodyPartTrendPoints(workouts, part, bounds);
-            const prevPart = prev?.[part] || 0;
-            const partDelta = prevPart ? Math.round(((cur[part] || 0) - prevPart) / prevPart * 100) : null;
-            const color = `var(--cat-${BP_TO_CAT[part] || part})`;
-            return `
-                <div class="detail-row">
-                    ${chartSparkline({ points: trend, color, width: 64, height: 28 })}
-                    <div class="detail-row__info">
-                        <div class="detail-row__name">${capitalize(part)}</div>
-                        <div class="detail-row__sub">${sessions} sessions · ${sets} sets</div>
-                    </div>
-                    <div class="detail-row__right">
-                        <div class="detail-row__val">${formatVolume(toUserWeight(cur[part] || 0))} ${userWeightUnit()}</div>
-                        ${partDelta != null ? `<div class="detail-row__delta delta-${partDelta >= 0 ? 'up' : 'down'}">${partDelta >= 0 ? '↑' : '↓'} ${Math.abs(partDelta)}%</div>` : ''}
-                    </div>
-                </div>
-            `;
-        }).join('');
-
-        container.innerHTML = renderDetailLayout({
-            title: 'Volume by body part',
-            range,
-            hero: `
-                <div class="detail-hero__num">${formatNumber(toUserWeight(total))}<span class="detail-hero__unit">${userWeightUnit()}</span></div>
-                ${deltaPct != null ? `<div class="detail-hero__delta delta-${deltaPct >= 0 ? 'up' : 'down'}">${deltaPct >= 0 ? '↑' : '↓'} ${Math.abs(deltaPct)}% vs previous ${rangeLabel(range)}</div>` : ''}
-            `,
-            chart: chartAreaStacked({ series, width: 300, height: 140 }),
-            insight,
-            breakdown: total > 0 ? breakdownItems : mdEmptyRange('No volume logged in this range.', range),
-        });
-    } catch (error) {
-        console.error('❌ Error rendering volume detail:', error);
-        container.innerHTML = '<div class="md-error">Error loading volume data.</div>';
-    }
-}
-
-// ===================================================================
-// STRENGTH / TOP LIFTS DETAIL
-// ===================================================================
-
-async function renderStrengthDetail(container, range) {
-    container.innerHTML = '<div class="skeleton skeleton-card md-skel-tall"></div>';
-
-    try {
-        const { StatsTracker } = await import('../features/stats-tracker.js');
-        const workouts = await StatsTracker.getRecentWorkouts(100);
-        const bounds = getRangeBounds(range);
-
-        const bigLifts = ['Bench Press', 'Squat', 'Deadlift', 'Overhead Press'];
-        const liftRows = bigLifts.map(lift => {
-            const series = aggregate1RMSeries(workouts, lift, bounds);
-            const points = series.map((p, i) => ({ x: i, y: Math.round(p.oneRM) }));
-            // Convert BEFORE the delta so both numbers live in the user's unit.
-            const latest = series.length > 0 ? Math.round(toUserWeight(series[series.length - 1].oneRM)) : 0;
-            const first = series.length > 1 ? Math.round(toUserWeight(series[0].oneRM)) : latest;
-            const delta = latest - first;
-
-            return `
-                <div class="detail-row">
-                    ${chartSparkline({ points, color: 'var(--warning)', width: 64, height: 28 })}
-                    <div class="detail-row__info">
-                        <div class="detail-row__name">${escapeHtml(lift)}</div>
-                        <div class="detail-row__sub">${series.length} sessions</div>
-                    </div>
-                    <div class="detail-row__right">
-                        <div class="detail-row__val">${latest} ${userWeightUnit()}</div>
-                        ${delta !== 0 ? `<div class="detail-row__delta delta-${delta >= 0 ? 'up' : 'down'}">${delta >= 0 ? '↑' : '↓'} ${Math.abs(delta)} ${userWeightUnit()}</div>` : ''}
-                    </div>
-                </div>
-            `;
-        }).join('');
-
-        // Compute total combined 1RM
-        let totalCurrent = 0;
-        for (const lift of bigLifts) {
-            const series = aggregate1RMSeries(workouts, lift, bounds);
-            if (series.length > 0) totalCurrent += Math.round(toUserWeight(series[series.length - 1].oneRM));
-        }
-
-        container.innerHTML = renderDetailLayout({
-            title: 'Strength · top lifts',
-            range,
-            hero: `
-                <div class="detail-hero__num">${formatNumber(totalCurrent)}<span class="detail-hero__unit">${userWeightUnit()} combined</span></div>
-                <div class="md-hero-meta">Estimated max · worked out from your sets</div>
-            `,
-            chart: '<div class="md-chart-placeholder">Per-lift trends below</div>',
-            insight: totalCurrent > 0 ? `Your combined estimated max across the big 4 lifts is <strong>${formatNumber(totalCurrent)} ${userWeightUnit()}</strong>.` : '',
-            breakdown: liftRows || mdEmptyRange('No compound lift data in this range.', range),
-        });
-    } catch (error) {
-        console.error('❌ Error rendering strength detail:', error);
-        container.innerHTML = '<div class="md-error">Error loading strength data.</div>';
-    }
 }
 
 // ===================================================================
@@ -467,93 +303,6 @@ async function renderBodyWeightDetail(container, range) {
     } catch (error) {
         console.error('❌ Error rendering body weight detail:', error);
         container.innerHTML = '<div class="md-error">Error loading body weight data.</div>';
-    }
-}
-
-// ===================================================================
-// BODY COMPOSITION DETAIL
-// ===================================================================
-
-async function renderBodyCompositionDetail(container, range) {
-    container.innerHTML = '<div class="skeleton skeleton-card md-skel-tall"></div>';
-
-    try {
-        const { loadDexaHistory, compareDexaScans } = await import('../features/dexa-scan.js');
-        const history = await loadDexaHistory(10);
-
-        if (!history || history.length === 0) {
-            container.innerHTML = renderDetailLayout({
-                title: 'Body composition',
-                range,
-                hero: '<div class="md-empty">No DEXA scans uploaded yet.</div>',
-                chart: '',
-                breakdown: '<div class="md-empty-line">Upload a DEXA scan PDF to see body composition breakdown.</div>',
-            });
-            return;
-        }
-
-        const latest = history[0]?.data || {};
-        const fatPct = latest.bodyFatPercentage || latest.totalBodyFat || 0;
-        const leanMass = latest.totalLeanMass || 0;
-        const fatMass = latest.totalFatMass || 0;
-        const totalWeight = latest.totalWeight || (leanMass + fatMass) || 0;
-        const musclePct = totalWeight > 0 ? Math.round(leanMass / totalWeight * 100) : 0;
-        const otherPct = Math.max(0, 100 - fatPct - musclePct);
-
-        const segments = [
-            { label: `Muscle ${musclePct}%`, value: musclePct, color: 'var(--cat-legs)' },
-            { label: `Fat ${Math.round(fatPct)}%`, value: fatPct, color: 'var(--cat-pull)' },
-            { label: `Other ${otherPct}%`, value: otherPct, color: 'var(--cat-shoulders)' },
-        ];
-
-        // Comparison if multiple scans
-        let insight = '';
-        if (history.length >= 2) {
-            try {
-                const comparison = compareDexaScans(history[1].data, history[0].data);
-                if (comparison) {
-                    const leanDelta = comparison.totalLeanMass?.toFixed(1) || '0';
-                    const fatDelta = comparison.totalFatMass?.toFixed(1) || '0';
-                    insight = `Since last scan: lean mass <strong>${leanDelta > 0 ? '+' : ''}${leanDelta} lb</strong>, fat mass <strong>${fatDelta > 0 ? '+' : ''}${fatDelta} lb</strong>.`;
-                }
-            } catch { /* comparison may fail */ }
-        }
-
-        // Scan history list
-        const scanRows = history.slice(0, 5).map(scan => {
-            const data = scan.data || {};
-            const date = data.date || scan.id;
-            const fat = data.bodyFatPercentage || data.totalBodyFat || 0;
-            return `
-                <div class="detail-row">
-                    <div class="detail-weight-icon"><i class="fas fa-file-medical"></i></div>
-                    <div class="detail-row__info">
-                        <div class="detail-row__name">${formatRelativeDate(date)}</div>
-                        <div class="detail-row__sub">DEXA Scan</div>
-                    </div>
-                    <div class="detail-row__val">${Math.round(fat)}% BF</div>
-                </div>
-            `;
-        }).join('');
-
-        container.innerHTML = renderDetailLayout({
-            title: 'Body composition',
-            range,
-            hero: `
-                <div class="md-bc-row">
-                    ${chartDonut({ segments, size: 80 })}
-                    <div class="dash-bc-legend md-bc-legend">
-                        ${segments.map(s => `<div class="dash-bc-leg"><div class="dash-bc-dot" style="--dot-color:${s.color};"></div>${s.label}</div>`).join('')}
-                    </div>
-                </div>
-            `,
-            chart: '<div class="md-chart-placeholder">DEXA scan history below</div>',
-            insight,
-            breakdown: scanRows || '<div class="md-empty-line">No scan history.</div>',
-        });
-    } catch (error) {
-        console.error('❌ Error rendering body composition detail:', error);
-        container.innerHTML = '<div class="md-error">Error loading composition data.</div>';
     }
 }
 

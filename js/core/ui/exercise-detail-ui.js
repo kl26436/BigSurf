@@ -1,7 +1,8 @@
 // Exercise Detail — Level 3 drill-down from muscle group exercise list
 
 import { AppState } from '../utils/app-state.js';
-import { escapeHtml, escapeAttr } from './ui-helpers.js';
+import { escapeHtml, escapeAttr, formatSet, unitLabel } from './ui-helpers.js';
+import { formatDateShort } from '../utils/date-helpers.js';
 import {
     aggregateExerciseStats, exerciseEquipmentCounts, classifyBodyPart, capitalize, formatVolume,
 } from '../features/metrics/aggregators.js';
@@ -122,17 +123,17 @@ export function renderExerciseDetail(exerciseName) {
             <div class="d-hero-stats">
                 <div class="d-stat">
                     <div class="d-stat__label"><i class="fas fa-trophy text-badge-gold"></i> Max weight</div>
-                    <div class="d-stat__val">${Math.round(s.maxWeight)}<span class="d-stat__unit"> ${s.displayUnit || 'lb'}</span></div>
+                    <div class="d-stat__val">${Math.round(s.maxWeight)}<span class="d-stat__unit"> ${unitLabel(s.displayUnit)}</span></div>
                 </div>
                 <div class="d-stat">
                     <div class="d-stat__label">Heaviest set</div>
-                    <div class="d-stat__val">${s.heaviestSet ? `${Math.round(s.heaviestSet.totalWeight)}<span class="d-stat__unit">× ${s.heaviestSet.reps}</span>` : '—'}</div>
+                    <div class="d-stat__val">${s.heaviestSet ? displaySet({ reps: s.heaviestSet.reps, weight: Math.round(s.heaviestSet.totalWeight) }, s.displayUnit, false) : '—'}</div>
                 </div>
             </div>
 
             <div class="d-pill-row">
-                <div class="d-pill">Est. max <strong>${Math.round(s.est1RM)} ${s.displayUnit || 'lb'}</strong>${est1RMDelta}</div>
-                <div class="d-pill">Volume <strong>${formatVolume(s.totalVolume)} ${s.displayUnit || 'lb'}</strong></div>
+                <div class="d-pill">Est. max <strong>${Math.round(s.est1RM)} ${unitLabel(s.displayUnit)}</strong>${est1RMDelta}</div>
+                <div class="d-pill">Volume <strong>${formatVolume(s.totalVolume)} ${unitLabel(s.displayUnit)}</strong></div>
             </div>
 
             ${stallChip}
@@ -145,7 +146,7 @@ export function renderExerciseDetail(exerciseName) {
                     ${s.topSets.map((set, i) => {
                         // Meta line: date + gym + machine (only what we have).
                         const meta = [
-                            formatSessionDate(set.date),
+                            formatDateShort(set.date),
                             set.location ? escapeHtml(set.location) : null,
                             !activeMachine && set.equipment ? escapeHtml(set.equipment) : null,
                         ].filter(Boolean).join(' · ');
@@ -153,7 +154,7 @@ export function renderExerciseDetail(exerciseName) {
                         <div class="d-best-row">
                             <div class="d-best-rank">${i + 1}</div>
                             <div class="d-best-info">
-                                <div class="d-best-weight">${Math.round(set.totalWeight)} ${s.displayUnit || 'lb'} × ${set.reps}</div>
+                                <div class="d-best-weight">${displaySet({ reps: set.reps, weight: Math.round(set.totalWeight) }, s.displayUnit, false)}</div>
                                 ${meta ? `<div class="d-best-meta">${meta}</div>` : ''}
                             </div>
                             <div class="d-best-1rm">~${Math.round(set.est1RM)} est. max</div>
@@ -256,17 +257,16 @@ function renderTrendCard(s, color, activeMachine, equipCounts) {
                 <span class="cc-title">Heaviest per session</span>
                 ${badge}
             </div>
-            ${chartTrend({ points: chrono, width: 300, height: 120, color, unit: s.displayUnit || 'lb', markChanges: !activeMachine })}
+            ${chartTrend({ points: chrono, width: 300, height: 120, color, unit: unitLabel(s.displayUnit), markChanges: !activeMachine })}
             ${footer}
         </div>
     `;
 }
 
 function renderSessionRow(session, activeMachine) {
-    const dateStr = formatSessionDate(session.date);
-    const chips = session.sets.map(s => {
-        return `<span class="set-chip">${s.reps}×${s.weight}${s.rpe ? `<span class="set-chip__rpe">@${s.rpe}</span>` : ''}</span>`;
-    }).join(' ');
+    const dateStr = formatDateShort(session.date);
+    const unit = AppState.globalUnit || 'lbs';
+    const chips = session.sets.map(s => `<span class="set-chip">${displaySet(s, unit, true)}</span>`).join(' ');
     // Name the session's machine when viewing All machines (the honesty cue).
     const equipStr = (!activeMachine && session.equipment)
         ? `<span class="d-session-row__equip"><i class="fas fa-dumbbell"></i> ${escapeHtml(session.equipment)}</span>`
@@ -283,12 +283,11 @@ function renderSessionRow(session, activeMachine) {
     `;
 }
 
-function formatSessionDate(dateStr) {
-    if (!dateStr) return '';
-    const parts = dateStr.split('-');
-    if (parts.length < 3) return dateStr;
-    const d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
-    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+// Stats weights are already in the display unit (aggregateExerciseStats
+// converts before any math) but keep the logged originalUnit — pin it so
+// formatSet doesn't convert a second time.
+function displaySet(set, unit, effort) {
+    return formatSet({ reps: set.reps, weight: set.weight, rpe: set.rpe, originalUnit: unit || 'lbs' }, unit || 'lbs', { effort });
 }
 
 // Window-bound range setter

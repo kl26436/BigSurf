@@ -568,7 +568,7 @@ export function handleImportFileSelect(event) {
 
             const normalized = normalizeImportData(data);
             const exportOnlyNote = normalized.version === EXPORT_VERSION
-                ? ' Settings, PRs, programs, body data and coach history in this file stay export-only.'
+                ? ' Settings, PRs, plans, body data and coach history in this file stay export-only.'
                 : '';
 
             preview.classList.remove('hidden');

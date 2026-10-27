@@ -6,9 +6,10 @@ import { updateSetting } from '../ui/settings-ui.js';
 import { escapeHtml } from '../ui/ui-helpers.js';
 
 const TIPS = {
+    // B16 — targeted a v1 class (.workout-option) that no longer exists, so it never showed.
     'workout-selector': {
-        target: '.workout-option:first-child',
-        text: 'Tap a category to browse your workouts',
+        target: '.tpl-start',
+        text: 'Tap ▶ to start a workout. Tap the row to change it.',
         position: 'below',
     },
     'more-menu': {

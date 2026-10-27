@@ -11,36 +11,7 @@
     margin-bottom: var(--space-6);
     color: var(--text-main);
 }
-.form-input {
-    width: 100%;
-    padding: var(--space-12);
-    min-height: var(--input-height);
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
-    color: var(--text-strong);
-    font-size: var(--font-md);
-}
-.form-input:focus {
-    outline: none;
-    border-color: var(--primary);
-}
-.form-input::placeholder {
-    color: var(--text-muted);
-}
-
-textarea.form-input {
-    min-height: 100px; /* textarea min constraint */
-    resize: vertical;
-}
-
-select.form-input {
-    appearance: none;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%238b949e' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
-    background-repeat: no-repeat;
-    background-position: right var(--space-12) center;
-    padding-right: var(--tap-sm);
-}
+/* .form-input folded into .field-input (components/fields.css, UD-3 C). */
 
 /* Remove number spinners */
 input[type='number']::-webkit-inner-spin-button,

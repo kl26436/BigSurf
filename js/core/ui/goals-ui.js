@@ -123,13 +123,13 @@ function goalRowHTML(r, events) {
 function eventRowHTML(e, today) {
     const weeks = weeksUntil(e.date, today);
     return `
-        <div class="row-card" onclick="openEventActions('${escapeAttr(e.id)}')">
+        <div class="row-card row-card--static">
             <div class="row-card__icon"><i class="fas fa-calendar-day"></i></div>
             <div class="row-card__content">
                 <div class="row-card__title">${escapeHtml(e.name)}</div>
                 <div class="row-card__subtitle">${escapeHtml(shortDate(e.date))} · ${weeks === 0 ? 'this week' : `in ${weeks} week${weeks === 1 ? '' : 's'}`}</div>
             </div>
-            <i class="fas fa-chevron-right row-card__action" aria-hidden="true"></i>
+            <button class="btn-icon" onclick="openEventActions('${escapeAttr(e.id)}')" aria-label="Remove ${escapeAttr(e.name)}"><i class="fas fa-trash"></i></button>
         </div>`;
 }
 

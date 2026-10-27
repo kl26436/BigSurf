@@ -3,6 +3,7 @@
 
 import { escapeHtml, showNotification } from './ui-helpers.js';
 import { confirmSheet } from './confirm-sheet.js';
+import { formatRelative } from '../utils/date-helpers.js';
 import {
     getErrorLog,
     getUnreadErrorCount,
@@ -363,14 +364,8 @@ export function toggleErrorDetail(id) {
 }
 
 function formatErrorTime(date) {
-    const now = new Date();
-    const diffMs = now - date;
-    const diffMins = Math.floor(diffMs / 60000);
+    if (date.toDateString() === new Date().toDateString()) return formatRelative(date, { dense: true });
 
-    if (diffMins < 1) return 'just now';
-    if (diffMins < 60) return `${diffMins}m ago`;
-    if (diffMins < 1440) return `${Math.floor(diffMins / 60)}h ago`;
-
-    // Older than a day — show date
+    // Before today — the clock time matters more than "3d ago" when debugging
     return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
