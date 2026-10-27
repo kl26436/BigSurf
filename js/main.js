@@ -171,8 +171,6 @@ import {
     resumeWorkout,
     resumeWorkoutById,
     repeatWorkout,
-    deleteWorkout,
-    retryWorkout,
     clearAllHistoryFilters,
 } from './core/ui/workout-history-ui.js';
 
@@ -319,9 +317,6 @@ import {
     showWeightEntryModal,
     closeWeightEntryModal,
     saveBodyWeightEntry,
-    showWeightHistory,
-    closeWeightHistory,
-    deleteWeightEntry,
     setBodyWeightTimeRange,
 } from './core/features/body-measurements-ui.js';
 
@@ -784,8 +779,6 @@ window.viewWorkout = viewWorkout;
 window.resumeWorkout = resumeWorkout;
 window.resumeWorkoutById = resumeWorkoutById; // Schema v3.0: accepts docId
 window.repeatWorkout = repeatWorkout;
-window.deleteWorkout = deleteWorkout;
-window.retryWorkout = retryWorkout;
 window.clearAllHistoryFilters = clearAllHistoryFilters;
 window.filterWorkoutHistory = function (query) {
     if (window.workoutHistory) window.workoutHistory.filterBySearch(query);
@@ -805,10 +798,8 @@ window.closeWorkoutDetailModal = function () {
         const ok = window.__wehRequestExit();
         if (!ok) return;
     }
-    const modal = document.getElementById('workout-detail-section');
-    if (modal) {
-        closeModal(modal);
-    }
+    // UD-4 — a routed page: back to wherever it was opened from.
+    window.workoutHistory?.closeWorkoutDetailModal();
 };
 
 // Workout Management Functions (slimmed in Phase 9 — see import block above)
@@ -866,9 +857,6 @@ window.openMachineIdCamera = openMachineIdCamera;
 window.showWeightEntryModal = showWeightEntryModal;
 window.closeWeightEntryModal = closeWeightEntryModal;
 window.saveBodyWeightEntry = saveBodyWeightEntry;
-window.showWeightHistory = showWeightHistory;
-window.closeWeightHistory = closeWeightHistory;
-window.deleteWeightEntry = deleteWeightEntry;
 window.setBodyWeightTimeRange = setBodyWeightTimeRange;
 
 // Bodyweight Exercises + Equipment Base Weight

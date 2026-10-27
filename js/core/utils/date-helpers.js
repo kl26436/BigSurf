@@ -134,3 +134,53 @@ export function formatDuration(seconds) {
     const m = mins % 60;
     return m ? `${h} h ${m} min` : `${h} h`;
 }
+
+/**
+ * UD-4 — a date as display copy: "Tue, Oct 14" ("Tue, Oct 14, 2025" in
+ * another year). The one short-date format for workouts and weigh-ins.
+ * @param {Date|string|number} dateLike — Date, YYYY-MM-DD, ISO string or ms
+ */
+export function formatDateShort(dateLike, { now = new Date() } = {}) {
+    const date = toLocalDate(dateLike);
+    if (!date || isNaN(date)) return '';
+    const opts = { weekday: 'short', month: 'short', day: 'numeric' };
+    if (date.getFullYear() !== now.getFullYear()) opts.year = 'numeric';
+    return date.toLocaleDateString('en-US', opts);
+}
+
+const RELATIVE = typeof Intl !== 'undefined' && Intl.RelativeTimeFormat
+    ? new Intl.RelativeTimeFormat('en', { numeric: 'auto' })
+    : null;
+
+/**
+ * UD-4 — THE relative time ("… ago"). Two forms, per C-8:
+ *   dense    "just now" · "12m ago" · "3h ago" · "today" · "3d ago" · "2w ago" · "5mo ago" · "1y ago"
+ *   sentence "just now" · "12 minutes ago" · "3 hours ago" · "today" · "yesterday" · "3 days ago" · "last week"…
+ * A YYYY-MM-DD date counts calendar days (no clock time, so never "3h ago").
+ * Sentence form uses Intl.RelativeTimeFormat so plurals come out right.
+ * @param {Date|string|number} dateLike
+ * @param {{dense?: boolean, now?: Date}} [opts]
+ * @returns {string} '' when the date can't be read
+ */
+export function formatRelative(dateLike, { dense = false, now = new Date() } = {}) {
+    const date = toLocalDate(dateLike);
+    if (!date || isNaN(date)) return '';
+    const dateOnly = typeof dateLike === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(dateLike);
+    const say = (n, unit, short) => (dense || !RELATIVE ? `${n}${short} ago` : RELATIVE.format(-n, unit));
+    // Local calendar days (getDateString is UTC — wrong after ~5 pm in the US).
+    const startOf = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+
+    if (!dateOnly) {
+        const mins = Math.floor((now - date) / 60000);
+        if (mins < 1) return 'just now';
+        if (mins < 60) return say(mins, 'minute', 'm');
+        const hours = Math.floor(mins / 60);
+        if (hours < 24 && startOf(date) === startOf(now)) return say(hours, 'hour', 'h');
+    }
+    const days = Math.round((startOf(now) - startOf(date)) / 86400000);
+    if (days <= 0) return 'today';
+    if (days < 7) return say(days, 'day', 'd');
+    if (days < 30) return say(Math.floor(days / 7), 'week', 'w');
+    if (days < 365) return say(Math.floor(days / 30), 'month', 'mo');
+    return say(Math.floor(days / 365), 'year', 'y');
+}

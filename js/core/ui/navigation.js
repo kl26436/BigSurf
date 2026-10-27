@@ -40,6 +40,9 @@ const SECTION_IDS = [
     'body-measurements-entry-section',
     'ai-coach-section',
     'manual-workout-section',
+    'dexa-upload-section',         // B19 — DEXA pages are pages: back stack + system back
+    'dexa-history-section',
+    'dexa-detail-section',
 ];
 
 const FADE_DURATION = 150; // ms, matches CSS transition
@@ -267,6 +270,37 @@ function routeToView(view) {
         case 'workout-history':
             showHistory();
             break;
+
+        // B19 — the DEXA pages are painted by dexa-scan-ui.js (enterSection);
+        // a back onto one re-shows what's painted, else Body & scans.
+        case 'dexa-upload':
+        case 'dexa-history':
+        case 'dexa-detail': {
+            const section = document.getElementById(`${normalized}-section`);
+            if (section && document.getElementById(`${normalized}-content`)?.children.length) {
+                section.classList.remove('hidden');
+                setBottomNavVisible(true);
+            } else {
+                showCompositionDetail();
+            }
+            break;
+        }
+
+        // UD-4 — a past workout's page. It's painted by
+        // workout-history.js#showFixedWorkoutModal (enterSection); coming
+        // back to it (navigateBack from a lift opened from it) re-shows what's
+        // painted, and a cold route with nothing painted goes to History.
+        case 'workout-detail': {
+            const section = document.getElementById('workout-detail-section');
+            if (section && document.getElementById('workout-detail-content')?.children.length) {
+                section.classList.remove('hidden');
+                setBottomNavVisible(true);
+                updateBottomNavActive('history');
+            } else {
+                showHistory();
+            }
+            break;
+        }
 
         case 'location':
         case 'location-management':

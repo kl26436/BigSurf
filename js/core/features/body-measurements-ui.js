@@ -3,17 +3,13 @@
 
 import { AppState } from '../utils/app-state.js';
 import { escapeHtml, escapeAttr, showNotification, formatHeight, parseHeightToCm } from '../ui/ui-helpers.js';
-import { formatRelativeDate, getDateString } from '../utils/date-helpers.js';
+import { getDateString } from '../utils/date-helpers.js';
 import { navigateTo, navigateBack } from '../ui/navigation.js';
 import { once } from '../ui/busy.js';
 import {
     saveBodyWeight,
-    loadBodyWeightHistory,
-    getLatestBodyWeight,
-    deleteBodyWeight,
     getBodyWeightSince,
     calculate7DayAverage,
-    calculateWeightTrend,
     convertMeasurementUnit,
 } from './body-measurements.js';
 
@@ -316,82 +312,6 @@ async function saveBodyWeightEntryNow() {
         }
         closeWeightEntryModal();
     }
-}
-
-// ===================================================================
-// WEIGHT HISTORY MODAL
-// ===================================================================
-
-/**
- * Show weight history list modal.
- */
-export async function showWeightHistory() {
-    const modal = document.getElementById('weight-history-section');
-    if (!modal) return;
-
-    const unit = AppState.globalUnit || 'lbs';
-    const entries = await loadBodyWeightHistory(90);
-
-    let historyHTML = '';
-    if (entries.length === 0) {
-        historyHTML = `
-            <div class="empty-state">
-                <div class="empty-state-icon"><i class="fas fa-weight-scale"></i></div>
-                <div class="empty-state-title">No entries yet</div>
-                <div class="empty-state-description">Start logging your weight to see history here.</div>
-            </div>
-        `;
-    } else {
-        const displayEntries = entries
-            .filter(e => e.weight > 0) // Skip measurements-only entries
-            .reverse(); // Most recent first
-
-        historyHTML = displayEntries.map(entry => {
-            const converted = convertMeasurementUnit(entry, unit);
-            const dateStr = formatRelativeDate(entry.date);
-            const fatStr = entry.bodyFat ? ` | ${entry.bodyFat}% BF` : '';
-            const noteStr = entry.notes ? ` — ${escapeHtml(entry.notes)}` : '';
-            const measStr = entry.measurements ? ' <i class="fas fa-ruler" title="Has body measurements"></i>' : '';
-
-            return `
-                <div class="weight-history-item row-card">
-                    <div class="weight-history-info">
-                        <span class="weight-history-value">${converted.weight} ${unit}</span>
-                        <span class="weight-history-meta">${escapeHtml(dateStr)}${fatStr}${noteStr}${measStr}</span>
-                    </div>
-                    <button class="btn-icon" onclick="deleteWeightEntry('${escapeAttr(entry.id)}')" title="Delete" aria-label="Delete entry">
-                        <i class="fas fa-trash"></i>
-                    </button>
-                </div>
-            `;
-        }).join('');
-    }
-
-    // Populate the full-page body content
-    const body = document.getElementById('weight-history-content') || modal.querySelector('.full-page-body');
-    if (body) {
-        body.innerHTML = historyHTML;
-    }
-
-    // Show as full-page section
-    modal.classList.remove('hidden');
-}
-
-/**
- * Close weight history modal.
- */
-export function closeWeightHistory() {
-    const modal = document.getElementById('weight-history-section');
-    if (modal) modal.classList.add('hidden');
-}
-
-/**
- * Delete a weight entry and refresh the history modal.
- */
-export async function deleteWeightEntry(docId) {
-    await deleteBodyWeight(docId);
-    // Refresh the history modal
-    await showWeightHistory();
 }
 
 // ===================================================================

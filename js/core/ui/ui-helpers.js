@@ -132,6 +132,35 @@ export function displayWeight(weight, storedUnit, displayUnit) {
     return { value: Math.round(weight * 10) / 10, label: unit };
 }
 
+/** UD-4 — the unit word users see: 'kg' or 'lb' (stored values say 'lbs'). */
+export function unitLabel(unit) {
+    return unit === 'kg' ? 'kg' : 'lb';
+}
+
+/**
+ * UD-4 — THE way a set is written: reps first, then the load in the user's
+ * unit, then effort — "6 × 185 lb", "6 × 185 lb · effort 8/10", "12 reps"
+ * (no load). Never compose a set in a template; call this.
+ * @param {{reps?: number, weight?: number, originalUnit?: string, rpe?: number}} set
+ * @param {string} displayUnit - 'lbs' | 'kg'
+ * @param {{effort?: boolean}} [opts]
+ */
+export function formatSet(set, displayUnit = 'lbs', { effort = true } = {}) {
+    if (!set) return '';
+    const reps = Number(set.reps) || 0;
+    const hasLoad = Number(set.weight) > 0;
+    let text;
+    if (hasLoad) {
+        const dw = displayWeight(set.weight, set.originalUnit || 'lbs', displayUnit);
+        text = `${reps} × ${dw.value} ${unitLabel(dw.label)}`;
+    } else {
+        text = `${reps} rep${reps === 1 ? '' : 's'}`;
+    }
+    const n = Number(set.rpe);
+    if (effort && set.rpe != null && set.rpe !== '' && Number.isFinite(n)) text += ` · effort ${n}/10`;
+    return text;
+}
+
 // ---------------------------------------------------------------------------
 // Height helpers — storage is always cm; display adapts to the user's unit
 // preference (lbs → ft'in", kg → cm).

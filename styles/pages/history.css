@@ -577,3 +577,57 @@
     color: var(--text-secondary);
     font-style: italic;
 }
+
+/* ===========================================
+   UD-4 — past workout page (#workout-detail-section)
+   =========================================== */
+.wd-status {
+    display: inline-block;
+    margin-bottom: var(--space-12);
+    padding: var(--space-4) var(--space-10);
+    border-radius: var(--radius-pill);
+    background: var(--bg-card-hi);
+    color: var(--text-secondary);
+    font-size: var(--font-xs);
+    font-weight: 600;
+}
+.wd-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--space-8);
+    margin-bottom: var(--space-16);
+}
+.wd-stat {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    padding: var(--space-12);
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+}
+.wd-stat__value {
+    font-size: var(--font-lg);
+    font-weight: 700;
+    color: var(--text-strong);
+}
+.wd-stat__label {
+    font-size: var(--font-xs);
+    color: var(--text-muted);
+}
+.wd-session {
+    margin-bottom: var(--space-16);
+    font-size: var(--font-sm);
+    color: var(--text-muted);
+}
+/* Footer: Edit · Repeat (or Resume) — pinned above the bottom nav. */
+.wd-footer {
+    display: flex;
+    gap: var(--space-10);
+    padding: var(--space-12) var(--pad-page);
+    border-top: 1px solid var(--border-subtle);
+    background: var(--bg-app);
+}
+.wd-footer .btn { flex: 1; }
+.wd-footer .btn-primary { flex: 2; }
+.wd-footer.hidden { display: none; }

@@ -87,6 +87,10 @@
         <link rel="modulepreload" href="js/core/data/equipment-id-resolver.js">
         <link rel="modulepreload" href="js/core/data/data-manager.js">
         <link rel="modulepreload" href="js/core/data/exercise-library.js">
+        <link rel="modulepreload" href="js/core/ui/sheet.js">
+        <link rel="modulepreload" href="js/core/ui/back-guard.js">
+        <link rel="modulepreload" href="js/core/ui/more-menu.js">
+        <link rel="modulepreload" href="js/core/ui/navigation.js">
         <link rel="modulepreload" href="js/core/utils/workout-helpers.js">
         <link rel="modulepreload" href="js/core/features/metrics/aggregators.js">
         <link rel="modulepreload" href="js/core/utils/haptics.js">
@@ -98,16 +102,12 @@
         <link rel="modulepreload" href="js/core/data/catalog-search.js">
         <link rel="modulepreload" href="js/core/data/equipment-create.js">
         <link rel="modulepreload" href="js/core/data/firebase-workout-manager.js">
-        <link rel="modulepreload" href="js/core/ui/sheet.js">
         <link rel="modulepreload" href="js/core/utils/template-helpers.js">
         <link rel="modulepreload" href="js/core/features/location-service.js">
         <link rel="modulepreload" href="js/core/ui/busy.js">
         <link rel="modulepreload" href="js/core/features/equipment-planner.js">
         <link rel="modulepreload" href="js/core/workout/workout-management-ui.js">
         <link rel="modulepreload" href="js/core/app-initialization.js">
-        <link rel="modulepreload" href="js/core/ui/back-guard.js">
-        <link rel="modulepreload" href="js/core/ui/more-menu.js">
-        <link rel="modulepreload" href="js/core/ui/navigation.js">
         <link rel="modulepreload" href="js/core/ui/delete-account.js">
         <link rel="modulepreload" href="js/core/features/progress-scoreboard.js">
         <link rel="modulepreload" href="js/core/utils/push-notification-manager.js">
@@ -502,18 +502,28 @@
 
 
                 <!-- Workout Details (Full-Page Section) -->
+                <!-- UD-4 — a routed page (navigation.js case 'workout-detail'):
+                     title = the workout, subtitle = date · gym · duration;
+                     footer = Repeat / Edit; ⋯ = Save as workout / Delete. -->
                 <section id="workout-detail-section" class="full-page-section hidden">
                     <div class="page-header">
                         <div class="page-header__left">
                             <button class="page-header__back" onclick="closeWorkoutDetailModal()" aria-label="Back">
                                 <i class="fas fa-chevron-left"></i>
                             </button>
-                            <div class="page-header__title" id="workout-detail-title">Workout details</div>
+                            <div class="page-header__title-group">
+                                <div class="page-header__title" id="workout-detail-title">Workout</div>
+                                <div class="page-header__subtitle" id="workout-detail-subtitle"></div>
+                            </div>
                         </div>
+                        <button class="page-header__icon-btn hidden" id="workout-detail-more" onclick="openWorkoutDetailMenu()" aria-label="More actions">
+                            <i class="fas fa-ellipsis-h"></i>
+                        </button>
                     </div>
                     <div class="full-page-body" id="workout-detail-content">
                         <!-- Populated by JavaScript -->
                     </div>
+                    <div class="wd-footer hidden" id="workout-detail-footer"></div>
                 </section>
 
 
@@ -1170,22 +1180,6 @@
         <section id="body-measurements-entry-section" class="content-section pinned-header hidden">
             <!-- Populated by renderBodyMeasurementsEntry() -->
         </section>
-
-        <!-- Weight History (Full-Page Section) -->
-        <section id="weight-history-section" class="full-page-section hidden" aria-label="Weight history">
-            <div class="page-header">
-                <div class="page-header__left">
-                    <button class="page-header__back" onclick="closeWeightHistory()" aria-label="Back">
-                        <i class="fas fa-chevron-left"></i>
-                    </button>
-                    <div class="page-header__title">Weight history</div>
-                </div>
-            </div>
-            <div class="full-page-body" id="weight-history-content">
-                <!-- Populated by JavaScript -->
-            </div>
-        </section>
-
 
         <!-- DEXA Scan Upload (Full-Page Section) -->
         <section id="dexa-upload-section" class="full-page-section hidden" aria-label="DEXA scan upload">

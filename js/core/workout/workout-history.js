@@ -1,6 +1,7 @@
 // Clean Workout History Module with Calendar View - core/workout-history.js
-import { showNotification, escapeHtml, escapeAttr, openModal, closeModal, displayWeight } from '../ui/ui-helpers.js';
-import { getDateString } from '../utils/date-helpers.js';
+import { showNotification, escapeHtml, escapeAttr, displayWeight, formatSet, unitLabel } from '../ui/ui-helpers.js';
+import { getDateString, formatDateShort, formatDuration } from '../utils/date-helpers.js';
+import { enterSection, navigateBack } from '../ui/navigation.js';
 import { getExerciseName, formatStatus, formatCategory, CATEGORY_LABELS } from '../utils/workout-helpers.js';
 import { debugLog, CATEGORY_ICONS } from '../utils/config.js';
 import { classifyBodyPart } from '../features/metrics/aggregators.js';
@@ -71,16 +72,6 @@ export function getWorkoutHistory(appState) {
                 });
             }
 
-            // Setup modal close handler
-            const modal = document.getElementById('workoutModal');
-            if (modal) {
-                modal.addEventListener('click', (e) => {
-                    if (e.target === modal) {
-                        this.closeWorkoutDetailModal();
-                    }
-                });
-            }
-
             // Event delegation for workout history UI
             // Handles: workout picker items, action buttons, video buttons, recent workout items
             const actionHandler = (e) => {
@@ -90,13 +81,6 @@ export function getWorkoutHistory(appState) {
                 const docId = el.dataset.docId;
 
                 switch (action) {
-                    case 'showWorkoutDetail':
-                        window.workoutHistory.showWorkoutDetail(
-                            el.dataset.date,
-                            el.dataset.workoutName,
-                            parseInt(el.dataset.index, 10)
-                        );
-                        break;
                     case 'selectFromPicker':
                         window.workoutHistory.selectWorkoutFromPicker(
                             el.dataset.date,
@@ -148,9 +132,9 @@ export function getWorkoutHistory(appState) {
                 }
             };
 
-            if (modal) {
-                modal.addEventListener('click', actionHandler);
-            }
+            // The ⋯ sheet (workout-history-ui.js#openWorkoutDetailMenu) runs its
+            // rows through the same handler.
+            this._actionHandler = actionHandler;
 
             // workout-detail-section shares the same action handler
             const detailModal = document.getElementById('workout-detail-section');
@@ -741,297 +725,14 @@ export function getWorkoutHistory(appState) {
             return `<div class="cal-icon-row">${icons}${overflow}</div>`;
         },
 
-        showWorkoutDetail(date, workoutName, workoutIndex = 0) {
-            const modal = document.getElementById('workoutModal');
-            const title = document.getElementById('modalTitle');
-            const body = document.getElementById('modalBody');
-
-            if (!modal || !title || !body) return;
-
-            // FIXED: Create timezone-safe date display
-            let displayDate;
-            if (date && date.match(/^\d{4}-\d{2}-\d{2}$/)) {
-                // Add noon time to prevent timezone shift
-                const safeDate = new Date(date + 'T12:00:00');
-                displayDate = safeDate.toLocaleDateString('en-US', {
-                    month: 'numeric',
-                    day: 'numeric',
-                    year: 'numeric',
-                });
-            } else {
-                displayDate = 'Unknown date';
-            }
-
-            const workouts = this.calendarWorkouts[date];
-            if (!workouts || workouts.length === 0) {
-                body.innerHTML = '<p>No workout data available for this date.</p>';
-                modal.style.display = 'flex';
-                return;
-            }
-
-            // Schema v3.0: Handle multiple workouts per day
-            if (workouts.length > 1 && workoutIndex === -1) {
-                // Show workout picker
-                title.textContent = `Workouts on ${displayDate}`;
-                body.innerHTML = this.generateWorkoutPickerHTML(workouts, date);
-            } else {
-                // Show single workout detail
-                const workout = workouts[workoutIndex] || workouts[0];
-                title.textContent = `${workout.name} - ${displayDate}`;
-                body.innerHTML = this.generateWorkoutDetailHTML(workout, date, workoutIndex);
-            }
-
-            modal.style.display = 'flex';
-        },
-
-        // Schema v3.0: Generate picker for multiple workouts on same day
-        generateWorkoutPickerHTML(workouts, date) {
-            let html = '<div class="workout-picker">';
-
-            workouts.forEach((workout, index) => {
-                const startTime = workout.rawData?.startedAt
-                    ? new Date(workout.rawData.startedAt).toLocaleTimeString('en-US', {
-                          hour: 'numeric',
-                          minute: '2-digit',
-                      })
-                    : '';
-
-                const statusIcon =
-                    workout.status === 'completed'
-                        ? '<i class="fas fa-check-circle text-success"></i>'
-                        : workout.status === 'cancelled'
-                          ? '<i class="fas fa-times-circle text-danger"></i>'
-                          : '<i class="fas fa-exclamation-circle text-warning"></i>';
-
-                html += `
-                    <div class="workout-picker-item clickable" data-action="showWorkoutDetail" data-date="${date}" data-workout-name="${escapeAttr(workout.name)}" data-index="${index}">
-                        <div class="workout-picker-icon ${workout.category}">
-                            <i class="fas ${CATEGORY_ICONS[(workout.category || 'other').toLowerCase()] || CATEGORY_ICONS.other}"></i>
-                        </div>
-                        <div class="workout-picker-info">
-                            <div class="workout-picker-name">${escapeHtml(workout.name)}</div>
-                            <div class="workout-picker-meta">
-                                ${startTime ? startTime + ' &bull; ' : ''}${escapeHtml(String(workout.duration || ''))} ${statusIcon}
-                            </div>
-                        </div>
-                        <i class="fas fa-chevron-right text-secondary"></i>
-                    </div>
-                `;
-            });
-
-            html += '</div>';
-            return html;
-        },
-
-        generateWorkoutDetailHTML(workout, date, _workoutIndex = 0) {
-            // Schema v3.0: Use docId for all operations instead of date
-            const docId = workout.docId;
-            let exerciseHTML = '';
-
-            if (workout.exercises && workout.exercises.length > 0) {
-                workout.exercises.forEach((exercise) => {
-                    exerciseHTML += `
-                    <div class="wh-detail-exercise">
-                        <h4 class="wh-detail-exercise__name">
-                            <i class="fas fa-trophy text-warning"></i>
-                            ${escapeHtml(exercise.name)}
-                        </h4>
-                        <table class="wh-detail-table">
-                            <thead>
-                                <tr>
-                                    <th>Set</th>
-                                    <th>Reps</th>
-                                    <th>Weight</th>
-                                </tr>
-                            </thead>
-                            <tbody>`;
-
-                    if (exercise.sets && exercise.sets.length > 0) {
-                        exercise.sets.forEach((set, index) => {
-                            if (set && (set.reps || set.weight)) {
-                                exerciseHTML += `
-                                <tr class="wh-detail-table__set-row">
-                                    <td>Set ${index + 1}</td>
-                                    <td>${set.reps || '-'}</td>
-                                    <td>${set.weight ? (() => { const dw = displayWeight(set.weight, set.originalUnit || 'lbs', appState.globalUnit || 'lbs'); return dw.value + ' ' + dw.label; })() : '-'}${set.rpe ? ` <span class="wh-rpe">effort ${set.rpe}/10</span>` : ''}</td>
-                                </tr>`;
-                            }
-                        });
-                    } else {
-                        exerciseHTML += `
-                        <tr>
-                            <td colspan="3" class="wh-detail-table__empty">No sets recorded</td>
-                        </tr>`;
-                    }
-
-                    exerciseHTML += `</tbody></table>`;
-
-                    if (exercise.notes) {
-                        exerciseHTML += `
-                        <div class="wh-detail-notes">
-                            <strong class="wh-detail-notes__label">Notes:</strong>
-                            <span>${escapeHtml(exercise.notes)}</span>
-                        </div>`;
-                    }
-
-                    if (exercise.video) {
-                        exerciseHTML += `
-                        <div class="wh-detail-video-row">
-                            <button class="btn btn-primary btn-small" data-action="showExerciseVideo" data-video="${escapeAttr(exercise.video)}" data-exercise="${escapeAttr(exercise.name)}">
-                                <i class="fas fa-play"></i> Watch form video
-                            </button>
-                        </div>`;
-                    }
-
-                    exerciseHTML += `</div>`;
-                });
-            } else {
-                exerciseHTML = `
-                <div class="wh-detail-placeholder">
-                    <i class="fas fa-dumbbell wh-detail-placeholder__icon"></i>
-                    <p>No exercise data available for this workout.</p>
-                </div>`;
-            }
-
-            // Add manual workout notes if they exist
-            let notesSection = '';
-            if (workout.rawData && workout.rawData.manualNotes) {
-                notesSection = `
-                <div class="wh-detail-manual-notes">
-                    <strong class="wh-detail-manual-notes__label">Workout notes:</strong>
-                    <span>${escapeHtml(workout.rawData.manualNotes)}</span>
-                </div>`;
-            }
-
-            // Create action buttons based on workout status
-            // Schema v3.0: Use docId for operations, pass date for display context
-            const escapedDocId = escapeAttr(docId);
-            let actionButtons;
-            if (workout.status === 'cancelled' || workout.status === 'partial') {
-                actionButtons = `
-                <div class="wh-detail-actions">
-                    <button class="btn btn-primary" data-action="editWorkout" data-doc-id="${escapedDocId}">
-                        <i class="fas fa-edit"></i> Edit workout
-                    </button>
-                    <button class="btn btn-danger" data-action="deleteWorkout" data-doc-id="${escapedDocId}">
-                        <i class="fas fa-trash"></i> Delete
-                    </button>
-                    <button class="btn btn-secondary" data-action="repeatWorkout" data-doc-id="${escapedDocId}">
-                        <i class="fas fa-redo"></i> Repeat
-                    </button>
-                </div>
-            `;
-            } else {
-                actionButtons = `
-                <div class="wh-detail-actions">
-                    <button class="btn btn-primary" data-action="editWorkout" data-doc-id="${escapedDocId}">
-                        <i class="fas fa-edit"></i> Edit workout
-                    </button>
-                    <button class="btn btn-secondary" data-action="repeatWorkout" data-doc-id="${escapedDocId}">
-                        <i class="fas fa-redo"></i> Repeat
-                    </button>
-                    <button class="btn btn-secondary" data-action="saveAsTemplate" data-doc-id="${escapedDocId}">
-                        <i class="fas fa-bookmark"></i> Save as workout
-                    </button>
-                    <button class="btn btn-danger" data-action="deleteWorkout" data-doc-id="${escapedDocId}">
-                        <i class="fas fa-trash"></i> Delete
-                    </button>
-                </div>
-            `;
-            }
-
-            // Format workout times
-            const rawData = workout.rawData || {};
-            const startTime = rawData.startedAt
-                ? new Date(rawData.startedAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
-                : null;
-            const endTime = rawData.completedAt
-                ? new Date(rawData.completedAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
-                : null;
-            const totalDuration = rawData.totalDuration ? this.formatDuration(rawData.totalDuration) : workout.duration;
-
-            // Get location from rawData
-            const workoutLocation = rawData.location || null;
-
-            const statusModifier = workout.status === 'completed' ? 'completed' : workout.status === 'cancelled' ? 'cancelled' : 'partial';
-            return `
-            <div class="wh-detail-meta">
-                <div class="wh-detail-meta__grid">
-                    <strong class="text-secondary">Status:</strong>
-                    <span class="wh-detail-status--${statusModifier}">
-                        <i class="fas fa-${workout.status === 'completed' ? 'check-circle' : workout.status === 'cancelled' ? 'times-circle' : 'exclamation-circle'}"></i>
-                        ${escapeHtml(formatStatus(workout.status))}
-                    </span>
-
-                    ${
-                        workoutLocation
-                            ? `
-                        <strong class="text-secondary">Location:</strong>
-                        <span class="text-primary">
-                            <i class="fas fa-map-marker-alt"></i> ${escapeHtml(workoutLocation)}
-                        </span>
-                    `
-                            : ''
-                    }
-
-                    ${
-                        startTime
-                            ? `
-                        <strong class="text-secondary">Started:</strong>
-                        <span>
-                            <i class="fas fa-clock"></i> ${startTime}
-                        </span>
-                    `
-                            : ''
-                    }
-
-                    ${
-                        endTime
-                            ? `
-                        <strong class="text-secondary">Finished:</strong>
-                        <span>
-                            <i class="fas fa-flag-checkered"></i> ${endTime}
-                        </span>
-                    `
-                            : ''
-                    }
-
-                    <strong class="text-secondary">Duration:</strong>
-                    <span class="wh-detail-duration">
-                        <i class="fas fa-stopwatch"></i> ${escapeHtml(String(totalDuration || 'Unknown'))}
-                    </span>
-
-                    <strong class="text-secondary">Progress:</strong>
-                    <span>
-                        ${workout.progress || 0}%
-                        <div class="wh-detail-progress-bar">
-                            <div class="wh-detail-progress-bar__fill" style="--progress: ${workout.progress || 0}%;"></div>
-                        </div>
-                    </span>
-                </div>
-            </div>
-            ${notesSection}
-            <div class="wh-detail-exercises">
-                <h3 class="wh-detail-exercises__title">
-                    <i class="fas fa-dumbbell"></i> Exercises & Sets
-                </h3>
-                ${exerciseHTML}
-            </div>
-            ${actionButtons}
-        `;
-        },
-
+        /**
+         * Leave the detail page — back to wherever it was opened from
+         * (History, Home…). Flows that go somewhere else (Repeat, Resume)
+         * don't call this: the next page's navigation hides it.
+         */
         closeWorkoutDetailModal() {
-            // Try both modal IDs (workoutModal and workout-detail-section)
-            const modal1 = document.getElementById('workoutModal');
-            const modal2 = document.getElementById('workout-detail-section');
-
-            if (modal1) {
-                modal1.style.display = 'none';
-            }
-            if (modal2) {
-                closeModal(modal2);
-            }
+            const section = document.getElementById('workout-detail-section');
+            if (section && !section.classList.contains('hidden')) navigateBack();
         },
 
         // Get workout details by date/id/docId
@@ -1134,29 +835,11 @@ export function getWorkoutHistory(appState) {
 
         // Schema v3.0: Show picker when multiple workouts on same day
         showWorkoutPickerModal(date, workouts) {
-            const modal = document.getElementById('workout-detail-section');
             const content = document.getElementById('workout-detail-content');
+            if (!content) return;
 
-            if (!modal || !content) {
-                console.error('❌ Modal elements not found');
-                return;
-            }
-
-            // Format date for display
-            let displayDate = 'Unknown date';
-            if (date && date.match(/^\d{4}-\d{2}-\d{2}$/)) {
-                const safeDate = new Date(date + 'T12:00:00');
-                displayDate = safeDate.toLocaleDateString('en-US', {
-                    weekday: 'long',
-                    month: 'long',
-                    day: 'numeric',
-                });
-            }
-
+            // The date is the page title (set below).
             let pickerHTML = `
-        <div class="workout-header">
-            <h3>Workouts on ${displayDate}</h3>
-        </div>
         <div class="workout-picker">
     `;
 
@@ -1193,7 +876,13 @@ export function getWorkoutHistory(appState) {
 
             pickerHTML += '</div>';
             content.innerHTML = pickerHTML;
-            openModal(modal);
+            const titleEl = document.getElementById('workout-detail-title');
+            const subEl = document.getElementById('workout-detail-subtitle');
+            if (titleEl) titleEl.textContent = formatDateShort(date) || 'Workouts';
+            if (subEl) subEl.textContent = `${workouts.length} workouts`;
+            document.getElementById('workout-detail-footer')?.classList.add('hidden');
+            document.getElementById('workout-detail-more')?.classList.add('hidden');
+            enterSection('workout-detail-section');
         },
 
         selectWorkoutFromPicker(date, index) {
@@ -1211,44 +900,38 @@ export function getWorkoutHistory(appState) {
             }
         },
 
+        /**
+         * UD-4 — the workout detail PAGE (routed: navigation.js case
+         * 'workout-detail'; back = navigateBack). Title is the workout,
+         * subtitle "Tue, Oct 14 · Love Field · 42 min"; Repeat / Edit in the
+         * footer, Save as workout / Delete behind ⋯ (Delete no longer sits
+         * next to the primary). Sets are written by formatSet.
+         */
         showFixedWorkoutModal(workout, _workoutIndex = 0) {
-            // Use the correct modal elements that actually exist
-            const modal = document.getElementById('workout-detail-section');
+            const section = document.getElementById('workout-detail-section');
             const content = document.getElementById('workout-detail-content');
-
-            if (!modal || !content) {
-                console.error('❌ Modal elements not found');
-                return;
-            }
+            if (!section || !content || !workout) return;
 
             // Schema v3.0: Use docId for all operations
             const docId = workout.docId || workout.id || workout.date;
+            this._detailDocId = docId;
+            const unit = appState.globalUnit || 'lbs';
 
-            // FIX 3: Timezone-safe date display
-            let displayDate;
-            if (workout.date && workout.date.match(/^\d{4}-\d{2}-\d{2}$/)) {
-                const safeDate = new Date(workout.date + 'T12:00:00');
-                displayDate = safeDate.toLocaleDateString('en-US', {
-                    month: 'numeric',
-                    day: 'numeric',
-                    year: 'numeric',
-                });
-            } else {
-                displayDate = 'Unknown date';
-            }
+            let durationSec = Number(workout.totalDuration) || 0;
+            if (durationSec <= 0) durationSec = Math.round((this.getWorkoutDuration(workout) || 0) / 1000);
+            const loc = typeof workout.location === 'object' ? workout.location?.name : workout.location;
+            const subtitle = [
+                formatDateShort(workout.date),
+                loc || '',
+                durationSec > 0 ? formatDuration(durationSec) : '',
+            ].filter(Boolean).join(' · ');
 
-            // CORRECTED: Duration calculation - totalDuration is stored in SECONDS
-            let formattedDuration;
-            if (workout.totalDuration && workout.totalDuration > 0) {
-                // totalDuration is in seconds, convert to milliseconds for formatDuration
-                formattedDuration = this.formatDuration(workout.totalDuration * 1000);
-            } else {
-                // Fallback: try to calculate from timestamps
-                const durationMs = this.getWorkoutDuration(workout);
-                formattedDuration = this.formatDuration(durationMs);
-            }
+            const titleEl = document.getElementById('workout-detail-title');
+            const subEl = document.getElementById('workout-detail-subtitle');
+            if (titleEl) titleEl.textContent = resolveWorkoutDisplayName(workout);
+            if (subEl) subEl.textContent = subtitle;
 
-            // Generate exercises HTML
+            // Exercises — the name opens that lift's page.
             let exerciseHTML = '';
             if (workout.exercises && workout.originalWorkout?.exercises) {
                 workout.originalWorkout.exercises.forEach((originalExercise, index) => {
@@ -1256,103 +939,80 @@ export function getWorkoutHistory(appState) {
                     const exerciseData = workout.exercises[exerciseKey];
                     const exerciseName =
                         workout.exerciseNames?.[exerciseKey] || getExerciseName(originalExercise);
-
                     exerciseHTML += `
                 <div class="exercise-detail-item">
-                    <h5>${escapeHtml(exerciseName)}</h5>
-                    ${this.generateSetsHTML(exerciseData?.sets || [])}
-                    ${exerciseData?.notes ? `<p class="exercise-notes">Notes: ${escapeHtml(exerciseData.notes)}</p>` : ''}
+                    <button type="button" class="exercise-summary__name" onclick="showExerciseDetail('${escapeAttr(exerciseName)}')">
+                        <span>${escapeHtml(exerciseName)}</span><i class="fas fa-chevron-right" aria-hidden="true"></i>
+                    </button>
+                    ${this.generateSetsHTML(exerciseData?.sets || [], unit)}
+                    ${exerciseData?.notes ? `<p class="exercise-notes">${escapeHtml(exerciseData.notes)}</p>` : ''}
                 </div>
             `;
                 });
             } else {
-                exerciseHTML = '<p>No exercise details available</p>';
+                exerciseHTML = '<p class="no-sets-text">No exercise details saved for this workout.</p>';
             }
 
-            // Create action buttons based on workout status
-            // Schema v3.0: Use docId for all operations instead of date
             const workoutStatus = workout.status || this.getWorkoutStatus(workout);
-            let actionButtons;
+            const stats = this.detailStats(workout);
+            const statusLine = workoutStatus === 'completed' ? '' : `
+        <div class="wd-status wd-status--${escapeAttr(workoutStatus)}">${escapeHtml(formatStatus(workoutStatus))}</div>`;
 
-            const escapedDocId = escapeAttr(docId);
-            if (workoutStatus === 'incomplete') {
-                // In-progress workout - show Resume button
-                actionButtons = `
-            <button class="btn btn-primary" data-action="resumeWorkout" data-doc-id="${escapedDocId}">
-                <i class="fas fa-play"></i> Resume workout
-            </button>
-            <button class="btn btn-secondary" data-action="editWorkout" data-doc-id="${escapedDocId}">
-                <i class="fas fa-edit"></i> Edit
-            </button>
-            <button class="btn btn-danger" data-action="deleteWorkout" data-doc-id="${escapedDocId}">
-                <i class="fas fa-trash"></i> Delete
-            </button>`;
-            } else if (workoutStatus === 'cancelled' || workoutStatus === 'partial') {
-                actionButtons = `
-            <button class="btn btn-primary" data-action="editWorkout" data-doc-id="${escapedDocId}">
-                <i class="fas fa-edit"></i> Edit workout
-            </button>
-            <button class="btn btn-danger" data-action="deleteWorkout" data-doc-id="${escapedDocId}">
-                <i class="fas fa-trash"></i> Delete
-            </button>
-            <button class="btn btn-secondary" data-action="repeatWorkout" data-doc-id="${escapedDocId}">
-                <i class="fas fa-redo"></i> Repeat
-            </button>`;
-            } else {
-                // Completed workout - show Edit and Repeat buttons
-                actionButtons = `
-            <button class="btn btn-primary" data-action="editWorkout" data-doc-id="${escapedDocId}">
-                <i class="fas fa-edit"></i> Edit workout
-            </button>
-            <button class="btn btn-secondary" data-action="repeatWorkout" data-doc-id="${escapedDocId}">
-                <i class="fas fa-redo"></i> Repeat
-            </button>
-            <button class="btn btn-secondary" data-action="saveAsTemplate" data-doc-id="${escapedDocId}">
-                <i class="fas fa-bookmark"></i> Save as workout
-            </button>
-            <button class="btn btn-danger" data-action="deleteWorkout" data-doc-id="${escapedDocId}">
-                <i class="fas fa-trash"></i> Delete
-            </button>`;
-            }
-
-            // Set the modal content
-            content.innerHTML = `
-        <div class="workout-header">
-            <h3>${escapeHtml(resolveWorkoutDisplayName(workout))} - ${displayDate}</h3>
+            content.innerHTML = `${statusLine}
+        <div class="wd-stats">
+            <div class="wd-stat"><span class="wd-stat__value">${stats.exercises}</span><span class="wd-stat__label">exercise${stats.exercises === 1 ? '' : 's'}</span></div>
+            <div class="wd-stat"><span class="wd-stat__value">${stats.sets}</span><span class="wd-stat__label">set${stats.sets === 1 ? '' : 's'}</span></div>
+            <div class="wd-stat"><span class="wd-stat__value">${stats.volume}</span><span class="wd-stat__label">${unitLabel(unit)} moved</span></div>
         </div>
-
-        <div class="workout-detail-summary">
-            <div class="workout-meta">
-                <div><strong>Status:</strong> ${escapeHtml(formatStatus(workoutStatus))}</div>
-                ${workout.sessionLabel ? `<div><strong>Session:</strong> ${escapeHtml(workout.sessionLabel)}${workout.basedOn ? ' · from your program' : ''}</div>` : ''}
-                <div><strong>Duration:</strong> ${escapeHtml(String(formattedDuration))}</div>
-                <div><strong>Progress:</strong> ${parseInt(this.calculateProgress(workout)) || 0}%</div>
-            </div>
-        </div>
-
-        <div class="workout-exercises">
-            <h3>Exercises & Sets</h3>
-            ${exerciseHTML}
-        </div>
-
-        <div class="modal-actions">
-            ${actionButtons}
-        </div>
+        ${workout.sessionLabel ? `<div class="wd-session">${escapeHtml(workout.sessionLabel)}${workout.basedOn ? ' · from your plan' : ''}</div>` : ''}
+        <div class="workout-exercises">${exerciseHTML}</div>
     `;
 
-            openModal(modal);
+            // Footer: the two things you come here to do. An unfinished
+            // session resumes instead of repeating.
+            const id = escapeAttr(docId);
+            const primary = workoutStatus === 'incomplete'
+                ? `<button class="btn btn-primary" data-action="resumeWorkout" data-doc-id="${id}"><i class="fas fa-play"></i> Resume workout</button>`
+                : `<button class="btn btn-primary" data-action="repeatWorkout" data-doc-id="${id}"><i class="fas fa-redo"></i> Repeat workout</button>`;
+            const footer = document.getElementById('workout-detail-footer');
+            if (footer) {
+                footer.innerHTML = `
+                <button class="btn btn-secondary" data-action="editWorkout" data-doc-id="${id}"><i class="fas fa-pen"></i> Edit</button>
+                ${primary}`;
+                footer.classList.remove('hidden');
+            }
+            document.getElementById('workout-detail-more')?.classList.remove('hidden');
+
+            content.scrollTop = 0;
+            enterSection('workout-detail-section');
         },
 
-        generateSetsHTML(sets) {
+        /** Counts for the stat strip: exercises with a logged set, sets, volume in the user's unit. */
+        detailStats(workout) {
+            const unit = appState.globalUnit || 'lbs';
+            let exercises = 0, sets = 0, volume = 0;
+            Object.values(workout.exercises || {}).forEach((ex) => {
+                const done = (ex?.sets || []).filter((st) => st && (st.reps || st.weight));
+                if (done.length) exercises++;
+                sets += done.length;
+                done.forEach((st) => {
+                    const w = displayWeight(st.weight || 0, st.originalUnit || 'lbs', unit).value;
+                    volume += (Number(st.reps) || 0) * w;
+                });
+            });
+            const v = Math.round(volume);
+            return { exercises, sets, volume: v >= 10000 ? `${(v / 1000).toFixed(1)}k` : v.toLocaleString('en-US') };
+        },
+
+        generateSetsHTML(sets, unit = appState.globalUnit || 'lbs') {
             if (!sets || sets.length === 0) {
-                return '<p class="no-sets-text">No sets recorded</p>';
+                return '<p class="no-sets-text">No sets logged</p>';
             }
 
             let html = '<div class="sets-list">';
-            sets.forEach((set, index) => {
+            sets.forEach((set) => {
                 if (set && (set.reps || set.weight)) {
-                    const dw = displayWeight(set.weight || 0, set.originalUnit || 'lbs', appState.globalUnit || 'lbs');
-                    html += `<span class="set-badge">Set ${index + 1}: ${set.reps || 0} × ${dw.value} ${dw.label}${set.rpe ? ` · RPE ${set.rpe}` : ''}</span>`;
+                    html += `<span class="set-badge">${escapeHtml(formatSet(set, unit))}</span>`;
                 }
             });
             html += '</div>';
@@ -1376,37 +1036,18 @@ export function getWorkoutHistory(appState) {
             return totalSets > 0 ? Math.round((completedSets / totalSets) * 100) : 0;
         },
 
-        // Basic modal for calendar workouts without full details
+        // A calendar entry whose full doc isn't loaded: the same page, from
+        // what the calendar knows (it used to target a #workoutModal that
+        // doesn't exist and threw).
         showFixedBasicModal(date, calendarWorkout) {
-            const modal = document.getElementById('workoutModal');
-            const content = document.getElementById('modalBody');
-            const modalTitle = document.getElementById('modalTitle');
-
-            // Fix date display for basic modal too
-            const safeDate = new Date(date + 'T12:00:00');
-            const displayDate = safeDate.toLocaleDateString('en-US', {
-                month: 'numeric',
-                day: 'numeric',
-                year: 'numeric',
-            });
-
-            if (modalTitle) {
-                modalTitle.textContent = `${calendarWorkout.name} - ${displayDate}`;
-            }
-
-            content.innerHTML = `
-            <div class="wh-detail-meta">
-                <div class="wh-detail-meta__grid wh-detail-meta__grid--compact">
-                    <strong class="text-secondary">Status:</strong>
-                    <span class="text-success">${escapeHtml(formatStatus(calendarWorkout.status))}</span>
-                    <strong class="text-secondary">Category:</strong>
-                    <span>${escapeHtml(formatCategory(calendarWorkout.category))}</span>
-                </div>
-            </div>
-            <p class="wh-detail-limited">Limited workout details available. This workout may have been logged manually or sync data is incomplete.</p>
-        `;
-
-            modal.style.display = 'flex';
+            const raw = calendarWorkout?.rawData || {};
+            this.showFixedWorkoutModal({
+                ...raw,
+                date: raw.date || date,
+                docId: calendarWorkout?.docId || raw.docId,
+                workoutType: raw.workoutType || calendarWorkout?.name,
+                status: calendarWorkout?.status || raw.status,
+            }, 0);
         },
 
         // Search functionality adapted for calendar

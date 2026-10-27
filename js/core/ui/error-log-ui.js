@@ -2,6 +2,7 @@
 // In-app error log viewer for debugging at the gym
 
 import { escapeHtml, showNotification } from './ui-helpers.js';
+import { confirmSheet } from './confirm-sheet.js';
 import {
     getErrorLog,
     getUnreadErrorCount,
@@ -101,6 +102,15 @@ export async function toggleErrorLogSource() {
  * Clear all errors (both in-memory and Firestore).
  */
 export async function clearAllErrors() {
+    // B9 — this also wipes the copies saved to your account; ask first.
+    const ok = await confirmSheet({
+        title: 'Clear the error log?',
+        message: "Errors saved to your account are cleared too. This can't be undone.",
+        confirmLabel: 'Clear errors',
+        cancelLabel: 'Keep errors',
+        destructive: true,
+    });
+    if (!ok) return;
     clearErrorLog();
     await clearPersistedErrors();
     persistedErrors = [];

@@ -720,41 +720,6 @@ dialog.modal:not([open]) {
     margin-bottom: var(--space-6);
 }
 
-/* Workout Detail Modal */
-.workout-detail-summary {
-    background: var(--bg-card);
-    border-radius: var(--radius-md);
-    padding: var(--pad-card-y);
-    margin-bottom: var(--space-20);
-}
-.workout-meta {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-16);
-}
-.workout-meta div {
-    font-size: var(--font-base);
-    color: var(--text-main);
-}
-.workout-meta strong {
-    color: var(--text-muted);
-}
-.workout-exercises {
-    margin-bottom: var(--space-20);
-}
-.workout-exercises > h3 {
-    font-size: var(--font-md);
-    margin-bottom: var(--space-12);
-    color: var(--text-strong);
-    padding-bottom: var(--space-8);
-    border-bottom: 1px solid var(--border);
-}
-.workout-exercises h5,
-.exercise-detail-item h5 {
-    color: var(--primary);
-    margin: 0 0 var(--space-10) 0;
-    font-size: var(--font-base);
-}
 /* History-detail exercise name is a link to that lift's progress page */
 .exercise-summary {
     margin-bottom: var(--space-12);

@@ -730,6 +730,10 @@ export function renderEditMode() {
     if (!content) return;
 
     if (titleEl) titleEl.textContent = 'Edit workout';
+    // The read page's footer and ⋯ belong to it; edit mode has its own bar.
+    // showFixedWorkoutModal puts them (and the title) back on the way out.
+    document.getElementById('workout-detail-footer')?.classList.add('hidden');
+    document.getElementById('workout-detail-more')?.classList.add('hidden');
 
     const dirty = dirtyCount();
     const exerciseKeys = Object.keys(editState.exercises);

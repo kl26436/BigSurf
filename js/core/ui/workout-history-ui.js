@@ -3,8 +3,9 @@
 
 import { AppState } from '../utils/app-state.js';
 import { db } from '../data/firebase-config.js';
-import { showNotification, setHeaderMode } from './ui-helpers.js';
+import { showNotification, setHeaderMode, escapeAttr } from './ui-helpers.js';
 import { confirmSheet } from './confirm-sheet.js';
+import { openSheet, closeSheet } from './sheet.js';
 import { setBottomNavVisible, updateBottomNavActive } from './navigation.js';
 
 // ===================================================================
@@ -166,11 +167,6 @@ export async function resumeWorkout(workoutId) {
         cancelLabel: 'Not now',
     });
     if (ok) {
-        // Close the modal first
-        if (window.workoutHistory) {
-            window.workoutHistory.closeWorkoutDetailModal();
-        }
-
         // Check if this is today's in-progress workout - use continueInProgressWorkout
         if (window.inProgressWorkout && window.inProgressWorkout.date === workoutDate) {
             if (typeof window.continueInProgressWorkout === 'function') {
@@ -215,11 +211,6 @@ export async function repeatWorkout(workoutId) {
         cancelLabel: 'Not now',
     });
     if (ok) {
-        // Close the modal first
-        if (window.workoutHistory) {
-            window.workoutHistory.closeWorkoutDetailModal();
-        }
-
         // Freestyle sessions were never templates, so startWorkout() can't
         // resolve them by name — it threw "Workout not found" at exactly the
         // user who taps Repeat the most. Route them to a fresh freestyle
@@ -245,67 +236,44 @@ export async function repeatWorkout(workoutId) {
     }
 }
 
-export function deleteWorkout(workoutId) {
-    if (!window.workoutHistory) return;
+// ===================================================================
+// WORKOUT DETAIL PAGE
+// ===================================================================
+// The page is painted by workout-history.js (showFixedWorkoutModal) —
+// viewWorkout() above routes every tap path through it. Back is
+// workoutHistory.closeWorkoutDetailModal() → navigateBack().
 
-    const workout = window.workoutHistory.getWorkoutDetails(workoutId);
-    if (!workout) {
-        showNotification('Workout not found', 'error');
-        return;
-    }
-
-    // Use the global deleteWorkoutFromCalendar function which handles Firebase deletion
-    if (typeof window.deleteWorkoutFromCalendar === 'function') {
-        // Pass the date (workoutId is the date)
-        window.deleteWorkoutFromCalendar(workoutId);
-    } else {
-        console.error('❌ Delete workout function not available');
-        showNotification("Couldn't delete workout — refresh the page", 'error');
-    }
+/**
+ * UD-4 — the page's ⋯: the occasional actions, Delete last and apart from
+ * the primary. Rows carry the same data-action the page uses, so they run
+ * through the page's own handler.
+ */
+export function openWorkoutDetailMenu() {
+    const wh = window.workoutHistory;
+    const docId = wh?._detailDocId;
+    if (!docId) return;
+    const id = escapeAttr(docId);
+    const sheet = openSheet({
+        id: 'workout-detail-menu',
+        title: 'This workout',
+        bodyHTML: `
+            <div class="group">
+                <button type="button" class="srow srow--clickable srow--button" data-action="saveAsTemplate" data-doc-id="${id}">
+                    <span class="srow-icon ic-muted"><i class="fas fa-bookmark" aria-hidden="true"></i></span>
+                    <span class="srow-info"><span class="srow-name">Save as workout</span><span class="srow-desc">Reuse these exercises from Your workouts</span></span>
+                </button>
+                <button type="button" class="srow srow--clickable srow--button" data-action="deleteWorkout" data-doc-id="${id}">
+                    <span class="srow-icon ic-danger"><i class="fas fa-trash" aria-hidden="true"></i></span>
+                    <span class="srow-info"><span class="srow-name srow-name--danger">Delete workout</span></span>
+                </button>
+            </div>`,
+    });
+    sheet.body.addEventListener('click', (e) => {
+        if (!e.target.closest('[data-action]')) return;
+        closeSheet('workout-detail-menu', { immediate: true });
+        wh._actionHandler?.(e);
+    });
 }
-
-export function retryWorkout(workoutId) {
-    if (!window.workoutHistory) return;
-
-    const workout = window.workoutHistory.getWorkoutDetails(workoutId);
-    if (!workout) {
-        showNotification('Workout not found', 'error');
-        return;
-    }
-
-    // Get workout name from formatted object or rawData
-    const workoutName = workout.name || workout.rawData?.workoutType || 'Workout';
-
-    // Close the modal first
-    if (window.workoutHistory) {
-        window.workoutHistory.closeWorkoutDetailModal();
-    }
-
-    // Retry is the same as Repeat - start a new workout with the same type
-    if (typeof window.startWorkout === 'function') {
-        window.startWorkout(workoutName);
-    } else {
-        console.error('❌ startWorkout function not available');
-        showNotification("Couldn't retry workout — refresh the page", 'error');
-    }
-}
-
-// ===================================================================
-// WORKOUT DETAIL MODAL
-// ===================================================================
-// The detail renderer lives in workout-history.js (showFixedWorkoutModal) —
-// viewWorkout() above routes every tap path through it so there's one modal.
-
-export function closeWorkoutDetailModal() {
-    const modal = document.getElementById('workout-detail-section');
-    if (modal) {
-        modal.classList.add('hidden');
-    }
-}
-
-// ===================================================================
-// ADDITIONAL CALENDAR HELPERS
-// ===================================================================
 
 export function clearAllHistoryFilters() {
     // Clear search input if it exists
@@ -325,36 +293,6 @@ export function clearAllHistoryFilters() {
 // REMOVED: setupHistoryFilters(), applyHistoryFilters(), enhanceWorkoutData(),
 // formatWorkoutForDisplay(), getWorkoutActionButton() - Never implemented TODO stubs
 
-// ===================================================================
-// EVENT LISTENER SETUP
-// ===================================================================
-
-export function setupWorkoutHistoryEventListeners() {
-    // Set up modal close handlers
-    const modal = document.getElementById('workout-detail-section');
-    if (modal) {
-        // Close on background click
-        modal.addEventListener('click', (e) => {
-            if (e.target === modal) {
-                closeWorkoutDetailModal();
-            }
-        });
-    }
-
-    // Set up ESC key handler for modals
-    document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape') {
-            const activeModal = document.querySelector('.modal:not(.hidden)');
-            if (activeModal && activeModal.id === 'workout-detail-section') {
-                closeWorkoutDetailModal();
-            }
-        }
-    });
+if (typeof window !== 'undefined') {
+    window.openWorkoutDetailMenu = openWorkoutDetailMenu;
 }
-
-// ===================================================================
-// INITIALIZE ON MODULE LOAD
-// ===================================================================
-
-// Auto-setup event listeners when module loads
-setupWorkoutHistoryEventListeners();

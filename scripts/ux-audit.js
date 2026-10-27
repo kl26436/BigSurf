@@ -22,23 +22,23 @@ const ROOT = path.resolve(__dirname, '..');
 const BUDGETS = {
     // Flex rows named -row / __row / -item / __item / -entry defined outside
     // components/cards.css. DS-1: a list item is a .row-card.
-    rowClassesOutsideCardsCss: 51,
+    rowClassesOutsideCardsCss: 50,
     // Classes that render a section head. Target: .dash-section-head + .sec-head
     // (titled heads) and .group-label (grouped settings).
     sectionHeadClasses: 9,
     // Distinct letter-spacing values on uppercase rules (the eyebrow).
     eyebrowLetterSpacingValues: 7,
     // Closers that hide a page section by hand instead of navigateBack().
-    sectionHiddenByHand: 7,
+    sectionHiddenByHand: 2,
     // Sections in navigation.js SECTION_IDS with no routeToView case.
-    sectionsWithoutRoute: 1,
+    sectionsWithoutRoute: 0,
     // Places that compose "… ago" themselves. Target: one helper.
     relativeTimeImplementations: 12,
     // 'lb' / 'lbs' / 'kg' typed next to a value in visible text — use the unit helper.
     hardcodedUnitLiterals: 2,
     // Words the user never sees (UD-5 word table): location, orphan, mapped,
     // picker, program; and weight-first set notation ("185 lb × 6").
-    uxWordHits: 92,
+    uxWordHits: 90,
 };
 
 // A row is a component name for a list item — set rows and menu rows may

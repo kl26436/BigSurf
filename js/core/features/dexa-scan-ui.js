@@ -4,6 +4,7 @@
 import { AppState } from '../utils/app-state.js';
 import { escapeHtml, escapeAttr, showNotification, convertWeight } from '../ui/ui-helpers.js';
 import { confirmSheet } from '../ui/confirm-sheet.js';
+import { enterSection, navigateBack } from '../ui/navigation.js';
 import { formatRelativeDate } from '../utils/date-helpers.js';
 import {
     uploadDexaPdf,
@@ -198,7 +199,7 @@ export function showDexaUploadModal() {
     const saveBtn = document.getElementById('dexa-save-btn');
     if (saveBtn) saveBtn.disabled = true;
 
-    section.classList.remove('hidden');
+    enterSection('dexa-upload-section');
 }
 
 /**
@@ -247,7 +248,7 @@ export function selectDexaUnit(unit) {
 export function closeDexaUploadModal() {
     _selectedFile = null;
     const section = document.getElementById('dexa-upload-section');
-    if (section) section.classList.add('hidden');
+    if (section && !section.classList.contains('hidden')) navigateBack();
 }
 
 /**
@@ -558,9 +559,9 @@ export function showDexaReviewForm(scanId, prefillData = {}, isManual = false) {
     const saveBtn = document.getElementById('dexa-save-btn');
     if (saveBtn) saveBtn.disabled = false;
 
-    // Ensure section is visible
+    // Ensure the page is up (the same view twice is one back-stack entry).
     const section = document.getElementById('dexa-upload-section');
-    if (section) section.classList.remove('hidden');
+    if (section?.classList.contains('hidden')) enterSection('dexa-upload-section');
 }
 
 /**
@@ -685,8 +686,14 @@ export async function confirmDexaSave() {
  * Show DEXA scan history as a timeline.
  */
 export async function showDexaHistory() {
+    if (!(await paintDexaHistory())) return;
+    enterSection('dexa-history-section');
+}
+
+/** Paint the history list into its page without changing pages. */
+async function paintDexaHistory() {
     const modal = document.getElementById('dexa-history-section');
-    if (!modal) return;
+    if (!modal) return false;
 
     const scans = await loadDexaHistory();
 
@@ -697,7 +704,7 @@ export async function showDexaHistory() {
                 <div class="empty-state-icon"><i class="fas fa-x-ray"></i></div>
                 <div class="empty-state-title">No scans yet</div>
                 <div class="empty-state-description">Upload your first DEXA scan to start tracking body composition.</div>
-                <button class="btn btn-primary btn-sm" onclick="closeDexaHistory(); showDexaUploadModal();">
+                <button class="btn btn-primary btn-sm" onclick="showDexaUploadModal()">
                     <i class="fas fa-upload"></i> Upload scan
                 </button>
             </div>
@@ -737,9 +744,7 @@ export async function showDexaHistory() {
     if (body) {
         body.innerHTML = historyHTML;
     }
-
-    // Show as full-page section
-    modal.classList.remove('hidden');
+    return true;
 }
 
 /**
@@ -747,7 +752,7 @@ export async function showDexaHistory() {
  */
 export function closeDexaHistory() {
     const modal = document.getElementById('dexa-history-section');
-    if (modal) modal.classList.add('hidden');
+    if (modal && !modal.classList.contains('hidden')) navigateBack();
 }
 
 // ===================================================================
@@ -951,7 +956,7 @@ export async function showDexaDetail(scanId) {
         `;
     }
 
-    section.classList.remove('hidden');
+    enterSection('dexa-detail-section');
 }
 
 /**
@@ -959,7 +964,7 @@ export async function showDexaDetail(scanId) {
  */
 export function closeDexaDetail() {
     const modal = document.getElementById('dexa-detail-section');
-    if (modal) modal.classList.add('hidden');
+    if (modal && !modal.classList.contains('hidden')) navigateBack();
 }
 
 /**
@@ -967,11 +972,10 @@ export function closeDexaDetail() {
  */
 export async function deleteDexaEntry(scanId) {
     await deleteDexaScan(scanId);
+    // Repaint the history list first (if it was painted, back lands on it),
+    // then leave the detail page.
+    if (document.getElementById('dexa-history-content')?.children.length) await paintDexaHistory();
     closeDexaDetail();
-    // Refresh history if it's showing. It's a <section> toggled via .hidden,
-    // not a <dialog>, so `.open` is always undefined — check the class instead.
-    const historyModal = document.getElementById('dexa-history-section');
-    if (historyModal && !historyModal.classList.contains('hidden')) await showDexaHistory();
 }
 
 // ===================================================================
