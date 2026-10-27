@@ -753,7 +753,7 @@ function renderForToday(allWorkouts) {
     const programRow = (!setupRow && !AppState._activeProgram && !AppState.settings?.programStarterDismissed) ? `
         <div class="dash-alt-row dash-alt-row--setup" id="program-starter-row">
             <i class="fas fa-flag-checkered dash-alt-row__icon"></i>
-            <div class="dash-alt-row__txt dash-alt-row__txt--muted" onclick="startProgramChat()" role="button" tabindex="0">Get a 4-week program built from your workouts</div>
+            <div class="dash-alt-row__txt dash-alt-row__txt--muted" onclick="startProgramChat()" role="button" tabindex="0">Get a 4-week plan built from your workouts</div>
             <button class="dash-alt-row__dismiss" onclick="dismissProgramStarter(event)" aria-label="Dismiss">
                 <i class="fas fa-times"></i>
             </button>

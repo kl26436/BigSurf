@@ -769,8 +769,8 @@ function renderMappedEquipmentCard(workoutData) {
     ).length;
 
     const line = totalAtGym > count
-        ? `You mapped ${count} more machine${count !== 1 ? 's' : ''} at ${gymName} — ${totalAtGym} total.`
-        : `You mapped ${count} machine${count !== 1 ? 's' : ''} at ${gymName} — next time you'll see what's possible before you start.`;
+        ? `You saved ${count} more machine${count !== 1 ? 's' : ''} at ${gymName} — ${totalAtGym} total.`
+        : `You saved ${count} machine${count !== 1 ? 's' : ''} at ${gymName} — next time you'll see what's possible before you start.`;
 
     // One-shot: don't re-show if the summary re-renders.
     AppState._sessionMappedEquipment = null;
@@ -845,7 +845,7 @@ export function showWorkoutSummary(workoutData, newPRs = [], templateChanges = n
                 <i class="fas fa-check-circle completion-header__icon"></i>
                 <h2>Workout complete</h2>
                 <p class="completion-workout-name">${escapeHtml(workoutData.workoutType || 'Workout')}</p>
-                ${workoutData.sessionLabel ? `<span class="chip chip--sm completion-session-chip"><i class="fas fa-flag-checkered"></i> ${escapeHtml(workoutData.sessionLabel)}${workoutData.basedOn ? ' · from your program' : ''}</span>` : ''}
+                ${workoutData.sessionLabel ? `<span class="chip chip--sm completion-session-chip"><i class="fas fa-flag-checkered"></i> ${escapeHtml(workoutData.sessionLabel)}${workoutData.basedOn ? ' · from your plan' : ''}</span>` : ''}
             </div>
 
             ${prsHtml}
@@ -2597,7 +2597,7 @@ export async function changeWorkoutLocation() {
         // Populate location list — nearest first when GPS is available, so
         // overlapping gyms (two casinos on the same block) are easy to tell apart.
         if (savedLocations.length === 0) {
-            listContainer.innerHTML = '<div class="location-list-empty">No saved locations yet</div>';
+            listContainer.innerHTML = '<div class="location-list-empty">No gyms saved yet</div>';
         } else {
             const coords = getCurrentCoords();
             const sorted = savedLocations
@@ -2649,7 +2649,7 @@ export async function changeWorkoutLocation() {
         openModal(modal);
     } catch (error) {
         console.error('\u274C Error loading locations:', error);
-        showNotification('Error loading locations', 'error');
+        showNotification("Couldn't load your gyms — try again", 'error');
     }
 }
 

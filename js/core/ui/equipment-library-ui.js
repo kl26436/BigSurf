@@ -30,6 +30,7 @@ import { unmappedEquipment, lineGaps, branchScouting } from '../features/equipme
 import { BODY_PARTS, canonicalBodyPart, movementLabel, labelLine } from '../features/exercise-taxonomy.js';
 import { patternsForEquipment } from '../features/movement-patterns.js';
 import { once } from './busy.js';
+import { getSessionGym } from '../features/gym-session-context.js';
 
 let workoutManager = null;
 let allEquipment = [];
@@ -485,7 +486,7 @@ function renderScanReview() {
         <div class="scan-review">
             <div class="scan-review__hint">
                 These equipment names appear in your workout history but aren't in your library.
-                <strong>Link</strong> maps an orphan name to an existing machine and rewrites past sessions. <strong>Add</strong> creates a new entry. <strong>Skip</strong> ignores it for this session.
+                <strong>Link</strong> joins a name from your history to a machine you have and updates past sessions. <strong>Add</strong> creates a new entry. <strong>Skip</strong> ignores it for this session.
             </div>
             <div class="scan-review__list">${rowsHTML}</div>
         </div>
@@ -718,7 +719,7 @@ export async function autoLinkAllOrphans() {
     }
 
     const confirmed = await confirmSheet({
-        title: `Auto-link ${targets.length} orphan${targets.length !== 1 ? 's' : ''}?`,
+        title: `Link ${targets.length} name${targets.length !== 1 ? 's' : ''} to your machines?`,
         message: 'Only matches with at least 85% confidence get linked.',
         confirmLabel: 'Auto-link', cancelLabel: 'Not now',
     });
@@ -738,21 +739,8 @@ export const __scanInternals = { findBestSuggestion };
 export function exitScanReview() {
     scanReviewActive = false;
     // Restore the standard page header
-    const section = document.getElementById('equipment-library-section');
-    const staticHeader = section?.querySelector('.page-header');
-    if (staticHeader) {
-        staticHeader.innerHTML = `
-            <div class="page-header__left">
-                <button class="page-header__back" onclick="navigateBack()" aria-label="Back">
-                    <i class="fas fa-chevron-left"></i>
-                </button>
-                <div class="page-header__title">Equipment</div>
-            </div>
-            <button class="page-header__save" onclick="showAddEquipmentFlow()">
-                <i class="fas fa-plus"></i> Add
-            </button>
-        `;
-    }
+    // B13 — one restore, the index.html header (camera + "Add equipment").
+    restoreLibraryHeader();
     renderEquipmentLibrary();
 }
 
@@ -851,7 +839,7 @@ export async function deleteOrphanFromHistory(orphanName) {
         }
     } catch (err) {
         console.error('❌ Failed to delete orphan from history:', err);
-        showNotification("Couldn't delete orphan — try again", 'error');
+        showNotification("Couldn't delete that name — try again", 'error');
     }
 }
 
@@ -1319,20 +1307,54 @@ export async function openCatalogMachine(catalogRef) {
         if (Array.isArray(locs)) allLocations = locs;
     } catch { /* fall back to whatever's already cached */ }
 
-    // Know BEFORE promoting whether this was already in the library, so the
-    // add isn't silent — browsing the catalog quietly growing your equipment
-    // with no feedback read as "did that even work?".
-    const ownedBefore = !!findOwnedForCatalogMachine(resolved.machine);
-
-    const equipment = await promoteCatalogToEquipment(catalogRef);
-    if (!equipment) {
-        showNotification("Couldn't open equipment — try again", 'error');
+    // B14 — browsing the catalog writes nothing. A machine you already have
+    // opens its page; one you don't opens a read-only sheet with an explicit
+    // "Add" (at the gym you're at, when there is one).
+    const owned = findOwnedForCatalogMachine(resolved.machine);
+    if (owned?.id) {
+        await openEquipmentDetail(owned.id);
         return;
     }
-    if (!ownedBefore) {
-        showNotification(`Added ${resolved.machine.name} to your equipment`, 'success', 2000);
-    }
-    await openEquipmentDetail(equipment.id);
+    const { brand, line, machine } = resolved;
+    const gym = getSessionGym();
+    const ref = escapeAttr(catalogRef);
+    const gymArg = gym ? `'${escapeAttr(gym)}'` : 'null';
+    openSheet({
+        id: 'catalog-machine',
+        title: machine.name,
+        subtitle: [brand.name, line.name].filter(Boolean).join(' · '),
+        bodyHTML: `
+            <div class="group">
+                <div class="srow"><div class="srow-info"><div class="srow-name">Type</div></div><span class="srow-value">${escapeHtml(machine.type || line.type || 'Other')}</span></div>
+                ${machine.bodyPart ? `<div class="srow"><div class="srow-info"><div class="srow-name">Works</div></div><span class="srow-value">${escapeHtml(machine.bodyPart)}</span></div>` : ''}
+            </div>`,
+        actions: [
+            { label: 'Close', onClick: 'closeCatalogMachineSheet()' },
+            { label: gym ? `Add at ${escapeHtml(gym)}` : 'Add to my equipment', onClick: `addCatalogMachine('${ref}', ${gymArg})`, primary: true },
+        ],
+    });
+}
+
+/** B14 — the catalog sheet's Add: create the machine (at the gym, if given), then open it. */
+export function addCatalogMachine(catalogRef, gymName = null) {
+    return once(`catalog-add-${catalogRef}`, async () => {
+        const resolved = resolveCatalogRef(catalogRef, getCatalogSync());
+        const equipment = await promoteCatalogToEquipment(catalogRef, gymName || null);
+        if (!equipment) {
+            showNotification("Couldn't add that machine — try again", 'error');
+            return;
+        }
+        closeSheet('catalog-machine', { immediate: true });
+        showNotification(`Added ${resolved?.machine?.name || 'the machine'}${gymName ? ` at ${gymName}` : ''}`, 'success', 2000);
+        await openEquipmentDetail(equipment.id);
+    });
+}
+export function closeCatalogMachineSheet() {
+    closeSheet('catalog-machine');
+}
+if (typeof window !== 'undefined') {
+    window.addCatalogMachine = addCatalogMachine;
+    window.closeCatalogMachineSheet = closeCatalogMachineSheet;
 }
 
 // (The old standalone catalog-machine detail screen + per-gym toggle list were
@@ -2485,7 +2507,7 @@ function renderDiscoveryBlock() {
                 <div class="row-card__icon"><i class="fas fa-cog"></i></div>
                 <div class="row-card__content">
                     <div class="row-card__title">${u.name ? escapeHtml(u.name) : 'Unnamed machine'}</div>
-                    <div class="row-card__subtitle">${u.reason === 'no name' ? 'No name' : 'No exercises mapped'}</div>
+                    <div class="row-card__subtitle">${u.reason === 'no name' ? 'No name' : 'No exercises linked'}</div>
                 </div>
                 <i class="fas fa-chevron-right eq-discover__chev"></i>
             </div>
@@ -2497,8 +2519,8 @@ function renderDiscoveryBlock() {
                 <div class="eq-discover__head">
                     <div class="eq-discover__icon"><i class="fas fa-map"></i></div>
                     <div>
-                        <div class="eq-discover__title">${unmapped.length} machine${unmapped.length === 1 ? ' isn\'t' : 's aren\'t'} mapped yet</div>
-                        <div class="eq-discover__sub">No picker can see ${unmapped.length === 1 ? 'it' : 'them'}, and ${unmapped.length === 1 ? 'it' : 'they'} can't rotate into your plan. Tap one to map it.</div>
+                        <div class="eq-discover__title">${unmapped.length} machine${unmapped.length === 1 ? ' has' : 's have'} no exercise yet</div>
+                        <div class="eq-discover__sub">Workouts can't offer ${unmapped.length === 1 ? 'it' : 'them'} and your plan can't use ${unmapped.length === 1 ? 'it' : 'them'}. Tap one to link an exercise.</div>
                     </div>
                 </div>
                 <div class="eq-discover__list">${rows}${more}</div>
@@ -3091,6 +3113,7 @@ export async function openEquipmentDetail(equipmentId, { fromElsewhere = false }
                 <div class="page-header__title">Equipment</div>
             </div>
         `;
+        staticHeader.dataset.mutated = '1';
     }
 
     const currentType = equipment.equipmentType || 'Other';
@@ -3160,7 +3183,7 @@ export async function openEquipmentDetail(equipmentId, { fromElsewhere = false }
 
                 <!-- 3. LOCATIONS — quiet rows; remove is the row's ONE real action -->
                 <div class="sec-head">
-                    <h4>Locations <span class="count">${locations.length}</span></h4>
+                    <h4>Gyms <span class="count">${locations.length}</span></h4>
                     <button class="sec-head__action" onclick="addEquipmentLocation('${escapeAttr(equipmentId)}')">+ Add</button>
                 </div>
                 ${locations.map((loc) => `
@@ -3177,7 +3200,7 @@ export async function openEquipmentDetail(equipmentId, { fromElsewhere = false }
                         </button>
                     </div>
                 `).join('')}
-                ${locations.length === 0 ? '<div class="equip-locations-empty">No locations yet</div>' : ''}
+                ${locations.length === 0 ? '<div class="equip-locations-empty">Not at a gym yet</div>' : ''}
 
                 <!-- 4. USED FOR — row opens the per-exercise sheet; the play button
                      actually PLAYS (it used to be decoration that looked tappable) -->
@@ -3445,21 +3468,8 @@ function restoreEquipmentLibraryListView() {
 
     // Restore the canonical .page-header for the list view (matches the
     // markup in index.html so the DOM snaps back to its original shape).
-    const section = document.getElementById('equipment-library-section');
-    const staticHeader = section?.querySelector('.page-header');
-    if (staticHeader) {
-        staticHeader.innerHTML = `
-            <div class="page-header__left">
-                <button class="page-header__back" onclick="navigateBack()" aria-label="Back">
-                    <i class="fas fa-chevron-left"></i>
-                </button>
-                <div class="page-header__title">Equipment</div>
-            </div>
-            <button class="page-header__save" onclick="showAddEquipmentFlow()">
-                <i class="fas fa-plus"></i> Add
-            </button>
-        `;
-    }
+    // B13 — one restore, the index.html header (camera + "Add equipment").
+    restoreLibraryHeader();
 
     renderEquipmentLibrary();
 }
@@ -4217,6 +4227,7 @@ function renderAddFlow() {
                 <div class="page-header__title">Add equipment</div>
             </div>
         `;
+        staticHeader.dataset.mutated = '1';
     }
 
     const { brand, line, func, type, name } = addFlowState;
@@ -4428,7 +4439,7 @@ export function addEquipmentLocation(equipmentId) {
 
     if (available.length === 0) {
         const msg = gymNames.size === 0
-            ? 'Save a gym first (start a workout to stamp a location)'
+            ? "Add a gym first — start a workout there and it's saved"
             : `Already at every gym`;
         showNotification(msg, 'info');
         return;

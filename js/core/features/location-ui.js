@@ -643,12 +643,12 @@ async function detectGPSForModal() {
         if (coords) {
             selectedLocationCoords = coords;
             statusBox.className = 'gps-status-box success';
-            statusBox.innerHTML = `<i class="fas fa-check-circle"></i><span>Location detected! (${coords.latitude.toFixed(5)}, ${coords.longitude.toFixed(5)})</span>`;
+            statusBox.innerHTML = `<i class="fas fa-check-circle"></i><span>Found you (${coords.latitude.toFixed(5)}, ${coords.longitude.toFixed(5)})</span>`;
             updateSelectedCoordsDisplay();
         } else {
             statusBox.className = 'gps-status-box error';
             statusBox.innerHTML =
-                '<i class="fas fa-exclamation-circle"></i><span>Could not detect location. Try another method.</span>';
+                `<i class="fas fa-exclamation-circle"></i><span>Couldn't find your position — try another method.</span>`;
         }
     } catch {
         statusBox.className = 'gps-status-box error';

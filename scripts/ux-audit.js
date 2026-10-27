@@ -38,7 +38,7 @@ const BUDGETS = {
     hardcodedUnitLiterals: 2,
     // Words the user never sees (UD-5 word table): location, orphan, mapped,
     // picker, program; and weight-first set notation ("185 lb × 6").
-    uxWordHits: 25,
+    uxWordHits: 3,
 };
 
 // A row is a component name for a list item — set rows and menu rows may

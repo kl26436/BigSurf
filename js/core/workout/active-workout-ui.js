@@ -277,7 +277,7 @@ function renderWorkoutMenu() {
                 <i class="fas fa-bookmark"></i> Save as workout
             </button>
             <button class="aw-ex-menu__item" onclick="changeWorkoutLocation(); awCloseMenus();">
-                <i class="fas fa-map-marker-alt"></i> Change location
+                <i class="fas fa-map-marker-alt"></i> Change gym
             </button>
             <div class="aw-ex-menu__divider"></div>
             <button class="aw-ex-menu__item" onclick="showMidWorkoutSummary(); awCloseMenus();">

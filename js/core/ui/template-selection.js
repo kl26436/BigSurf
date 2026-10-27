@@ -850,7 +850,7 @@ function renderGymContextHeader() {
             banner = `
                 <div class="gym-new-banner" data-stop-propagation>
                     <i class="fas fa-compass gym-new-banner__icon"></i>
-                    <div class="gym-new-banner__text">New gym — start a workout and it'll get mapped as you go</div>
+                    <div class="gym-new-banner__text">New gym — start a workout and its machines are saved as you go</div>
                     <button type="button" class="gym-new-banner__dismiss"
                             data-action="dismissGymBanner" data-gym="${escapeAttr(gym)}"
                             aria-label="Dismiss">
@@ -1040,7 +1040,7 @@ function renderWorkoutEditorPage(template) {
 
     const unmappedCount = exercisesArray.filter(ex => isExerciseUnmappedAtGym(ex)).length;
     const unmappedNote = (unmappedCount > 0 && unmappedCount < exercisesArray.length)
-        ? `<div class="template-editor__unmapped-note">${unmappedCount} not mapped — pick machines or swaps when you start. Asked once, remembered.</div>`
+        ? `<div class="template-editor__unmapped-note">${unmappedCount} without a machine here — pick one or a swap when you start. Asked once, remembered.</div>`
         : '';
 
     const isArchived = !!template.archived;
@@ -1378,7 +1378,7 @@ function renderTemplateExerciseRow(ex, idx, total, templateId, isExpanded) {
                     <div class="te-row__meta">${summary}</div>
                     <div class="te-row__last" data-pending data-exercise="${escapeAttr(exName)}" data-equipment="${escapeAttr(equipment || '')}"></div>
                 </div>
-                ${unmapped ? '<span class="te-row__unmapped" aria-label="Not mapped at this gym">Not mapped</span>' : ''}
+                ${unmapped ? '<span class="te-row__unmapped" aria-label="No machine at this gym yet">No machine here</span>' : ''}
                 <button class="te-row__remove" data-stop-propagation
                         data-action="removeTemplateExercise"
                         data-template-id="${escapeAttr(templateId)}"
