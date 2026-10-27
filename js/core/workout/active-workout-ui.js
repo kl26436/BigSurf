@@ -662,7 +662,7 @@ function renderExerciseView(exercise, idx, savedEx) {
             <span class="aw-sets-header__label">Reps</span>
             <span class="aw-sets-header__label">${weightLabel}</span>
             <button class="aw-unit-seg" onclick="awToggleUnit(${idx})" aria-label="Weight in ${unitShort} — switch to ${otherUnit}">
-                <span class="${unitShort === 'lb' ? 'on' : ''}">lb</span><span class="${unitShort === 'kg' ? 'on' : ''}">kg</span>
+                <span class="aw-unit-seg__track"><span class="${unitShort === 'lb' ? 'on' : ''}">lb</span><span class="${unitShort === 'kg' ? 'on' : ''}">kg</span></span>
             </button>
         </div>
         ${showAutofillHint ? '<div class="aw-autofill-hint"><i class="fas fa-magic"></i> Pre-filled from last session · tap ✓ to confirm or edit values</div>' : ''}
@@ -1303,6 +1303,10 @@ function renderExerciseMenu(idx) {
             <button class="aw-ex-menu__item" onclick="awReplaceExercise(${idx})">
                 <i class="fas fa-exchange-alt"></i> Swap exercise
             </button>
+            ${(savedEx.sets?.length || 0) > 1 ? `
+            <button class="aw-ex-menu__item" onclick="awCloseMenus(); awRemoveSet(${idx});">
+                <i class="fas fa-minus"></i> Remove last set
+            </button>` : ''}
             <div class="aw-ex-menu__divider"></div>
             ${group
                 ? `<button class="aw-ex-menu__item" onclick="awUnlinkSuperset(${idx})"><i class="fas fa-unlink"></i> Unlink from superset</button>`
@@ -1720,7 +1724,13 @@ function bindSetSwipe(container) {
     };
     container.addEventListener('touchstart', (e) => {
         const row = e.target.closest('.aw-set-row');
-        if (!row || e.touches.length !== 1 || document.activeElement?.closest?.('.aw-set-row') === row) { drag = null; return; }
+        // Only the row's own surface starts a swipe: a sideways tap on the
+        // reps / weight field or the ✓ must never remove a set. An exercise
+        // with one set has nothing to remove, so its row doesn't follow.
+        const savedSets = row ? AppState.savedData?.exercises?.[`exercise_${row.dataset.exIdx}`]?.sets : null;
+        if (!row || e.touches.length !== 1 || e.target.closest('input, button')
+            || (savedSets?.length || 0) <= 1
+            || document.activeElement?.closest?.('.aw-set-row') === row) { drag = null; return; }
         drag = { row, x: e.touches[0].clientX, y: e.touches[0].clientY, dx: 0, horizontal: null };
     }, { passive: true });
     container.addEventListener('touchmove', (e) => {
@@ -3948,7 +3958,7 @@ export function awToggleUnit(exerciseIdx) {
         // "Plates") doesn't carry the unit, so it stays as it is.
         const unitBtn = document.querySelector('.aw-unit-seg');
         if (unitBtn) {
-            const [lbSpan, kgSpan] = unitBtn.querySelectorAll('span');
+            const [lbSpan, kgSpan] = unitBtn.querySelectorAll('.aw-unit-seg__track > span');
             lbSpan?.classList.toggle('on', newUnit !== 'kg');
             kgSpan?.classList.toggle('on', newUnit === 'kg');
             unitBtn.setAttribute('aria-label', newUnit === 'kg' ? 'Weight in kg — switch to lb' : 'Weight in lb — switch to kg');

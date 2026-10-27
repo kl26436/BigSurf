@@ -35,7 +35,7 @@ export function showNotification(message, type = 'info', _duration, action = nul
         : isError ? 'app-toast--error'
         : 'app-toast--info';
     // Action toasts (e.g. "… · Undo") stay up long enough to actually tap.
-    const duration = action ? 6000 : isError ? 4000 : 1500;
+    const duration = action ? 8000 : isError ? 4000 : 1500;
 
     const notification = document.createElement('div');
     notification.className = `app-toast ${variantClass}`;
