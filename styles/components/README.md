@@ -19,7 +19,7 @@
 | Circular 36px back button in page header | `.page-header__back` | [page-header.css](page-header.css) |
 | Full-width primary CTA (page footer) | `.btn-primary` (+ `.btn-full`, or inside `.page-footer`) | [buttons.css](buttons.css) |
 | Compact secondary button | `.btn-secondary` + `.btn-sm` | [buttons.css](buttons.css) |
-| Icon-only button (non-destructive) | `.btn-icon` (44px) or `.btn-icon-sm` (40px) | [buttons.css](buttons.css) |
+| Icon-only button (non-destructive) | `.btn-icon` (44px) or `.btn-icon.btn-icon--filled` (on a card) | [buttons.css](buttons.css) |
 | 2-4 option exclusive segmented toggle | `.segmented` with `<button>` children (add `.active`) | [segmented-control.css](segmented-control.css) |
 | On/off toggle for a preference | `.toggle` with `.on` class for state | [fields.css](fields.css) |
 | Grouped list of interactive rows (settings, detail pages) | `.group` + `.srow` (icon + info + optional right) | [grouped-rows.css](grouped-rows.css) |

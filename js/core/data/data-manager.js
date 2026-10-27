@@ -619,12 +619,12 @@ export async function loadExerciseHistory(exerciseName, exerciseIndex, state) {
     // If already showing, hide it and change button text back
     if (!historyDisplay.classList.contains('hidden')) {
         historyDisplay.classList.add('hidden');
-        historyButton.innerHTML = '<i class="fas fa-history"></i> Show Last Workout';
+        historyButton.innerHTML = '<i class="fas fa-history"></i> Show last workout';
         return;
     }
 
     // Change button text to indicate it can be hidden
-    historyButton.innerHTML = '<i class="fas fa-eye-slash"></i> Hide Last Workout';
+    historyButton.innerHTML = '<i class="fas fa-eye-slash"></i> Hide last workout';
 
     // Get current exercise's equipment and location for matching
     const currentExercise = state.currentWorkout?.exercises?.[exerciseIndex];
@@ -761,7 +761,7 @@ export async function loadExerciseHistory(exerciseName, exerciseIndex, state) {
             // Get PR data for this exercise (id-first — the store is id-keyed)
             const { PRTracker } = await import('../features/pr-tracker.js');
             const exercise = state.currentWorkout?.exercises?.[exerciseIndex];
-            const equipment = exercise?.equipment || 'Unknown Equipment';
+            const equipment = exercise?.equipment || 'Unknown Equipment';  // copy-ok: stored fallback key — matched against saved data
             const prs = PRTracker.getExercisePRs(exerciseName, equipment, exercise?.equipmentId || null);
 
             // Show match info (equipment/location context)
@@ -856,7 +856,7 @@ export async function loadExerciseHistory(exerciseName, exerciseIndex, state) {
         historyDisplay.classList.remove('hidden');
 
         // Reset button text on error
-        historyButton.innerHTML = '<i class="fas fa-history"></i> Show Last Workout';
+        historyButton.innerHTML = '<i class="fas fa-history"></i> Show last workout';
     }
 }
 

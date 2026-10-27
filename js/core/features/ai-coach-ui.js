@@ -712,7 +712,7 @@ export async function askCoach(question) {
         } else if (errorMessage.includes('resource-exhausted') || errorMessage.includes('limit') || errorMessage.includes('rate')) {
             errorHtml = `<i class="fas fa-clock text-warning coach-msg-icon"></i> Daily coach limit reached — try again tomorrow. Your dashboard insights are always available.`;
         } else if (errorMessage.includes('not-found') || errorMessage.includes('internal')) {
-            errorHtml = `<i class="fas fa-cloud text-muted coach-msg-icon"></i> AI Coach requires Cloud Functions to be deployed. The rules-based insights on your dashboard are always available.`;
+            errorHtml = `<i class="fas fa-cloud text-muted coach-msg-icon"></i> The coach isn't set up on this server yet. The insights on your dashboard are always available.`;
         } else {
             errorHtml = `<i class="fas fa-exclamation-circle text-muted coach-msg-icon"></i> Unable to reach coach. Check your connection and try again.`;
         }
@@ -1807,7 +1807,7 @@ export async function confirmRegenerateWorkout() {
     const ok = await confirmSheet({
         title: 'Regenerate workout?',
         message: 'This replaces the preview below with a fresh one.',
-        confirmLabel: 'Regenerate',
+        confirmLabel: 'Regenerate', cancelLabel: 'Keep this one',
     });
     if (ok) showWorkoutBuilder();
 }
@@ -1976,7 +1976,7 @@ function renderTemplatePreview(container) {
                     </div>
                 </div>
                 ${altHtml}
-                <button class="preview-remove-btn" onclick="removePreviewExercise(${i})" title="Remove">
+                <button class="preview-remove-btn" onclick="removePreviewExercise(${i})" title="Remove" aria-label="Remove exercise">
                     <i class="fas fa-times"></i>
                 </button>
             </div>
@@ -2003,7 +2003,7 @@ function renderTemplatePreview(container) {
                 <button class="btn btn-primary" onclick="saveGeneratedTemplate()">
                     <i class="fas fa-save"></i> Save as workout
                 </button>
-                <button class="btn btn-secondary" onclick="resetCoachUI()">Cancel</button>
+                <button class="btn btn-secondary" onclick="resetCoachUI()">Discard workout</button>
             </div>
         </div>
     `;

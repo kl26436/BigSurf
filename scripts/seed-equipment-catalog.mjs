@@ -11,7 +11,7 @@
  *   {
  *     name:         "Hammer Strength",
  *     slug:         "hammer-strength",
- *     lines:        [{ name, slug, type, machines: [{ id, slug, name, bodyPart, variants, imageUrl, exercises: { primary, secondary } }] }],
+ *     lines:        [{ name, slug, type, machines: [{ id, slug, name, bodyPart, pattern, variants, imageUrl, exercises: { primary, secondary } }] }],
  *     machineCount: 24,
  *     version:      1,
  *     updatedAt:    <serverTimestamp>
@@ -132,6 +132,8 @@ function buildMachineDoc(brandSlug, lineSlug, machine) {
         slug: machineSlug,
         name: machine.name,
         bodyPart: machine.bodyPart || null,
+        // LB-5 — stamped by scripts/stamp-catalog-patterns.mjs; null = no single movement.
+        pattern: machine.pattern || null,
         variants: Array.isArray(machine.variants) ? machine.variants : [],
         imageUrl: machine.imageUrl || null,
         exercises: machine.exercises || { primary: [], secondary: [] },

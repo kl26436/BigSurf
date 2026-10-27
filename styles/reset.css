@@ -44,8 +44,7 @@ textarea {
 /* .clickable carries its own touch-action — see utilities.css */
 
 /* iOS momentum scrolling for scrollable containers */
-.modal > .modal-content,
-.exercise-list-container {
+.modal > .modal-content {
     -webkit-overflow-scrolling: touch;
 }
 

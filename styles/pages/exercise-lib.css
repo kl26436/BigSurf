@@ -160,7 +160,7 @@
     background: var(--bg-app);
     flex-shrink: 0;
 }
-.btn-back-category {
+.exlib-back-btn {
     width: var(--tap);
     height: var(--tap);
     background: var(--bg-card);
@@ -177,6 +177,7 @@
     margin-bottom: var(--space-12);
 }
 .exercise-list-container {
+    -webkit-overflow-scrolling: touch; /* iOS momentum scrolling (was in reset.css) */
     display: flex;
     flex-direction: column;
     gap: var(--space-8);
@@ -199,7 +200,6 @@
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
 }
-/* .filter-pill canonical definition lives in styles/utilities.css */
 
 /* LB-4 — Movement filter strip above the equipment pills (chips from chips.css) */
 .exercise-movement-chips {
@@ -362,7 +362,7 @@
     border-color: var(--primary);
     color: var(--primary);
 }
-.btn-add-equipment {
+.exlib-add-btn {
     padding: var(--space-12);
     background: var(--bg-card-hi);
     border: 1px solid var(--border);
@@ -375,7 +375,7 @@
     justify-content: center;
     gap: var(--space-8);
 }
-.btn-add-equipment:hover {
+.exlib-add-btn:hover {
     border-color: var(--primary);
     color: var(--primary);
 }
@@ -384,7 +384,7 @@
     margin-top: var(--space-24);
     text-align: center;
 }
-.btn-delete-exercise {
+.exlib-delete-btn {
     padding: var(--space-12) var(--space-24);
     background: transparent;
     border: 1px solid var(--danger);
@@ -393,7 +393,7 @@
     font-weight: 500;
     cursor: pointer;
 }
-.btn-delete-exercise:hover {
+.exlib-delete-btn:hover {
     background: var(--danger-bg);
 }
 
@@ -410,7 +410,7 @@
 .edit-selected-equipment i {
     color: var(--primary);
 }
-.btn-clear {
+.exlib-clear-btn {
     margin-left: auto;
     background: none;
     border: none;
@@ -826,16 +826,6 @@
     flex-wrap: wrap;
     gap: var(--space-6);
 }
-/* .quick-add-chip consolidated below (§9c). `:active` + `--used` kept here. */
-.quick-add-chip:active {
-    background: var(--primary);
-    border-color: var(--primary);
-    color: var(--text-on-color);
-}
-.quick-add-chip--used {
-    font-weight: 600;
-    border-color: var(--primary);
-}
 
 /* Library Exercise Cards (Add Exercise modal) */
 .library-exercise-card {
@@ -878,9 +868,6 @@
 }
 .favorites-section {
     margin-bottom: var(--space-8);
-}
-.favorite-chip {
-    border-color: var(--favorite-border) !important;
 }
 .library-exercise-card h5 {
     margin: 0 0 var(--space-8) 0;
@@ -925,6 +912,7 @@
     text-align: center;
     padding: var(--space-16);
     color: var(--text-muted);
+    font-size: var(--font-base);
 }
 
 /* ===========================================
@@ -999,18 +987,3 @@
 }
 
 /* 9c: Quick Add chip styling */
-.quick-add-chip {
-    padding: var(--space-6) var(--space-12);
-    border-radius: var(--radius-pill);
-    border: 1px solid var(--border-light);
-    background: transparent;
-    color: var(--text-secondary);
-    font-size: var(--font-xs);
-    cursor: pointer;
-    white-space: nowrap;
-}
-.quick-add-chip:active {
-    background: var(--primary-bg);
-    border-color: var(--primary);
-    color: var(--primary);
-}

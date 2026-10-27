@@ -106,7 +106,7 @@ export function escapeCSV(str) {
  * Generate CSV from workout data. One row per set.
  */
 export function generateCSV(workouts) {
-    const headers = ['Date', 'Workout Name', 'Exercise', 'Equipment', 'Set #', 'Set Type', 'Reps', 'Weight', 'Unit', 'Notes', 'Duration (min)'];
+    const headers = ['Date', 'Workout Name', 'Exercise', 'Equipment', 'Set #', 'Set Type', 'Reps', 'Weight', 'Unit', 'Notes', 'Duration (min)']; // copy-ok: CSV column headers
     const rows = [headers.join(',')];
 
     for (const workout of workouts) {

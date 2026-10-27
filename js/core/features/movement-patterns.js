@@ -149,18 +149,42 @@ export function inferRole(exercise, index = 0) {
 }
 
 /**
- * Patterns a piece of equipment can train. `exerciseTypes` holds exercise
- * NAMES the user mapped to the machine; each resolves through the library
- * lookup first (explicit pattern on the exercise) and falls back to name
- * inference. When nothing is mapped, the machine's own function/name text
- * is the last resort. The doc itself is the equipment hint (LB-1), so
- * "Back Extension Machine" on a 45° bench is a hinge and on a seated lumbar
- * machine stays trunk-ext.
- * @param {{exerciseTypes?:string[], function?:string, name?:string}} doc
+ * LB-5 — the movement a machine itself declares: its own `pattern` (copied
+ * from the catalog when it was added), else its catalog entry's (resolved by
+ * the caller — this module can't import the catalog). Null when neither says.
+ * @param {{pattern?:string, catalogRef?:string}} doc
+ * @param {{catalogPattern?: (ref:string)=>string|null}} [opts]
+ * @returns {string|null}
+ */
+export function equipmentPattern(doc, { catalogPattern = null } = {}) {
+    if (!doc) return null;
+    if (doc.pattern && PATTERNS.includes(doc.pattern)) return doc.pattern;
+    if (doc.catalogRef && typeof catalogPattern === 'function') {
+        const p = catalogPattern(doc.catalogRef);
+        if (p && PATTERNS.includes(p)) return p;
+    }
+    return null;
+}
+
+/**
+ * Patterns a piece of equipment can train, first answer wins:
+ *   1. the machine's own pattern — `doc.pattern`, else its catalog entry's
+ *      (LB-5). One machine, one movement: a stamped leg curl is a leg curl
+ *      even when a mis-link says "Seated Row".
+ *   2. `exerciseTypes` — exercise NAMES the user mapped to the machine; each
+ *      resolves through the library lookup first (explicit pattern on the
+ *      exercise) and falls back to name inference, with the doc as the
+ *      equipment hint (LB-1), so "Back Extension Machine" on a 45° bench is a
+ *      hinge and on a seated lumbar machine stays trunk-ext.
+ *   3. the machine's own function/name text.
+ * @param {{pattern?:string, catalogRef?:string, exerciseTypes?:string[], function?:string, name?:string}} doc
  * @param {(name:string)=>object|undefined} [lookup] - exercise-by-name resolver
+ * @param {{catalogPattern?: (ref:string)=>string|null}} [opts] - catalog ref → pattern
  * @returns {string[]} unique patterns, possibly empty
  */
-export function patternsForEquipment(doc, lookup) {
+export function patternsForEquipment(doc, lookup, { catalogPattern = null } = {}) {
+    const own = equipmentPattern(doc, { catalogPattern });
+    if (own) return [own];
     const out = new Set();
     for (const name of doc?.exerciseTypes || []) {
         const ex = (lookup && lookup(name)) || { name };

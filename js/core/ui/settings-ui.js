@@ -683,16 +683,16 @@ function renderOnboardingStep() {
             const selected = (isNumeric ? o.value === (currentValue || 5) : o.value === currentValue);
             const parseVal = isNumeric ? o.value : `'${o.value}'`;
             return `
-                <div class="onb-chip ${selected ? 'selected' : ''}"
-                     onclick="updateSetting('${settingKey}', ${parseVal}); document.querySelectorAll('.onb-chip').forEach(c=>c.classList.remove('selected')); this.classList.add('selected');">
-                    <div class="onb-chip-icon ${selected ? 'ic-primary' : 'ic-muted'}">
+                <div class="onb-option ${selected ? 'selected' : ''}"
+                     onclick="updateSetting('${settingKey}', ${parseVal}); document.querySelectorAll('.onb-option').forEach(c=>c.classList.remove('selected')); this.classList.add('selected');">
+                    <div class="onb-option__icon ${selected ? 'ic-primary' : 'ic-muted'}">
                         ${o.icon ? `<i class="fas ${o.icon}"></i>` : o.value}
                     </div>
-                    <div class="onb-chip-info">
-                        <div class="onb-chip-name">${o.label}</div>
-                        <div class="onb-chip-desc">${o.desc}</div>
+                    <div class="onb-option__info">
+                        <div class="onb-option__name">${o.label}</div>
+                        <div class="onb-option__desc">${o.desc}</div>
                     </div>
-                    ${selected ? '<div class="onb-chip-check"><i class="fas fa-check"></i></div>' : ''}
+                    ${selected ? '<div class="onb-option__check"><i class="fas fa-check"></i></div>' : ''}
                 </div>
             `;
         }).join('');
@@ -708,7 +708,7 @@ function renderOnboardingStep() {
                     <div class="onb-desc">Track your lifts, hit PRs, see trends. Let's set up your profile in under a minute.</div>
                 </div>
             `,
-            footer: `<button class="btn-redesign onb-btn-full" onclick="onboardingNext()">Get started <i class="fas fa-arrow-right"></i></button>`,
+            footer: `<button class="btn btn-primary btn-lg onb-btn-full" onclick="onboardingNext()">Get started <i class="fas fa-arrow-right"></i></button>`,
         },
 
         // Step 1: Weekly Goal
@@ -717,11 +717,11 @@ function renderOnboardingStep() {
                 <div class="onb-icon-hero ic-warm"><i class="fas fa-bullseye"></i></div>
                 <div class="onb-title">How often?</div>
                 <div class="onb-desc">How many workouts per week are you aiming for? You can change this anytime.</div>
-                <div class="onb-chips">${chipHTML(goalOptions, 'weeklyGoal', s.weeklyGoal, true)}</div>
+                <div class="onb-options">${chipHTML(goalOptions, 'weeklyGoal', s.weeklyGoal, true)}</div>
             `,
             footer: `
-                <button class="btn-ghost" onclick="onboardingBack()">Back</button>
-                <button class="btn-redesign onb-btn-wide" onclick="onboardingNext()">Next <i class="fas fa-arrow-right"></i></button>
+                <button class="btn btn-ghost btn-lg" onclick="onboardingBack()">Back</button>
+                <button class="btn btn-primary btn-lg onb-btn-wide" onclick="onboardingNext()">Next <i class="fas fa-arrow-right"></i></button>
             `,
         },
 
@@ -731,11 +731,11 @@ function renderOnboardingStep() {
                 <div class="onb-icon-hero ic-warning"><i class="fas fa-star"></i></div>
                 <div class="onb-title">Experience level</div>
                 <div class="onb-desc">We'll use this to suggest starting weights and form tips.</div>
-                <div class="onb-chips">${chipHTML(EXPERIENCE_OPTIONS, 'profileExperience', s.profileExperience || s.experienceLevel || 'intermediate', false)}</div>
+                <div class="onb-options">${chipHTML(EXPERIENCE_OPTIONS, 'profileExperience', s.profileExperience || s.experienceLevel || 'intermediate', false)}</div>
             `,
             footer: `
-                <button class="btn-ghost" onclick="onboardingBack()">Back</button>
-                <button class="btn-redesign onb-btn-wide" onclick="onboardingNext()">Next <i class="fas fa-arrow-right"></i></button>
+                <button class="btn btn-ghost btn-lg" onclick="onboardingBack()">Back</button>
+                <button class="btn btn-primary btn-lg onb-btn-wide" onclick="onboardingNext()">Next <i class="fas fa-arrow-right"></i></button>
             `,
         },
 
@@ -745,12 +745,12 @@ function renderOnboardingStep() {
                 <div class="onb-icon-hero ic-shoulders"><i class="fas fa-weight"></i></div>
                 <div class="onb-title">Weight goal</div>
                 <div class="onb-desc">Pick one so we can color your weight trend correctly. Skip to stay neutral — you can set it later.</div>
-                <div class="onb-chips">${chipHTML(weightGoalOptions, 'weightGoal', s.weightGoal, false)}</div>
+                <div class="onb-options">${chipHTML(weightGoalOptions, 'weightGoal', s.weightGoal, false)}</div>
             `,
             footer: `
-                <button class="btn-ghost" onclick="onboardingBack()">Back</button>
-                <button class="btn-ghost" onclick="onboardingSkipWeightGoal()">Skip</button>
-                <button class="btn-redesign onb-btn-wide" onclick="onboardingNext()">Next <i class="fas fa-arrow-right"></i></button>
+                <button class="btn btn-ghost btn-lg" onclick="onboardingBack()">Back</button>
+                <button class="btn btn-ghost btn-lg" onclick="onboardingSkipWeightGoal()">Skip</button>
+                <button class="btn btn-primary btn-lg onb-btn-wide" onclick="onboardingNext()">Next <i class="fas fa-arrow-right"></i></button>
             `,
         },
 
@@ -779,8 +779,8 @@ function renderOnboardingStep() {
                 </div>
             `,
             footer: `
-                <button class="btn-ghost" onclick="onboardingBack()">Back</button>
-                <button class="btn-redesign onb-btn-wide" onclick="completeOnboarding()"><i class="fas fa-check"></i> All set</button>
+                <button class="btn btn-ghost btn-lg" onclick="onboardingBack()">Back</button>
+                <button class="btn btn-primary btn-lg onb-btn-wide" onclick="completeOnboarding()"><i class="fas fa-check"></i> All set</button>
             `,
         },
     ];
@@ -1379,16 +1379,16 @@ export function editProfileExperience() {
     const chips = EXPERIENCE_OPTIONS.map(o => {
         const isSelected = current === o.value;
         return `
-            <div class="onb-chip ${isSelected ? 'selected' : ''}"
+            <div class="onb-option ${isSelected ? 'selected' : ''}"
                  onclick="selectProfileExperience('${o.value}')">
-                <div class="onb-chip-icon ${isSelected ? 'ic-primary' : 'ic-muted'}">
+                <div class="onb-option__icon ${isSelected ? 'ic-primary' : 'ic-muted'}">
                     <i class="fas ${o.icon}"></i>
                 </div>
-                <div class="onb-chip-info">
-                    <div class="onb-chip-name">${escapeHtml(o.label)}</div>
-                    <div class="onb-chip-desc">${escapeHtml(o.desc)}</div>
+                <div class="onb-option__info">
+                    <div class="onb-option__name">${escapeHtml(o.label)}</div>
+                    <div class="onb-option__desc">${escapeHtml(o.desc)}</div>
                 </div>
-                ${isSelected ? '<div class="onb-chip-check"><i class="fas fa-check"></i></div>' : ''}
+                ${isSelected ? '<div class="onb-option__check"><i class="fas fa-check"></i></div>' : ''}
             </div>
         `;
     }).join('');
@@ -1398,7 +1398,7 @@ export function editProfileExperience() {
         id: 'profile-exp-picker',
         title: 'Experience level',
         className: 'exp-picker-sheet',
-        bodyHTML: `<div class="onb-chips">${chips}</div>`,
+        bodyHTML: `<div class="onb-options">${chips}</div>`,
         actions: [{ label: 'Close', onClick: 'closeProfileExperiencePicker()' }],
     });
 }

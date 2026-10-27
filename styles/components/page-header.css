@@ -140,7 +140,7 @@
 .page-header__actions {
     display: flex;
     align-items: center;
-    gap: var(--space-4);
+    gap: var(--space-8); /* was overridden to 8 app-wide by equipment-library.css */
     flex-shrink: 0;
 }
 
@@ -322,36 +322,5 @@
     padding: 16px 16px 20px;
 }
 
-/* Primary & Ghost buttons (used in footers, onboarding) */
-.btn-redesign {
-    width: 100%;
-    background: var(--primary);
-    color: var(--text-on-accent);
-    border: none;
-    border-radius: var(--radius-md);
-    padding: 14px;
-    font-size: 0.95rem;
-    font-weight: 700;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    cursor: pointer;
-}
 
-.btn-redesign:disabled {
-    background: var(--bg-card-hi);
-    color: var(--text-muted);
-    cursor: default;
-}
 
-.btn-ghost {
-    flex: 1;
-    background: transparent;
-    border: 1px solid var(--border-light);
-    color: var(--text-main);
-    padding: 14px;
-    border-radius: var(--radius-md);
-    font-weight: 600;
-    cursor: pointer;
-}

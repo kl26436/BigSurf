@@ -138,16 +138,6 @@
     min-height: 44px;
 }
 
-.history-search-clear {
-    position: absolute;
-    right: var(--space-8);
-    background: none;
-    border: none;
-    color: var(--text-muted);
-    cursor: pointer;
-    padding: var(--space-4) var(--space-8);
-    font-size: var(--font-sm);
-}
 
 .history-search-bar select {
     width: 100%;
@@ -325,24 +315,6 @@
     line-height: 1;
 }
 
-/* 8c: Collapsible search bar */
-.btn-icon-sm {
-    width: var(--tap);
-    height: var(--tap);
-    border-radius: var(--radius-pill);
-    background: var(--bg-card);
-    border: 1px solid var(--border-subtle);
-    color: var(--text-muted);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    font-size: var(--font-sm);
-}
-.btn-icon-sm:active {
-    background: var(--bg-card-hi);
-    color: var(--primary);
-}
 .history-search-bar.hidden {
     display: none;
 }

@@ -44,6 +44,9 @@ export function augmentStaticCatalog(rawCatalog) {
                             slug: machineSlug,
                             name: m.name,
                             bodyPart: m.bodyPart || null,
+                            // LB-5 — the movement the machine trains, when
+                            // its function names exactly one.
+                            pattern: m.pattern || null,
                             type: m.type || line.type || null,
                             variants: m.variants || [],
                             imageUrl: m.imageUrl || null,
@@ -106,6 +109,24 @@ export function resolveCatalogRef(ref, catalog) {
     const machine = line.machines.find((m) => m.slug === machineSlug);
     if (!machine) return null;
     return { brand, line, machine };
+}
+
+/**
+ * LB-5 — the movement pattern a catalog machine carries, or null. Checks each
+ * catalog in order and returns the first stamped pattern, so a Firestore copy
+ * seeded before the field existed falls through to the static one:
+ *   catalogPatternFor(ref, AppState.equipmentCatalog, augmentStaticCatalog(EQUIPMENT_CATALOG))
+ * Not validated against PATTERNS here (no imports) — consumers do.
+ * @param {string} ref - "brand/line/machine" slugs
+ * @param {...Array} catalogs - augmented / Firestore-normalized catalogs (nullish skipped)
+ * @returns {string|null}
+ */
+export function catalogPatternFor(ref, ...catalogs) {
+    for (const catalog of catalogs) {
+        const hit = resolveCatalogRef(ref, catalog);
+        if (hit?.machine?.pattern) return hit.machine.pattern;
+    }
+    return null;
 }
 
 /**

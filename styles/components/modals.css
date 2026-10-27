@@ -578,68 +578,7 @@ dialog.modal:not([open]) {
     padding: var(--space-6) var(--space-8);
 }
 
-/* Equipment Library Page */
-/* .location-chip removed — no JS callsites. */
-.btn-icon {
-    width: var(--tap);
-    height: var(--tap);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: transparent;
-    border: none;
-    color: var(--text-muted);
-    font-size: var(--font-md);
-    cursor: pointer;
-    border-radius: var(--radius-pill);
-}
-.btn-icon:active {
-    background: var(--border-light);
-}
 
-/* Equipment Library — grouped list layout */
-.equip-lib-search {
-    flex: 1;
-    position: relative;
-}
-.equip-lib-search i {
-    position: absolute;
-    left: var(--space-12);
-    top: 50%;
-    transform: translateY(-50%);
-    color: var(--text-muted);
-    font-size: var(--font-sm);
-    pointer-events: none;
-}
-.equip-lib-search input {
-    width: 100%;
-    padding: var(--space-10) var(--space-12) var(--space-10) 36px;
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-md);
-    color: var(--text-strong);
-    font-size: var(--font-base);
-}
-.equip-lib-search input:focus {
-    outline: none;
-    border-color: var(--primary);
-}
-.equip-lib-search--with-clear input {
-    padding-right: 36px;
-}
-.equip-lib-search__clear {
-    position: absolute;
-    right: var(--space-8);
-    top: 50%;
-    transform: translateY(-50%);
-    appearance: none;
-    background: transparent;
-    border: 0;
-    color: var(--text-very-muted);
-    cursor: pointer;
-    padding: var(--space-4) var(--space-8);
-    font-size: var(--font-sm);
-}
 .equip-lib-list {
     padding: 0 var(--pad-page);
 }

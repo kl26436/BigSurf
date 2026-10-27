@@ -756,26 +756,6 @@
     line-height: 1.4;
     border-bottom: 1px solid var(--warning-border);
 }
-.function-picker__search {
-    display: flex;
-    align-items: center;
-    gap: var(--space-8);
-    padding: var(--space-10) var(--space-16);
-    border-bottom: 1px solid var(--border);
-}
-.function-picker__search i {
-    color: var(--text-muted);
-    font-size: var(--font-sm);
-}
-.function-picker__search input {
-    flex: 1;
-    appearance: none;
-    background: transparent;
-    border: 0;
-    color: var(--text-strong);
-    font-size: var(--font-base);
-    outline: none;
-}
 .function-picker__list {
     flex: 1;
     overflow-y: auto;
@@ -1142,11 +1122,6 @@
 
 
 /* ── Machine photo ID (Phase 8) ── */
-.page-header__actions {
-    display: flex;
-    align-items: center;
-    gap: var(--space-8);
-}
 .page-header__save--icon {
     min-width: var(--tap);
     padding: 0;

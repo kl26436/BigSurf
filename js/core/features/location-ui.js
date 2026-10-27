@@ -228,7 +228,7 @@ export function closeLocationManagement() {
 function updateCurrentLocationDisplay() {
     const nameSpan = document.getElementById('current-location-name');
     if (nameSpan) {
-        nameSpan.textContent = currentLocationName || 'Not Set';
+        nameSpan.textContent = currentLocationName || 'Not set';
     }
 }
 
@@ -306,10 +306,10 @@ function renderLocationManagementList() {
                     </div>
                 </div>
                 <div class="location-item-actions">
-                    <button data-action="editLocationName" data-location-id="${escapeAttr(location.id)}" title="Rename">
+                    <button data-action="editLocationName" data-location-id="${escapeAttr(location.id)}" title="Rename" aria-label="Rename gym">
                         <i class="fas fa-pen"></i>
                     </button>
-                    <button class="delete-btn" data-action="deleteLocation" data-location-id="${escapeAttr(location.id)}" title="Delete">
+                    <button class="delete-btn" data-action="deleteLocation" data-location-id="${escapeAttr(location.id)}" title="Delete" aria-label="Delete gym">
                         <i class="fas fa-trash"></i>
                     </button>
                 </div>
@@ -1312,7 +1312,7 @@ function updateLocationMap() {
             <div class="location-map-placeholder">
                 <i class="fas fa-map-marked-alt"></i>
                 <p>Location map</p>
-                <p class="map-hint">Tap "Use Current GPS Location" to show map</p>
+                <p class="map-hint">Tap "Use current GPS" to show the map</p>
             </div>
         `;
     }

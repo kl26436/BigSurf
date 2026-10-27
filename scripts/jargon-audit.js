@@ -74,7 +74,10 @@ function stringLiterals(src) {
             if (src[i] === '\\') { text += src[i + 1] || ''; i += 2; continue; }
             if (src[i] === '$' && src[i + 1] === '{') {
                 i += 2;
-                text += ' ';
+                // A marker, not just a space: copy-lint must know a button
+                // with `${label}` in it isn't empty. ⁣ is invisible and
+                // isn't \s, so it never joins words or matches a term.
+                text += ' ⁣ ';
                 readCode(1);
                 continue;
             }
@@ -219,7 +222,7 @@ function scanRepo(root = ROOT) {
     return hits;
 }
 
-module.exports = { stringLiterals, scanSource, scanRepo, looksLikeProse };
+module.exports = { stringLiterals, scanSource, scanRepo, looksLikeProse, htmlVisibleText, visibleFromLiteral, walk };
 
 if (require.main === module) {
     const hits = scanRepo();

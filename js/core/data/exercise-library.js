@@ -151,7 +151,7 @@ export function getExerciseLibrary(appState) {
                 grid.innerHTML = `
                     <div class="empty-state">
                         <div class="empty-state-icon"><i class="fas fa-search"></i></div>
-                        <div class="empty-state-title">No Exercises Found</div>
+                        <div class="empty-state-title">No exercises found</div>
                         <div class="empty-state-description">Try adjusting your search or filters.</div>
                     </div>
                 `;
@@ -171,7 +171,7 @@ export function getExerciseLibrary(appState) {
                     favSection.innerHTML = `
                         <div class="quick-add-label"><i class="fas fa-star text-badge-gold icon-leading"></i> Favorites</div>
                         <div class="quick-add-chips">
-                            ${favExercises.map((ex) => `<button class="quick-add-chip favorite-chip" data-exercise-name="${escapeHtml(ex.name || ex.machine)}" data-equipment="${escapeHtml(ex.equipment || '')}">${escapeHtml(ex.name || ex.machine)}</button>`).join('')}
+                            ${favExercises.map((ex) => `<button class="chip chip--sm chip--favorite quick-add-chip" data-exercise-name="${escapeHtml(ex.name || ex.machine)}" data-equipment="${escapeHtml(ex.equipment || '')}">${escapeHtml(ex.name || ex.machine)}</button>`).join('')}
                         </div>
                     `;
                     grid.appendChild(favSection);
@@ -183,9 +183,9 @@ export function getExerciseLibrary(appState) {
                 const quickAddSection = document.createElement('div');
                 quickAddSection.className = 'quick-add-section';
                 quickAddSection.innerHTML = `
-                    <div class="quick-add-label">Quick Add</div>
+                    <div class="quick-add-label">Quick add</div>
                     <div class="quick-add-chips">
-                        ${recentExercises.map((ex) => `<button class="quick-add-chip" data-exercise-name="${escapeHtml(ex.name)}" data-equipment="${escapeHtml(ex.equipment)}">${escapeHtml(ex.name)}</button>`).join('')}
+                        ${recentExercises.map((ex) => `<button class="chip chip--sm quick-add-chip" data-exercise-name="${escapeHtml(ex.name)}" data-equipment="${escapeHtml(ex.equipment)}">${escapeHtml(ex.name)}</button>`).join('')}
                     </div>
                 `;
                 grid.appendChild(quickAddSection);
@@ -276,7 +276,7 @@ export function getExerciseLibrary(appState) {
                 case 'template':
                     actionButton = `
                         <button class="btn btn-primary btn-small exercise-add-btn" data-index="${index}">
-                            <i class="fas fa-plus"></i> Add to Template
+                            <i class="fas fa-plus"></i> Add to workout
                         </button>
                     `;
                     break;
@@ -403,7 +403,7 @@ export function getExerciseLibrary(appState) {
             // Reset modal title
             const modalTitle = document.querySelector('#exercise-library-section .modal-title');
             if (modalTitle) {
-                modalTitle.textContent = 'Exercise Library';
+                modalTitle.textContent = 'Exercise library';
             }
         },
     };

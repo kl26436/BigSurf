@@ -112,7 +112,7 @@ function showManualStep(step) {
 
         // Title
         const titleDisplay = document.getElementById('manual-workout-title-display');
-        if (titleDisplay) titleDisplay.textContent = manualWorkoutState.workoutType || 'Your Workout';
+        if (titleDisplay) titleDisplay.textContent = manualWorkoutState.workoutType || 'Your workout';
 
         // Date chip: seed hidden native input + friendly label
         const dateDisplay = document.getElementById('manual-workout-date-display');

@@ -16,6 +16,8 @@
     "format:check": "prettier --check \"js/**/*.js\" \"*.css\" \"*.html\"",
     "audit:design": "node scripts/design-audit.js",
     "audit:design:strict": "node scripts/design-audit.js --strict",
+    "lint:copy": "node scripts/copy-lint.js --strict",
+    "check": "npm run lint && npm run audit:design:strict && npm run check:preload && vitest run",
     "audit:shell": "node scripts/shell-audit.js",
     "audit:shell:strict": "node scripts/shell-audit.js --strict",
     "audit:labels": "node scripts/audit-exercise-labels.mjs",

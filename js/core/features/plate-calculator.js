@@ -100,20 +100,20 @@ export function initPlateCalculatorPage() {
 
     container.innerHTML = `
         <div class="plate-calc-section">
-            <label class="plate-calc-label">Target Weight (${unit})</label>
+            <label class="plate-calc-label">Target weight (${unit})</label>
             <input type="number" id="plate-calc-target" class="form-input plate-calc-input"
                    inputmode="decimal" placeholder="e.g. ${isKg ? '100' : '225'}" autocomplete="off">
         </div>
 
         <div class="plate-calc-section">
-            <label class="plate-calc-label">Bar Weight</label>
+            <label class="plate-calc-label">Bar weight</label>
             <div class="plate-calc-bar-options" id="plate-calc-bar-options">
                 ${getBarOptions(isKg, barWeight)}
             </div>
         </div>
 
         <div class="plate-calc-section">
-            <label class="plate-calc-label">Available Plates</label>
+            <label class="plate-calc-label">Available plates</label>
             <div class="plate-calc-plates-grid" id="plate-calc-plates-grid">
                 ${getPlateCheckboxes(defaultPlates, activePlates, unit)}
             </div>

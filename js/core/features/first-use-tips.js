@@ -8,7 +8,7 @@ import { escapeHtml } from '../ui/ui-helpers.js';
 const TIPS = {
     'workout-selector': {
         target: '.workout-option:first-child',
-        text: 'Tap a category to browse workout templates',
+        text: 'Tap a category to browse your workouts',
         position: 'below',
     },
     'more-menu': {

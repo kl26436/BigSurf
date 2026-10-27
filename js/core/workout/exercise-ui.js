@@ -804,15 +804,15 @@ function buildInlineToolbar(exercise, index, exerciseName) {
     let items = '';
 
     // Primary actions (previously top-level toolbar buttons)
-    items += `<button class="exercise-overflow-item" onclick="replaceExercise(${index})"><i class="fas fa-exchange-alt"></i> Swap Exercise</button>`;
-    items += `<button class="exercise-overflow-item" onclick="changeExerciseEquipment(${index})"><i class="fas fa-sync-alt"></i> Change Equipment</button>`;
+    items += `<button class="exercise-overflow-item" onclick="replaceExercise(${index})"><i class="fas fa-exchange-alt"></i> Swap exercise</button>`;
+    items += `<button class="exercise-overflow-item" onclick="changeExerciseEquipment(${index})"><i class="fas fa-sync-alt"></i> Change equipment</button>`;
 
     // History/progress (previously always-visible buttons in generateExerciseTable)
-    items += `<button class="exercise-overflow-item" data-action="loadExerciseHistory" data-exercise="${escapeAttr(exerciseName)}" data-index="${index}"><i class="fas fa-history"></i> Show Last Workout</button>`;
-    items += `<button class="exercise-overflow-item" data-action="toggleInlineProgress" data-exercise="${escapeAttr(exerciseName)}" data-equipment="${escapeAttr(exercise.equipment || '')}" data-index="${index}"><i class="fas fa-chart-line"></i> View Progress</button>`;
+    items += `<button class="exercise-overflow-item" data-action="loadExerciseHistory" data-exercise="${escapeAttr(exerciseName)}" data-index="${index}"><i class="fas fa-history"></i> Show last workout</button>`;
+    items += `<button class="exercise-overflow-item" data-action="toggleInlineProgress" data-exercise="${escapeAttr(exerciseName)}" data-equipment="${escapeAttr(exercise.equipment || '')}" data-index="${index}"><i class="fas fa-chart-line"></i> View progress</button>`;
 
     // Edit defaults
-    items += `<button class="exercise-overflow-item" onclick="editExerciseDefaults('${escapeAttr(exerciseName)}')"><i class="fas fa-pen"></i> Edit Defaults</button>`;
+    items += `<button class="exercise-overflow-item" onclick="editExerciseDefaults('${escapeAttr(exerciseName)}')"><i class="fas fa-pen"></i> Edit defaults</button>`;
 
     // Superset/Ungroup
     if (currentGroup) {
@@ -822,8 +822,8 @@ function buildInlineToolbar(exercise, index, exerciseName) {
     }
 
     // Video
-    items += `<button class="exercise-overflow-item" id="show-video-btn-${index}" onclick="showExerciseVideoAndToggleButton(${exercise.video ? `'${escapeAttr(exercise.video)}'` : 'null'}, '${escapeAttr(exerciseName)}', ${index})"><i class="fas fa-play-circle"></i> Form Video</button>`;
-    items += `<button class="exercise-overflow-item hidden" id="hide-video-btn-${index}" onclick="hideExerciseVideoAndToggleButton(${index})"><i class="fas fa-times"></i> Hide Video</button>`;
+    items += `<button class="exercise-overflow-item" id="show-video-btn-${index}" onclick="showExerciseVideoAndToggleButton(${exercise.video ? `'${escapeAttr(exercise.video)}'` : 'null'}, '${escapeAttr(exerciseName)}', ${index})"><i class="fas fa-play-circle"></i> Form video</button>`;
+    items += `<button class="exercise-overflow-item hidden" id="hide-video-btn-${index}" onclick="hideExerciseVideoAndToggleButton(${index})"><i class="fas fa-times"></i> Hide video</button>`;
 
     // Delete
     items += `<button class="exercise-overflow-item exercise-overflow-item--danger" onclick="deleteExerciseFromWorkout(${index})"><i class="fas fa-trash-alt"></i> Delete</button>`;
@@ -1089,10 +1089,10 @@ export async function generateExerciseTable(exercise, exerciseIndex, unit) {
         </div>
 
         <div class="set-controls">
-            <button class="btn-set-control btn-set-control--remove" onclick="removeSetFromExercise(${exerciseIndex})" title="Remove last set">
+            <button class="set-control set-control--remove" onclick="removeSetFromExercise(${exerciseIndex})" title="Remove last set">
                 <i class="fas fa-minus"></i> Remove
             </button>
-            <button class="btn-set-control btn-set-control--add" onclick="addSetToExercise(${exerciseIndex})" title="Add new set">
+            <button class="set-control set-control--add" onclick="addSetToExercise(${exerciseIndex})" title="Add new set">
                 <i class="fas fa-plus"></i> Add set
             </button>
         </div>
@@ -1102,7 +1102,7 @@ export async function generateExerciseTable(exercise, exerciseIndex, unit) {
 
         <div class="exercise-complete-section">
             <button class="btn btn-success" onclick="markExerciseComplete(${exerciseIndex})">
-                <i class="fas fa-check-circle"></i> Mark Exercise Complete
+                <i class="fas fa-check-circle"></i> Mark exercise complete
             </button>
         </div>
     `;
@@ -1283,10 +1283,10 @@ async function generateBodyweightExerciseTable(exercise, exerciseIndex, unit) {
         </div>
 
         <div class="set-controls">
-            <button class="btn-set-control btn-set-control--remove" onclick="removeSetFromExercise(${exerciseIndex})" title="Remove last set">
+            <button class="set-control set-control--remove" onclick="removeSetFromExercise(${exerciseIndex})" title="Remove last set">
                 <i class="fas fa-minus"></i> Remove
             </button>
-            <button class="btn-set-control btn-set-control--add" onclick="addSetToExercise(${exerciseIndex})" title="Add new set">
+            <button class="set-control set-control--add" onclick="addSetToExercise(${exerciseIndex})" title="Add new set">
                 <i class="fas fa-plus"></i> Add set
             </button>
         </div>
@@ -1296,7 +1296,7 @@ async function generateBodyweightExerciseTable(exercise, exerciseIndex, unit) {
 
         <div class="exercise-complete-section">
             <button class="btn btn-success" onclick="markExerciseComplete(${exerciseIndex})">
-                <i class="fas fa-check-circle"></i> Mark Exercise Complete
+                <i class="fas fa-check-circle"></i> Mark exercise complete
             </button>
         </div>
     `;
@@ -1457,7 +1457,7 @@ function generateCardioTable(exercise, exerciseIndex) {
                 </div>
             </div>
             <div class="cardio-field">
-                <label>Avg Heart Rate</label>
+                <label>Avg heart rate</label>
                 <div class="cardio-input-row">
                     <input type="number" class="set-input" inputmode="numeric"
                            placeholder="145" value="${cardioData.heartRate || ''}"
@@ -1479,7 +1479,7 @@ function generateCardioTable(exercise, exerciseIndex) {
 
         <div class="exercise-complete-section">
             <button class="btn btn-success" onclick="markExerciseComplete(${exerciseIndex})">
-                <i class="fas fa-check-circle"></i> Mark Complete
+                <i class="fas fa-check-circle"></i> Mark complete
             </button>
         </div>
     `;
@@ -1494,11 +1494,11 @@ async function toggleInlineProgress(exerciseName, equipment, exerciseIndex, btn)
     // Toggle visibility
     if (!display.classList.contains('hidden')) {
         display.classList.add('hidden');
-        btn.innerHTML = '<i class="fas fa-chart-line"></i> View Progress';
+        btn.innerHTML = '<i class="fas fa-chart-line"></i> View progress';
         return;
     }
 
-    btn.innerHTML = '<i class="fas fa-eye-slash"></i> Hide Progress';
+    btn.innerHTML = '<i class="fas fa-eye-slash"></i> Hide progress';
     display.classList.remove('hidden');
     display.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
 
@@ -1564,7 +1564,7 @@ async function toggleInlineProgress(exerciseName, equipment, exerciseIndex, btn)
 
         // Build inline progress: bar chart + session list
         let html = '<div class="inline-progress">';
-        html += '<div class="inline-progress-title">Recent Sessions</div>';
+        html += '<div class="inline-progress-title">Recent sessions</div>';
         html += '<div class="inline-progress-chart">';
 
         for (const s of recent) {
@@ -1620,7 +1620,7 @@ async function checkSetForPR(exerciseIndex, setIndex) {
     try {
         const exercise = AppState.currentWorkout.exercises[exerciseIndex];
         const exerciseName = getExerciseName(exercise);
-        const equipment = exercise.equipment || 'Unknown Equipment';
+        const equipment = exercise.equipment || 'Unknown Equipment';  // copy-ok: stored fallback key — matched against saved data
 
         const exerciseKey = `exercise_${exerciseIndex}`;
         const set = AppState.savedData.exercises[exerciseKey].sets[setIndex];
@@ -1685,11 +1685,11 @@ async function checkSetForPR(exerciseIndex, setIndex) {
                 // Show PR notification
                 let prMessage = '\u{1F3C6} NEW PR! ';
                 if (prCheck.prType === 'maxWeight') {
-                    prMessage += `Max Weight: ${set.weight} lbs \u00D7 ${set.reps}`;
+                    prMessage += `Max weight: ${set.weight} lbs \u00D7 ${set.reps}`;
                 } else if (prCheck.prType === 'maxReps') {
-                    prMessage += `Max Reps: ${set.reps} @ ${set.weight} lbs`;
+                    prMessage += `Max reps: ${set.reps} @ ${set.weight} lbs`;
                 } else if (prCheck.prType === 'maxVolume') {
-                    prMessage += `Max Volume: ${set.reps * set.weight} lbs`;
+                    prMessage += `Max volume: ${set.reps * set.weight} lbs`;
                 } else if (prCheck.prType === 'first') {
                     prMessage += `First time doing ${exerciseName}!`;
                 }

@@ -140,12 +140,6 @@
     border-color: var(--danger);
     color: var(--danger);
 }
-.equipment-locations-empty {
-    padding: var(--space-16);
-    text-align: center;
-    color: var(--text-muted);
-    font-size: var(--font-base);
-}
 .equipment-add-location-form {
     margin-top: var(--space-12);
 }

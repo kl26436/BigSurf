@@ -193,7 +193,7 @@
                 <div id="loading-signin-prompt" class="loading-signin-prompt hidden">
                     <p>Sign in to access your workouts</p>
                     <button id="loading-signin-btn" class="btn btn-primary">
-                        <i class="fab fa-google"></i> Sign In with Google
+                        <i class="fab fa-google"></i> Sign in with Google
                     </button>
                 </div>
             </div>
@@ -217,13 +217,13 @@
             <!-- Auth Section (Clean New Structure) -->
             <div id="auth-section" class="workout-controls">
                 <button id="sign-in-btn" class="btn btn-primary">
-                    <i class="fab fa-google"></i> Sign In with Google
+                    <i class="fab fa-google"></i> Sign in with Google
                 </button>
                 <div id="user-info" class="hidden">
                     <div class="user-display">
                         <span id="user-name" class="user-name"></span>
                         <button id="sign-out-btn" class="btn btn-secondary btn-small">
-                            <i class="fas fa-sign-out-alt"></i> Sign Out
+                            <i class="fas fa-sign-out-alt"></i> Sign out
                         </button>
                     </div>
                 </div>
@@ -432,7 +432,7 @@
                             <input type="text" id="history-search-input"
                                 placeholder="Search exercises or workouts…"
                                 oninput="filterWorkoutHistory(this.value)">
-                            <button class="history-search-clear hidden" id="history-search-clear" onclick="clearHistorySearch()" aria-label="Clear search">
+                            <button class="field-search__clear hidden" id="history-search-clear" onclick="clearHistorySearch()" aria-label="Clear search">
                                 <i class="fas fa-times"></i>
                             </button>
                         </div>
@@ -495,11 +495,11 @@
                     <div class="full-page-body" id="exercise-library-content">
                         <!-- Exercise Library Controls -->
                         <div class="exercise-library-controls">
-                            <div class="search-container">
+                            <div class="search-container field-search">
+                                <i class="fas fa-search" aria-hidden="true"></i>
                                 <input
-                                    type="text"
+                                    type="search"
                                     id="exercise-library-search"
-                                    class="form-input"
                                     placeholder="Search exercises…"
                                 />
                             </div>
@@ -614,14 +614,14 @@
                             onclick="switchLocationMethod('gps')"
                             id="method-gps-tab"
                         >
-                            <i class="fas fa-crosshairs"></i> Use Current GPS
+                            <i class="fas fa-crosshairs"></i> Use current GPS
                         </button>
                         <button
                             class="method-tab"
                             onclick="switchLocationMethod('address')"
                             id="method-address-tab"
                         >
-                            <i class="fas fa-search"></i> Search Address
+                            <i class="fas fa-search"></i> Search address
                         </button>
                         <button class="method-tab" onclick="switchLocationMethod('map')" id="method-map-tab">
                             <i class="fas fa-map-pin"></i> Pin on Map
@@ -685,9 +685,9 @@
                     </div>
 
                     <div class="modal-actions">
-                        <button class="btn btn-secondary" onclick="closeAddLocationModal()">Cancel</button>
+                        <button class="btn btn-secondary" onclick="closeAddLocationModal()">Close</button>
                         <button class="btn btn-primary" onclick="saveNewLocationFromModal()">
-                            <i class="fas fa-plus"></i> Add Location
+                            <i class="fas fa-plus"></i> Add location
                         </button>
                     </div>
                 </div>
@@ -749,7 +749,7 @@
                                     <option value="Other">Other</option>
                                 </select>
                             </div>
-                            <button type="button" class="btn-primary" onclick="startCustomManualWorkout()">
+                            <button type="button" class="btn btn-primary" onclick="startCustomManualWorkout()">
                                 <i class="fas fa-arrow-right"></i> Continue
                             </button>
                         </div>
@@ -803,7 +803,7 @@
 
                     <!-- Add Exercise Button (for custom workouts) -->
                     <div id="manual-add-exercise-section" class="manual-add-exercise-section hidden">
-                        <button class="btn-primary" onclick="openExercisePickerForManual()">
+                        <button class="btn btn-primary" onclick="openExercisePickerForManual()">
                             <i class="fas fa-plus"></i> Add exercise
                         </button>
                     </div>
@@ -828,7 +828,7 @@
                     <input type="hidden" id="manual-workout-duration" value="60">
                 </div>
                 <div class="page-footer">
-                    <button type="button" class="btn-primary" onclick="saveManualWorkout()">
+                    <button type="button" class="btn btn-primary" onclick="saveManualWorkout()">
                         <i class="fas fa-check"></i> Save workout
                     </button>
                 </div>
@@ -915,7 +915,7 @@
             <div id="exercise-list-view" class="exercise-library-view hidden">
                 <!-- Header with back and title -->
                 <div class="exercise-list-header">
-                    <button class="btn-back-category" aria-label="Go back" onclick="showCategoryView()">
+                    <button class="exlib-back-btn" aria-label="Go back" onclick="showCategoryView()">
                         <i class="fas fa-arrow-left"></i>
                     </button>
                     <h2 id="exercise-list-title" class="exercise-list-title">Exercises</h2>
@@ -937,20 +937,20 @@
 
                 <!-- Equipment Filter Pills -->
                 <div class="equipment-filter-pills">
-                    <button class="filter-pill active" data-equipment="" onclick="filterByEquipment('')">All</button>
-                    <button class="filter-pill" data-equipment="Dumbbell" onclick="filterByEquipment('Dumbbell')">
+                    <button class="chip chip--sm active" data-equipment="" onclick="filterByEquipment('')">All</button>
+                    <button class="chip chip--sm" data-equipment="Dumbbell" onclick="filterByEquipment('Dumbbell')">
                         Dumbbell
                     </button>
-                    <button class="filter-pill" data-equipment="Barbell" onclick="filterByEquipment('Barbell')">
+                    <button class="chip chip--sm" data-equipment="Barbell" onclick="filterByEquipment('Barbell')">
                         Barbell
                     </button>
-                    <button class="filter-pill" data-equipment="Machine" onclick="filterByEquipment('Machine')">
+                    <button class="chip chip--sm" data-equipment="Machine" onclick="filterByEquipment('Machine')">
                         Machine
                     </button>
-                    <button class="filter-pill" data-equipment="Cable" onclick="filterByEquipment('Cable')">
+                    <button class="chip chip--sm" data-equipment="Cable" onclick="filterByEquipment('Cable')">
                         Cable
                     </button>
-                    <button class="filter-pill" data-equipment="Bodyweight" onclick="filterByEquipment('Bodyweight')">
+                    <button class="chip chip--sm" data-equipment="Bodyweight" onclick="filterByEquipment('Bodyweight')">
                         Bodyweight
                     </button>
                 </div>
@@ -973,7 +973,7 @@
         <dialog id="location-prompt-modal" class="modal">
             <div class="modal-content modal-content-small">
                 <div class="modal-header">
-                    <h3><i class="fas fa-map-marker-alt"></i> New Location Detected</h3>
+                    <h3><i class="fas fa-map-marker-alt"></i> New location detected</h3>
                 </div>
                 <div class="modal-body">
                     <p class="location-prompt-text">You're at a new location! What gym is this?</p>
@@ -995,7 +995,7 @@
                     <div class="modal-actions">
                         <button type="button" id="skip-location-btn" class="btn btn-secondary">Skip</button>
                         <button type="button" id="save-location-btn" class="btn btn-primary">
-                            <i class="fas fa-check"></i> Save Location
+                            <i class="fas fa-check"></i> Save location
                         </button>
                     </div>
                 </div>
@@ -1006,7 +1006,7 @@
         <dialog id="workout-location-selector-modal" class="modal">
             <div class="modal-content modal-content-small">
                 <div class="modal-header">
-                    <h3><i class="fas fa-map-marker-alt"></i> Change Location</h3>
+                    <h3><i class="fas fa-map-marker-alt"></i> Change location</h3>
                     <button class="close-btn" aria-label="Close" onclick="closeWorkoutLocationSelector()">
                         <i class="fas fa-times"></i>
                     </button>
@@ -1031,10 +1031,10 @@
 
                     <div class="modal-actions">
                         <button type="button" class="btn btn-secondary" onclick="closeWorkoutLocationSelector()">
-                            Cancel
+                            Keep current
                         </button>
                         <button type="button" class="btn btn-primary" onclick="confirmWorkoutLocationChange()">
-                            <i class="fas fa-check"></i> Set Location
+                            <i class="fas fa-check"></i> Set location
                         </button>
                     </div>
                 </div>
@@ -1109,8 +1109,8 @@
                             />
                             <datalist id="equipment-editor-location-list"></datalist>
                         </div>
-                        <button type="button" class="btn-add-equipment" onclick="addLocationToEquipmentEditor()">
-                            <i class="fas fa-plus"></i> Add Location
+                        <button type="button" class="exlib-add-btn" onclick="addLocationToEquipmentEditor()">
+                            <i class="fas fa-plus"></i> Add location
                         </button>
                     </div>
                 </div>
@@ -1119,14 +1119,14 @@
             <!-- Reassign Button -->
             <div class="edit-section">
                 <button type="button" class="btn btn-secondary btn-full" onclick="showReassignEquipment()">
-                    <i class="fas fa-exchange-alt"></i> Move to Different Exercise
+                    <i class="fas fa-exchange-alt"></i> Move to a different exercise
                 </button>
             </div>
 
             <!-- Delete Button -->
             <div class="edit-delete-container">
-                <button type="button" class="btn-delete-exercise" onclick="deleteEquipmentFromEditor()">
-                    <i class="fas fa-trash"></i> Delete Equipment
+                <button type="button" class="exlib-delete-btn" onclick="deleteEquipmentFromEditor()">
+                    <i class="fas fa-trash"></i> Delete equipment
                 </button>
             </div>
         </section>
@@ -1141,12 +1141,13 @@
                     </button>
                 </div>
                 <div class="reassign-header-info"></div>
-                <div class="reassign-search">
-                    <input type="text" id="reassign-exercise-search" class="form-input" placeholder="Search exercises…">
+                <div class="reassign-search field-search">
+                    <i class="fas fa-search" aria-hidden="true"></i>
+                    <input type="search" id="reassign-exercise-search" placeholder="Search exercises…">
                 </div>
                 <div class="reassign-exercise-list"></div>
                 <div class="reassign-actions">
-                    <button class="btn btn-secondary reassign-actions__btn" onclick="closeReassignModal()">Cancel</button>
+                    <button class="btn btn-secondary reassign-actions__btn" onclick="closeReassignModal()">Keep assignment</button>
                     <button class="btn btn-primary reassign-actions__btn" onclick="confirmReassignmentTarget()">
                         <i class="fas fa-arrow-right"></i> Next
                     </button>
@@ -1339,7 +1340,7 @@
             <div class="modal-content modal-content--full">
                 <div class="modal-header">
                     <h3 class="modal-title">Error log</h3>
-                    <button class="btn-icon modal-close" onclick="closeErrorLog()">
+                    <button class="btn-icon modal-close" onclick="closeErrorLog()" aria-label="Close">
                         <i class="fas fa-times"></i>
                     </button>
                 </div>
@@ -1352,10 +1353,10 @@
                         <button class="btn btn-small btn-secondary" onclick="showBugReport()" title="Report a bug">
                             <i class="fas fa-bug"></i> Report
                         </button>
-                        <button id="error-log-copy-btn" class="btn-icon" onclick="copyErrorLog()" title="Copy to clipboard">
+                        <button id="error-log-copy-btn" class="btn-icon" onclick="copyErrorLog()" title="Copy to clipboard" aria-label="Copy to clipboard">
                             <i class="fas fa-copy"></i>
                         </button>
-                        <button class="btn-icon" onclick="clearAllErrors()" title="Clear all errors">
+                        <button class="btn-icon" onclick="clearAllErrors()" title="Clear all errors" aria-label="Clear all errors">
                             <i class="fas fa-trash-alt"></i>
                         </button>
                     </div>

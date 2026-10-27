@@ -5,38 +5,10 @@
    primitive (#qa-sheet, js/core/ui/sheet.js — SH-3b). These are the sheet's
    internals: body-part chip strip, result count, multi-select check rows, and
    the live counter pill on the Add button. The manual-link picker (#mlp-sheet)
-   and the gym picker (#gp-sheet) reuse the rows. .qa-sheet__search is now only
-   the Catalog tab's in-page search.
+   and the gym picker (#gp-sheet) reuse the rows. (The Catalog tab's search is a
+   .field-search — DS-4.)
    ========================================================================== */
 
-.qa-sheet__search {
-    position: sticky;
-    top: 0;
-    background: var(--bg-surface);
-    padding: var(--space-8) 0 var(--space-6);
-    display: flex;
-    align-items: center;
-    gap: var(--space-8);
-    z-index: 2;
-}
-.qa-sheet__search-input {
-    flex: 1;
-    background: var(--bg-card);
-    border: 1px solid var(--primary-border);
-    border-radius: var(--radius-10);
-    padding: var(--space-10) var(--space-12);
-    color: var(--text-strong);
-    font-family: inherit;
-    font-size: var(--font-sm);
-    outline: none;
-    transition: border-color var(--anim-fast);
-}
-.qa-sheet__search-input::placeholder {
-    color: var(--text-very-muted);
-}
-.qa-sheet__search-input:focus {
-    border-color: var(--primary);
-}
 .qa-sheet__result-count {
     font-size: var(--font-2xs);
     font-weight: 700;

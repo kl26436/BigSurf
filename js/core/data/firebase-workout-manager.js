@@ -32,6 +32,41 @@ import { resolveLocationId } from './location-id-resolver.js';
 import { captureWarning } from '../utils/error-handler.js';
 import { matchOwnedEquipment, parseEquipmentName, knownBrands } from './equipment-create.js';
 import { mergeExerciseOverride } from '../features/exercise-taxonomy.js';
+import { PATTERNS } from '../features/movement-patterns.js';
+
+// LB-5 — the static catalog, augmented once, loaded only when a catalog-
+// linked equipment write needs a pattern. Dynamic so the 1,300-machine seed
+// stays off this module's static graph (it is preloaded anyway via the
+// library UI, so the import resolves from memory).
+let staticCatalogLoad = null;
+function loadStaticCatalog() {
+    if (!staticCatalogLoad) {
+        staticCatalogLoad = Promise.all([import('./equipment-catalog.js'), import('./equipment-catalog-helpers.js')])
+            .then(([{ EQUIPMENT_CATALOG }, helpers]) => ({ catalog: helpers.augmentStaticCatalog(EQUIPMENT_CATALOG), helpers }))
+            .catch((err) => { staticCatalogLoad = null; throw err; });
+    }
+    return staticCatalogLoad;
+}
+
+/**
+ * LB-5 — the movement pattern a catalog machine carries, or null: the loaded
+ * (Firestore) catalog first, then the static seed — so a Firestore copy
+ * seeded before the field existed still answers. Never throws.
+ * @param {string|null} ref - catalogRef ("brand/line/machine")
+ * @param {Array|null} [loadedCatalog] - AppState.equipmentCatalog
+ * @returns {Promise<string|null>}
+ */
+export async function catalogPatternForRef(ref, loadedCatalog = null) {
+    if (!ref) return null;
+    try {
+        const { catalog, helpers } = await loadStaticCatalog();
+        const p = helpers.catalogPatternFor(ref, loadedCatalog, catalog);
+        return PATTERNS.includes(p) ? p : null;
+    } catch (err) {
+        captureWarning('Catalog pattern lookup failed', 'catalogPatternForRef', { ref, message: err?.message });
+        return null;
+    }
+}
 
 // One-shot guard for the legacy `location` → `locations[]` write sweep in
 // getUserEquipment. Module-scoped (not per-instance) because the manager is
@@ -1063,6 +1098,14 @@ export class FirebaseWorkoutManager {
 
             // Accept legacy singular `video` + fold into exerciseVideos map under
             // the first exerciseType (best we can do without more context).
+            // LB-5 — the movement the machine trains: passed in, else its
+            // catalog entry's. Every catalog → equipment path (library
+            // promote, quick-add, workout suggestion) lands here, so the copy
+            // happens once.
+            const pattern = PATTERNS.includes(equipmentData.pattern)
+                ? equipmentData.pattern
+                : await catalogPatternForRef(equipmentData.catalogRef, this.appState.equipmentCatalog);
+
             const exerciseVideos = { ...(equipmentData.exerciseVideos || {}) };
             if (equipmentData.video) {
                 const firstEx = equipmentData.exerciseTypes?.[0];
@@ -1088,6 +1131,7 @@ export class FirebaseWorkoutManager {
                 // Catalog identity when promoted from the catalog — lets the
                 // owned/suggestion matchers dedupe by ref across reloads.
                 catalogRef: equipmentData.catalogRef || null,
+                ...(pattern ? { pattern } : {}),
                 exerciseTypes: equipmentData.exerciseTypes || [],
                 exerciseVideos,
                 // Per-exercise machine settings (Tier 3 3.2 / traveler D4):
@@ -1280,6 +1324,16 @@ export class FirebaseWorkoutManager {
                 lastUsed: new Date().toISOString(),
             };
 
+            // LB-5 — linking (or re-linking) a machine to the catalog brings
+            // the catalog's pattern with it; a doc linked before LB-5 picks it
+            // up on its next link save. An explicit updates.pattern wins.
+            if (updates.catalogRef && !('pattern' in updates)
+                && (updates.catalogRef !== existingData.catalogRef || !existingData.pattern)) {
+                const pattern = await catalogPatternForRef(updates.catalogRef, this.appState.equipmentCatalog);
+                if (pattern) updatedData.pattern = pattern;
+                else delete updatedData.pattern;
+            }
+
             // Keep locationIds[] in sync when the caller changed the gym names
             // (Phase 8b step 4). An explicitly-passed updates.locationIds wins.
             // Otherwise derive from the names — gated on CACHE WARMTH, not on the
@@ -1387,10 +1441,16 @@ export class FirebaseWorkoutManager {
                 const has = (list, v) => (list || []).some(x => String(x).toLowerCase() === String(v).toLowerCase());
                 const addLocs = (extraFields.locations || []).filter(l => l && !has(existing.locations, l));
                 const addEx = (extraFields.exerciseTypes || []).filter(n => n && !has(existing.exerciseTypes, n));
-                if (addLocs.length || addEx.length) {
+                // LB-5 — the catalog machine you already own (same name, same
+                // or no ref) gets the catalog's pattern if it has none yet.
+                const ref = extraFields.catalogRef;
+                const addPattern = ref && !existing.pattern && (!existing.catalogRef || existing.catalogRef === ref)
+                    ? await catalogPatternForRef(ref, this.appState.equipmentCatalog) : null;
+                if (addLocs.length || addEx.length || addPattern) {
                     const updates = {};
                     if (addLocs.length) updates.locations = [...(existing.locations || []), ...addLocs];
                     if (addEx.length) updates.exerciseTypes = [...(existing.exerciseTypes || []), ...addEx];
+                    if (addPattern) updates.pattern = addPattern;
                     await this.updateEquipment(existing.id, updates);
                     Object.assign(existing, updates);
                 }

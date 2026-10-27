@@ -5,8 +5,8 @@
  * Get display name for an exercise, with fallback chain
  */
 export function getExerciseName(exercise) {
-    if (!exercise) return 'Unknown Exercise';
-    return exercise.name || exercise.machine || exercise.exercise || 'Unknown Exercise';
+    if (!exercise) return 'Unknown Exercise';  // copy-ok: stored fallback key — matched against saved data
+    return exercise.name || exercise.machine || exercise.exercise || 'Unknown Exercise';  // copy-ok: stored fallback key — matched against saved data
 }
 
 /**

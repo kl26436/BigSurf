@@ -442,7 +442,7 @@ function renderExerciseLibrary() {
         grid.innerHTML = `
             <div class="empty-state">
                 <i class="fas fa-search"></i>
-                <h3>No Exercises Found</h3>
+                <h3>No exercises found</h3>
                 <p>Try adjusting your search or filters.</p>
             </div>
         `;
@@ -471,9 +471,9 @@ function renderExerciseLibrary() {
     // Quick Add chips for recently used exercises
     const quickAddHTML = (recentExercises.length > 0)
         ? `<div class="quick-add-section">
-            <div class="quick-add-label">Quick Add</div>
+            <div class="quick-add-label">Quick add</div>
             <div class="quick-add-chips">
-                ${recentExercises.map((ex) => `<button class="quick-add-chip" data-exercise-name="${escapeAttr(ex.name)}" data-equipment="${escapeAttr(ex.equipment)}">${escapeHtml(ex.name)}</button>`).join('')}
+                ${recentExercises.map((ex) => `<button class="chip chip--sm quick-add-chip" data-exercise-name="${escapeAttr(ex.name)}" data-equipment="${escapeAttr(ex.equipment)}">${escapeHtml(ex.name)}</button>`).join('')}
             </div>
         </div>`
         : '';
@@ -485,7 +485,7 @@ function renderExerciseLibrary() {
             <div class="quick-add-chips">
                 ${gymSuggestedExercises.slice(0, 12).map((ex) => {
                     const name = ex.name || ex.machine;
-                    const chipClass = ex.usedBefore ? 'quick-add-chip quick-add-chip--used' : 'quick-add-chip';
+                    const chipClass = ex.usedBefore ? 'chip chip--sm chip--used quick-add-chip' : 'chip chip--sm quick-add-chip';
                     return `<button class="${chipClass}" data-exercise-name="${escapeAttr(name)}" data-equipment="${escapeAttr(ex.equipment || '')}">${escapeHtml(name)}</button>`;
                 }).join('')}
             </div>
@@ -759,7 +759,7 @@ export function showCreateExerciseForm() {
                     <div class="create-ex-equip-empty__icon"><i class="fas fa-cog"></i></div>
                     <div class="create-ex-equip-empty__title">Pick equipment</div>
                     <div class="create-ex-equip-empty__desc">Bodyweight, barbell, or pick a specific machine</div>
-                    <button class="btn-redesign create-ex-equip-empty__btn" onclick="window._createExChooseEquipment()"><i class="fas fa-dumbbell"></i> Choose equipment</button>
+                    <button class="btn btn-primary btn-lg btn-block create-ex-equip-empty__btn" onclick="window._createExChooseEquipment()"><i class="fas fa-dumbbell"></i> Choose equipment</button>
                 </div>
             </div>
             <button class="more-details-toggle" id="create-ex-more-toggle" type="button" onclick="window._createExToggleMore()">+ More details (notes, video URL)</button>
@@ -776,7 +776,7 @@ export function showCreateExerciseForm() {
         </div>
         <div class="page-footer">
             <div class="create-ex-hint" id="create-ex-hint">Add a name and a category to save</div>
-            <button class="btn-redesign" id="create-ex-footer-save" onclick="createNewExercise(event)"><i class="fas fa-check"></i> Save exercise</button>
+            <button class="btn btn-primary btn-lg btn-block" id="create-ex-footer-save" onclick="createNewExercise(event)"><i class="fas fa-check"></i> Save exercise</button>
         </div>
     `;
 
@@ -850,7 +850,7 @@ function renderCreateExEquipmentArea() {
                 <div class="create-ex-equip-empty__icon"><i class="fas fa-cog"></i></div>
                 <div class="create-ex-equip-empty__title">Pick equipment</div>
                 <div class="create-ex-equip-empty__desc">Bodyweight, barbell, or pick a specific machine</div>
-                <button class="btn-redesign create-ex-equip-empty__btn" onclick="window._createExChooseEquipment()"><i class="fas fa-dumbbell"></i> Choose equipment</button>
+                <button class="btn btn-primary btn-lg btn-block create-ex-equip-empty__btn" onclick="window._createExChooseEquipment()"><i class="fas fa-dumbbell"></i> Choose equipment</button>
             </div>
         `;
     }

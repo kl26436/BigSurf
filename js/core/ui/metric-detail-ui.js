@@ -3,6 +3,7 @@
 import { AppState } from '../utils/app-state.js';
 import { escapeHtml, displayWeight } from './ui-helpers.js';
 import { navigateTo, navigateBack } from './navigation.js';
+import { confirmSheet } from './confirm-sheet.js';
 import { formatRelativeDate as formatRelativeDateShared } from '../utils/date-helpers.js';
 
 import { renderRangeFilter, getRangeBounds, getPreviousRangeBounds, rangeLabel, DEFAULT_RANGE, persistRange } from '../features/metrics/range-filter.js';
@@ -90,7 +91,15 @@ export function setDetailRange(range) {
  */
 export async function deleteBodyWeightEntry(entryId) {
     if (!entryId) return;
-    if (!window.confirm("Delete this weight entry? This can't be undone.")) return;
+    // C-6 — the in-app sheet, never a native dialog.
+    const ok = await confirmSheet({
+        title: 'Delete this weight entry?',
+        message: "This can't be undone.",
+        confirmLabel: 'Delete entry',
+        cancelLabel: 'Keep entry',
+        destructive: true,
+    });
+    if (!ok) return;
 
     try {
         const { deleteBodyWeight } = await import('../features/body-measurements.js');
@@ -231,7 +240,7 @@ async function renderVolumeBodyPartDetail(container, range) {
         }).join('');
 
         container.innerHTML = renderDetailLayout({
-            title: 'Volume by Body Part',
+            title: 'Volume by body part',
             range,
             hero: `
                 <div class="detail-hero__num">${formatNumber(toUserWeight(total))}<span class="detail-hero__unit">${userWeightUnit()}</span></div>
@@ -291,7 +300,7 @@ async function renderStrengthDetail(container, range) {
         }
 
         container.innerHTML = renderDetailLayout({
-            title: 'Strength · Top Lifts',
+            title: 'Strength · top lifts',
             range,
             hero: `
                 <div class="detail-hero__num">${formatNumber(totalCurrent)}<span class="detail-hero__unit">${userWeightUnit()} combined</span></div>
@@ -322,7 +331,7 @@ async function renderBodyWeightDetail(container, range) {
 
         if (!entries || entries.length === 0) {
             container.innerHTML = renderDetailLayout({
-                title: 'Body Weight',
+                title: 'Body weight',
                 range,
                 hero: '<div class="md-empty">No body weight entries yet.</div>',
                 chart: '',
@@ -417,7 +426,7 @@ async function renderBodyWeightDetail(container, range) {
         }
 
         container.innerHTML = renderDetailLayout({
-            title: 'Body Weight',
+            title: 'Body weight',
             tag: latest.source === 'withings' ? 'Withings' : null,
             range,
             hero: `
@@ -468,7 +477,7 @@ async function renderBodyCompositionDetail(container, range) {
 
         if (!history || history.length === 0) {
             container.innerHTML = renderDetailLayout({
-                title: 'Body Composition',
+                title: 'Body composition',
                 range,
                 hero: '<div class="md-empty">No DEXA scans uploaded yet.</div>',
                 chart: '',
@@ -522,7 +531,7 @@ async function renderBodyCompositionDetail(container, range) {
         }).join('');
 
         container.innerHTML = renderDetailLayout({
-            title: 'Body Composition',
+            title: 'Body composition',
             range,
             hero: `
                 <div class="md-bc-row">

@@ -165,8 +165,8 @@ export function normalizeWorkoutToTemplate(workoutData) {
  * @returns {{valid: boolean, error: string|null}}
  */
 export function validateTemplate(template) {
-    if (!template) return { valid: false, error: 'Template is required' };
-    if (!template.name || !template.name.trim()) return { valid: false, error: 'Template name is required' };
+    if (!template) return { valid: false, error: 'Pick a workout' };
+    if (!template.name || !template.name.trim()) return { valid: false, error: 'Add a name' };
     if (!template.exercises || template.exercises.length === 0) return { valid: false, error: 'At least one exercise is required' };
     // CP-1 prescription fields are optional; when present they must be sane,
     // and the rule set is the same one the server normalizer applies.

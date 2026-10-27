@@ -38,7 +38,7 @@ const BUDGETS = {
     overlayRootsOutsideSheetCss: 5,
     safeAreaTopRulesOutsidePrimitives: 0, // SH-4: the inset lives in page-header.css + sheet.css (via --safe-top)
     backCloseControlsUnderTap: 4,
-    searchInputsOutsideFieldSearch: 5,
+    searchInputsOutsideFieldSearch: 0, // DS-4 — every search input is a .field-search
     bodyOverflowWrites: 0,
 };
 

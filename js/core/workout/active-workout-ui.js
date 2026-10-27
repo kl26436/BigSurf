@@ -268,7 +268,7 @@ function renderWorkoutMenu() {
                 <i class="fas fa-feather"></i> ${isDeload ? 'Back to a normal session' : 'Make this a lighter session'}
             </button>
             <button class="aw-ex-menu__item" onclick="saveActiveWorkoutAsTemplate(); awCloseMenus();">
-                <i class="fas fa-bookmark"></i> Save as template
+                <i class="fas fa-bookmark"></i> Save as workout
             </button>
             <button class="aw-ex-menu__item" onclick="changeWorkoutLocation(); awCloseMenus();">
                 <i class="fas fa-map-marker-alt"></i> Change location
@@ -764,8 +764,8 @@ function renderSettingsSheet() {
             ${rows || '<div class="settings-edit-empty">How is this machine set up for you? Add a setting below.</div>'}
         </div>
         <div class="settings-suggest-chips">
-            ${suggested.map(s => `<button type="button" class="aw-fastpath-chip" onclick="awSettingsAdd('${s}')">${s}</button>`).join('')}
-            <button type="button" class="aw-fastpath-chip" onclick="awSettingsAdd('')">Custom…</button>
+            ${suggested.map(s => `<button type="button" class="chip" onclick="awSettingsAdd('${s}')">${s}</button>`).join('')}
+            <button type="button" class="chip" onclick="awSettingsAdd('')">Custom…</button>
         </div>
     `;
 
@@ -2092,20 +2092,20 @@ function renderEquipFastPathsHTML(handlers) {
     return `
         <div class="aw-equip-fastpaths">
             ${handlers.skip ? `
-                <button type="button" class="aw-fastpath-chip" onclick="${handlers.skip}">
+                <button type="button" class="chip" onclick="${handlers.skip}">
                     <i class="fas fa-ban"></i> Skip equipment
                 </button>` : ''}
             ${equipFreeWeightsOpen ? `
-                <button type="button" class="aw-fastpath-chip" onclick="${handlers.dumbbells}">
+                <button type="button" class="chip" onclick="${handlers.dumbbells}">
                     <i class="fas fa-dumbbell"></i> Dumbbells
                 </button>
-                <button type="button" class="aw-fastpath-chip" onclick="${handlers.barbell}">
+                <button type="button" class="chip" onclick="${handlers.barbell}">
                     <i class="fas fa-grip-lines"></i> Barbell
                 </button>` : `
-                <button type="button" class="aw-fastpath-chip" onclick="${handlers.freeWeights}">
+                <button type="button" class="chip" onclick="${handlers.freeWeights}">
                     <i class="fas fa-dumbbell"></i> Free weights
                 </button>`}
-            <button type="button" class="aw-fastpath-chip" onclick="${handlers.cable}">
+            <button type="button" class="chip" onclick="${handlers.cable}">
                 <i class="fas fa-stream"></i> Cable machine
             </button>
         </div>
@@ -2517,7 +2517,7 @@ function equipAddFormHTML() {
             </div>
             <div class="aw-equip-add__preview" id="aw-equip-add-preview">${escapeHtml(equipAddPreviewText())}</div>
             <div class="aw-equip-add__actions">
-                <button type="button" class="btn btn-secondary" onclick="awEquipAddCollapse()">Cancel</button>
+                <button type="button" class="btn btn-ghost" onclick="awEquipAddCollapse()">Back to list</button>
                 <button type="button" class="btn btn-primary" id="aw-equip-add-save" onclick="awEquipAddCommitForm()">Add and use</button>
             </div>
         </div>
@@ -3517,7 +3517,7 @@ function buildAddExerciseListHTML() {
 
 function renderAddExerciseSheet() {
     const chips = AW_EX_CATEGORIES.map(c =>
-        `<button class="aw-sheet__chip ${c === addExerciseFilter ? 'active' : ''}" onclick="awSetAddFilter('${c}')">${c}</button>`
+        `<button class="chip chip--sm ${c === addExerciseFilter ? 'active' : ''}" onclick="awSetAddFilter('${c}')">${c}</button>`
     ).join('');
 
     const body = `
@@ -3545,7 +3545,7 @@ export function awSetAddFilter(cat) {
     addExerciseFilter = cat;
 
     // Update chips active state in-place
-    document.querySelectorAll('#aw-sheet .aw-sheet__chips .aw-sheet__chip').forEach(btn => {
+    document.querySelectorAll('#aw-sheet .aw-sheet__chips .chip').forEach(btn => {
         btn.classList.toggle('active', btn.textContent === cat);
     });
 
@@ -3679,7 +3679,7 @@ function renderSharedAddExerciseSheet() {
     if (!ctx) return;
 
     const chips = AW_EX_CATEGORIES.map(c =>
-        `<button class="aw-sheet__chip ${c === _sharedAddFilter ? 'active' : ''}" onclick="awSharedAddSetFilter('${c}')">${c}</button>`
+        `<button class="chip chip--sm ${c === _sharedAddFilter ? 'active' : ''}" onclick="awSharedAddSetFilter('${c}')">${c}</button>`
     ).join('');
 
     const body = `
@@ -3783,7 +3783,7 @@ function updateSharedAddListInPlace() {
 
 export function awSharedAddSetFilter(cat) {
     _sharedAddFilter = cat;
-    document.querySelectorAll('#aw-sheet .aw-sheet__chips .aw-sheet__chip').forEach(btn => {
+    document.querySelectorAll('#aw-sheet .aw-sheet__chips .chip').forEach(btn => {
         btn.classList.toggle('active', btn.textContent === cat);
     });
     updateSharedAddListInPlace();
@@ -4000,10 +4000,10 @@ function renderJumpSheetContent() {
             return `
                 <div class="js-row ${isCurrent ? 'current' : ''}">
                     <div class="js-row__reorder-btns">
-                        <button class="js-row__move" onclick="awMoveExercise(${i}, -1)" ${i === 0 ? 'disabled' : ''}>
+                        <button class="js-row__move" onclick="awMoveExercise(${i}, -1)" ${i === 0 ? 'disabled' : ''} aria-label="Move up">
                             <i class="fas fa-chevron-up"></i>
                         </button>
-                        <button class="js-row__move" onclick="awMoveExercise(${i}, 1)" ${i === exercises.length - 1 ? 'disabled' : ''}>
+                        <button class="js-row__move" onclick="awMoveExercise(${i}, 1)" ${i === exercises.length - 1 ? 'disabled' : ''} aria-label="Move down">
                             <i class="fas fa-chevron-down"></i>
                         </button>
                     </div>

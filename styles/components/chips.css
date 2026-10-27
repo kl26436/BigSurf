@@ -89,12 +89,18 @@
     color: var(--cat-shoulders);
 }
 
-/* Removable chip (has x button) */
+/* Removable chip (has x button) — 24 px so it's tappable inside a small chip */
 .chip .chip-remove {
+    width: 24px;
+    height: 24px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     background: transparent;
     border: none;
+    border-radius: var(--radius-pill);
     color: inherit;
-    margin-left: 4px;
+    margin-left: 2px;
     cursor: pointer;
     padding: 0;
     font-size: 0.72rem;
@@ -138,4 +144,80 @@
     border: none;
     color: var(--text-muted);
     cursor: pointer;
+}
+
+/* DS-4 — the variants the old local chips (quick-add, favorites, quick edit)
+   needed, so they could become .chip. */
+/* Add: dashed — "+ Add a gym", "+ Link to catalog". */
+.chip--add {
+    background: transparent;
+    border-style: dashed;
+    color: var(--text-muted);
+}
+/* Used before: a recent / already-used choice. */
+.chip--used {
+    border-color: var(--primary);
+    font-weight: 600;
+}
+/* Favorite: the favorite border. */
+.chip--favorite {
+    border-color: var(--favorite-border);
+}
+
+/* Input and stepper chips (manual workout's date / duration / count fields —
+   moved from manual-workout.css, DS-4: chip variants live here). */
+.chip.chip--input {
+    position: relative;
+    cursor: pointer;
+    padding: 8px 14px;
+}
+.chip__hidden-input {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+    border: none;
+    padding: 0;
+    margin: 0;
+    background: transparent;
+    color: transparent;
+    /* Hide native calendar icon; the chip already shows one */
+    width: 100%;
+    height: 100%;
+}
+.chip__hidden-input::-webkit-calendar-picker-indicator {
+    opacity: 0;
+    cursor: pointer;
+    width: 100%;
+    height: 100%;
+    position: absolute;
+    inset: 0;
+}
+.chip.chip--stepper {
+    padding: 0;
+    gap: 0;
+    overflow: hidden;
+}
+.chip-stepper__btn {
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    font-size: var(--font-base);
+    font-weight: 600;
+    padding: 0 var(--space-12);
+    height: 100%;
+    min-height: 32px;
+    cursor: pointer;
+    transition: background var(--anim-fast);
+}
+.chip-stepper__btn:active { background: var(--bg-card-hi); }
+.chip-stepper__val {
+    padding: 6px var(--space-8);
+    font-size: var(--font-sm);
+    color: var(--text-main);
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-6);
+    font-variant-numeric: tabular-nums;
 }

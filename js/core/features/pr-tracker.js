@@ -287,7 +287,7 @@ export function calculateVolume(reps, weight) {
 function getExerciseEquipment(exerciseName) {
     // Look up exercise in exercise database
     const exercise = AppState.exerciseDatabase?.find((ex) => ex.name === exerciseName);
-    return exercise?.equipment || 'Unknown Equipment';
+    return exercise?.equipment || 'Unknown Equipment';  // copy-ok: stored fallback key — matched against saved data
 }
 
 /**
@@ -329,7 +329,7 @@ function resolvePrEquipKey(exerciseData, equipmentId, equipmentName) {
             }
         }
     }
-    return equipmentId || equipmentName || 'Unknown Equipment';
+    return equipmentId || equipmentName || 'Unknown Equipment';  // copy-ok: stored fallback key — matched against saved data
 }
 
 /**
@@ -412,7 +412,7 @@ export async function recordPR(
     }
 
     if (!location) {
-        location = prData.currentLocation || 'Unknown Location';
+        location = prData.currentLocation || 'Unknown Location';  // copy-ok: stored fallback key — matched against saved data
     }
 
     // Get body part from exercise library if not provided
@@ -455,7 +455,7 @@ export async function recordPR(
 
     // Denormalize the human-readable equipment name onto the entry so the PR
     // list can render a label even when the entry is keyed by a stable id.
-    if (equipment && equipment !== 'Unknown Equipment') {
+    if (equipment && equipment !== 'Unknown Equipment') {  // copy-ok: stored fallback key — matched against saved data
         equipmentPRs.equipmentName = equipment;
     }
 
@@ -505,7 +505,7 @@ export async function processWorkoutForPRs(workoutData) {
     }
 
     // Get the workout's saved location (from when the workout was done)
-    const workoutLocation = workoutData.location || prData.currentLocation || 'Unknown Location';
+    const workoutLocation = workoutData.location || prData.currentLocation || 'Unknown Location';  // copy-ok: stored fallback key — matched against saved data
 
     const newPRs = [];
 
@@ -519,7 +519,7 @@ export async function processWorkoutForPRs(workoutData) {
         // Get equipment and body part from original workout template
         const exerciseIndex = exerciseKey.replace('exercise_', '');
         const originalExercise = workoutData.originalWorkout?.exercises?.[exerciseIndex];
-        const equipment = originalExercise?.equipment || 'Unknown Equipment';
+        const equipment = originalExercise?.equipment || 'Unknown Equipment';  // copy-ok: stored fallback key — matched against saved data
         // Stable equipment id (backfilled/dual-written) keys PRs so they survive an
         // equipment rename; falls back to the name key when absent (see getExercisePRs).
         const equipmentId = exerciseData.equipmentId || originalExercise?.equipmentId || null;
@@ -567,15 +567,15 @@ export function getPRDisplayText(exerciseName, equipment = null) {
     const displays = [];
 
     if (prs.maxWeight) {
-        displays.push(`Max Weight: ${prs.maxWeight.weight} lbs × ${prs.maxWeight.reps}`);
+        displays.push(`Max weight: ${prs.maxWeight.weight} lbs × ${prs.maxWeight.reps}`);
     }
 
     if (prs.maxReps && prs.maxReps !== prs.maxWeight) {
-        displays.push(`Max Reps: ${prs.maxReps.reps} @ ${prs.maxReps.weight} lbs`);
+        displays.push(`Max reps: ${prs.maxReps.reps} @ ${prs.maxReps.weight} lbs`);
     }
 
     if (prs.maxVolume) {
-        displays.push(`Max Volume: ${prs.maxVolume.volume} lbs (${prs.maxVolume.reps} × ${prs.maxVolume.weight})`);
+        displays.push(`Max volume: ${prs.maxVolume.volume} lbs (${prs.maxVolume.reps} × ${prs.maxVolume.weight})`);
     }
 
     return displays.join(' | ');
@@ -764,7 +764,7 @@ export async function rebuildPRsFromHistory() {
             if (!workoutDate || workoutDate < PR_CUTOFF_DATE) continue;
 
             // Get the workout's location
-            const workoutLocation = workoutData.location || 'Unknown Location';
+            const workoutLocation = workoutData.location || 'Unknown Location';  // copy-ok: stored fallback key — matched against saved data
 
             // Process each exercise
             if (workoutData.exercises && workoutData.exerciseNames) {
@@ -777,7 +777,7 @@ export async function rebuildPRsFromHistory() {
                     // Get equipment from original workout
                     const exerciseIndex = exerciseKey.replace('exercise_', '');
                     const originalExercise = workoutData.originalWorkout?.exercises?.[exerciseIndex];
-                    const equipment = originalExercise?.equipment || 'Unknown Equipment';
+                    const equipment = originalExercise?.equipment || 'Unknown Equipment';  // copy-ok: stored fallback key — matched against saved data
                     const equipmentId = exerciseData.equipmentId || originalExercise?.equipmentId || null;
                     const bodyPart = originalExercise?.bodyPart || getExerciseBodyPart(exerciseName);
 

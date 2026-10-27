@@ -126,7 +126,7 @@ export function showWeightEntryModal({ keepUnitOverride = false } = {}) {
         </div>
 
         <div class="page-footer">
-            <button class="btn-primary" onclick="saveBodyWeightEntry()">
+            <button class="btn btn-primary" onclick="saveBodyWeightEntry()">
                 <i class="fas fa-check"></i> Save entry
             </button>
         </div>
@@ -359,7 +359,7 @@ export async function showWeightHistory() {
                         <span class="weight-history-value">${converted.weight} ${unit}</span>
                         <span class="weight-history-meta">${escapeHtml(dateStr)}${fatStr}${noteStr}${measStr}</span>
                     </div>
-                    <button class="btn-icon" onclick="deleteWeightEntry('${escapeAttr(entry.id)}')" title="Delete">
+                    <button class="btn-icon" onclick="deleteWeightEntry('${escapeAttr(entry.id)}')" title="Delete" aria-label="Delete entry">
                         <i class="fas fa-trash"></i>
                     </button>
                 </div>

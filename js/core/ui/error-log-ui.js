@@ -89,7 +89,7 @@ export async function toggleErrorLogSource() {
     if (showingPersisted && persistedErrors.length === 0) {
         // Show loading state
         const list = document.getElementById('error-log-list');
-        if (list) list.innerHTML = '<div class="error-log-empty">Loading saved errors...</div>';
+        if (list) list.innerHTML = '<div class="error-log-empty">Loading saved errors…</div>';
 
         persistedErrors = await loadPersistedErrors();
     }
@@ -199,9 +199,9 @@ export async function showBugReport() {
 
             <div class="bug-report-actions">
                 <button class="btn btn-primary" id="bug-report-submit-btn">
-                    <i class="fas fa-paper-plane"></i> Submit Report
+                    <i class="fas fa-paper-plane"></i> Send report
                 </button>
-                <button class="btn btn-secondary" id="bug-report-cancel-btn">Cancel</button>
+                <button class="btn btn-secondary" id="bug-report-cancel-btn">Discard report</button>
             </div>
         </div>
     `;
@@ -315,7 +315,7 @@ function renderErrorEntry(entry) {
     }
 
     const expandBtn = hasDetails
-        ? `<button class="error-expand-btn" onclick="toggleErrorDetail('${entry.id}')"><i class="fas fa-chevron-down"></i></button>`
+        ? `<button class="error-expand-btn" onclick="toggleErrorDetail('${entry.id}')" aria-label="Show details"><i class="fas fa-chevron-down"></i></button>`
         : '';
 
     const shownIcon = entry.shownToUser

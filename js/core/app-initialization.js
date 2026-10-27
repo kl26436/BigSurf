@@ -851,7 +851,7 @@ function showEquipmentMigrationPrompt(preview, userId) {
     }
     if (preview.templatesAffected > 0) {
         summaryItems.push(
-            `<li><strong>${preview.templatesAffected}</strong> template${preview.templatesAffected !== 1 ? 's' : ''} will be updated</li>`
+            `<li><strong>${preview.templatesAffected}</strong> workout${preview.templatesAffected !== 1 ? 's' : ''} will be updated</li>`
         );
     }
     if (cm.unmatched > 0) {
@@ -889,19 +889,19 @@ function showEquipmentMigrationPrompt(preview, userId) {
     content.innerHTML = `
         <div class="migration-prompt">
             <div class="migration-prompt__icon"><i class="fas fa-wrench"></i></div>
-            <h3>Equipment Cleanup Ready</h3>
+            <h3>Equipment cleanup ready</h3>
             <ul class="migration-prompt__summary">${summaryItems.join('')}</ul>
             ${renamesHtml}
             <p class="migration-prompt__hint">
                 Tip: download a backup first. If anything looks wrong after cleanup,
-                you'll have a JSON snapshot of your equipment, workouts, and templates.
+                you'll have a JSON snapshot of your equipment and workouts.
             </p>
             <div class="migration-prompt__actions">
-                <button class="btn btn-primary" onclick="executeEquipmentMigration()">Run Cleanup</button>
+                <button class="btn btn-primary" onclick="executeEquipmentMigration()">Run cleanup</button>
                 <button class="btn btn-secondary" onclick="downloadEquipmentMigrationBackup()">
-                    <i class="fas fa-download"></i> Download Backup
+                    <i class="fas fa-download"></i> Download backup
                 </button>
-                <button class="btn btn-text" onclick="dismissEquipmentMigration()">Not Now</button>
+                <button class="btn btn-text" onclick="dismissEquipmentMigration()">Not now</button>
             </div>
         </div>
     `;

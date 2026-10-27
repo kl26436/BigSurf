@@ -362,7 +362,7 @@ function renderActiveWorkoutHero() {
                     <i class="fas fa-play"></i> Continue
                 </button>
                 <button class="dash-today-hero__cta dash-today-hero__cta--ghost" onclick="confirmCancelActiveWorkout()" aria-label="Cancel workout">
-                    <i class="fas fa-times"></i> Cancel
+                    <i class="fas fa-times"></i> Cancel workout
                 </button>
             </div>
         </div>
@@ -938,7 +938,7 @@ function renderForTodayHero({ template, count, scheduled }, dayName, lastDoneByT
     let prHook = '';
     if (proximity) {
         const gap = Math.round(proximity.gap * 10) / 10;
-        const equip = proximity.equipment && proximity.equipment !== 'Unknown Equipment'
+        const equip = proximity.equipment && proximity.equipment !== 'Unknown Equipment'  // copy-ok: stored fallback key — matched against saved data
             ? ` (${escapeHtml(proximity.equipment)})` : '';
         prHook = `
             <div class="dash-today-hero__pr">
@@ -1192,10 +1192,10 @@ function renderScoreboardCard(allWorkouts) {
             ? `<span class="sb-row__delta sb-row__delta--${trend}">${deltaStr}</span>`
             : '';
         const chips = [
-            p.repPR ? `<span class="vol-chip vol-chip--pr" aria-label="Rep PR ${p.repPR.weight} by ${p.repPR.reps}">Rep PR ${p.repPR.weight}×${p.repPR.reps}</span>` : '',
-            p.rung > 0 ? `<span class="vol-chip vol-chip--rung" aria-label="Stuck — ${p.rung === 1 ? 'chase one more rep' : p.rung === 2 ? 'backing off to reset' : 'time to rotate'}">Stuck</span>` : '',
+            p.repPR ? `<span class="vol-badge vol-badge--pr" aria-label="Rep PR ${p.repPR.weight} by ${p.repPR.reps}">Rep PR ${p.repPR.weight}×${p.repPR.reps}</span>` : '',
+            p.rung > 0 ? `<span class="vol-badge vol-badge--rung" aria-label="Stuck — ${p.rung === 1 ? 'chase one more rep' : p.rung === 2 ? 'backing off to reset' : 'time to rotate'}">Stuck</span>` : '',
             // AP-22 — effort climbing at the same load: a leading fatigue sign.
-            p.fatigue ? `<span class="vol-chip vol-chip--rung" aria-label="${escapeAttr(`Effort rising: ${p.fatigue}`)}">Effort ↑</span>` : '',
+            p.fatigue ? `<span class="vol-badge vol-badge--rung" aria-label="${escapeAttr(`Effort rising: ${p.fatigue}`)}">Effort ↑</span>` : '',
         ].join('');
         const valueStr = value != null ? `${value} ${unit}` : '—';
         return `
@@ -1208,7 +1208,7 @@ function renderScoreboardCard(allWorkouts) {
     }).join('');
 
     const patterns = sb.patterns.map(pt => `
-        <span class="vol-chip vol-chip--${SB_PATTERN_CHIP[pt.status] || 'muted'}"
+        <span class="vol-badge vol-badge--${SB_PATTERN_CHIP[pt.status] || 'muted'}"
               aria-label="${escapeAttr(`${pt.label}: ${pt.setsThisWeek} sets in the last 7 days`)}">${escapeHtml(pt.label)} ${pt.setsThisWeek}</span>`).join('');
 
     const debug = Config.DEBUG_MODE
@@ -1289,12 +1289,12 @@ function renderVolumeChip(volumeByPart, bodyPart) {
     if (!volumeByPart) return '';
     const sets = volumeByPart.get(bodyPart) || 0;
     if (sets < Config.VOLUME_MEV) {
-        return `<span class="vol-chip vol-chip--low">Low · ${sets} set${sets === 1 ? '' : 's'}</span>`;
+        return `<span class="vol-badge vol-badge--low">Low · ${sets} set${sets === 1 ? '' : 's'}</span>`;
     }
     if (sets > Config.VOLUME_MRV) {
-        return `<span class="vol-chip vol-chip--high">High · ${sets} sets</span>`;
+        return `<span class="vol-badge vol-badge--high">High · ${sets} sets</span>`;
     }
-    return `<span class="vol-chip vol-chip--good">On target</span>`;
+    return `<span class="vol-badge vol-badge--good">On target</span>`;
 }
 
 /** Weekly working sets per lowercase body part, over the last 7 days (UX-2). */
@@ -1538,7 +1538,7 @@ function equipShortName(name) {
  */
 function prMetaLine(pr) {
     const parts = [formatRelativeDate(pr.date, { daysAgo: true }), `${pr.reps} reps`];
-    if (pr.equipment && pr.equipment !== 'Unknown Equipment') {
+    if (pr.equipment && pr.equipment !== 'Unknown Equipment') {  // copy-ok: stored fallback key — matched against saved data
         parts.push(escapeHtml(equipShortName(pr.equipment)));
     }
     return parts.join(' · ');

@@ -43,6 +43,7 @@
 
 /* Onboarding footer button sizing */
 .onb-btn-full { flex: 1; }
+.onb-footer .btn-ghost { flex: 1; }
 .onb-btn-wide { flex: 2; }
 
 /* Onboarding units step — segmented group wrapper + padded buttons */
@@ -65,9 +66,9 @@
 }
 
 /* Experience level picker (Profile detail) — a sheet-primitive sheet
-   (SH-3b; was .picker-overlay). Shares the onb-chip family so option visuals
+   (SH-3b; was .picker-overlay). Shares the onb-option family so option visuals
    match the onboarding step; the sheet body supplies the bottom spacing. */
-.exp-picker-sheet .onb-chips { margin-bottom: 0; }
+.exp-picker-sheet .onb-options { margin-bottom: 0; }
 
 /* Onboarding content area */
 .onb-content {
@@ -142,14 +143,14 @@
 }
 
 /* Chip selection cards (stacked vertical list) */
-.onb-chips {
+.onb-options {
     display: flex;
     flex-direction: column;
     gap: 8px;
     margin-bottom: 20px;
 }
 
-.onb-chip {
+.onb-option {
     background: var(--bg-card);
     border: 1.5px solid var(--border-subtle);
     border-radius: var(--radius-md);
@@ -161,12 +162,12 @@
     transition: border-color 150ms, background 150ms;
 }
 
-.onb-chip.selected {
+.onb-option.selected {
     border-color: var(--primary);
     background: var(--primary-bg);
 }
 
-.onb-chip-icon {
+.onb-option__icon {
     width: 36px;
     height: 36px;
     border-radius: var(--radius-sm);
@@ -178,23 +179,23 @@
     font-weight: 700;
 }
 
-.onb-chip-info {
+.onb-option__info {
     flex: 1;
 }
 
-.onb-chip-name {
+.onb-option__name {
     font-size: var(--font-base);
     font-weight: 600;
     color: var(--text-strong);
 }
 
-.onb-chip-desc {
+.onb-option__desc {
     font-size: var(--font-xs);
     color: var(--text-muted);
     margin-top: 2px;
 }
 
-.onb-chip-check {
+.onb-option__check {
     width: 20px;
     height: 20px;
     border-radius: 50%;

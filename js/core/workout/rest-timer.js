@@ -72,7 +72,7 @@ function startModalRestTimer(exerciseIndex, duration = Config.DEFAULT_REST_TIMER
     if (!modalTimer || !exerciseLabel || !timerDisplay) return;
 
     const restExerciseName = getExerciseName(exercise);
-    exerciseLabel.textContent = `Rest Period - ${restExerciseName}`;
+    exerciseLabel.textContent = `Rest period — ${restExerciseName}`;
     modalTimer.classList.remove('hidden');
 
     // Set timer text to primary color (teal)
@@ -86,7 +86,7 @@ function startModalRestTimer(exerciseIndex, duration = Config.DEFAULT_REST_TIMER
     // Schedule server-side push notification for iOS background support
     // This will send a notification even if the app is backgrounded/locked
     if (isFCMAvailable()) {
-        const notifExerciseName = getExerciseName(exercise) !== 'Unknown Exercise' ? getExerciseName(exercise) : 'your next set';
+        const notifExerciseName = getExerciseName(exercise) !== 'Unknown Exercise' ? getExerciseName(exercise) : 'your next set';  // copy-ok: stored fallback key — matched against saved data
         scheduleRestNotification(duration, notifExerciseName).catch(() => {}); // Silently fail - local timer still works
     }
 
@@ -392,7 +392,7 @@ export function saveActiveTimerState(exerciseIndex) {
     const exercise = AppState.currentWorkout?.exercises[exerciseIndex];
     const exerciseLabel =
         modalTimer.querySelector('.modal-rest-exercise')?.textContent ||
-        `Rest Period - ${exercise ? getExerciseName(exercise) : 'Exercise'}`;
+        `Rest period — ${exercise ? getExerciseName(exercise) : 'Exercise'}`;
 
     // Cancel animation frame but preserve state
     if (modalTimer.timerData.animationFrame) {
@@ -437,7 +437,7 @@ export function restoreTimerFromAppState(exerciseIndex) {
 
     // Build timer state compatible with restoreModalRestTimer
     const timerState = {
-        exerciseLabel: `Rest Period - ${exercise ? getExerciseName(exercise) : 'Exercise'}`,
+        exerciseLabel: `Rest period — ${exercise ? getExerciseName(exercise) : 'Exercise'}`,
         timeLeft: timeLeft,
         isPaused: timer.isPaused,
         startTime: timer.startTime,

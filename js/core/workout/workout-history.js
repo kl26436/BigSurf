@@ -574,7 +574,7 @@ export function getWorkoutHistory(appState) {
                 ? `Search results (${monthWorkouts.length})`
                 : catFilter
                     ? `${catFilter.charAt(0).toUpperCase() + catFilter.slice(1)} workouts (${monthWorkouts.length})`
-                    : 'Workouts This Month';
+                    : 'Workouts this month';
             let html = `<h3 class="recent-workouts-heading">${escapeHtml(heading)}</h3>`;
             html += '<div class="recent-workouts-items">';
 
@@ -759,7 +759,7 @@ export function getWorkoutHistory(appState) {
                     year: 'numeric',
                 });
             } else {
-                displayDate = 'Unknown Date';
+                displayDate = 'Unknown date';
             }
 
             const workouts = this.calendarWorkouts[date];
@@ -878,7 +878,7 @@ export function getWorkoutHistory(appState) {
                         exerciseHTML += `
                         <div class="wh-detail-video-row">
                             <button class="btn btn-primary btn-small" data-action="showExerciseVideo" data-video="${escapeAttr(exercise.video)}" data-exercise="${escapeAttr(exercise.name)}">
-                                <i class="fas fa-play"></i> Watch Form Video
+                                <i class="fas fa-play"></i> Watch form video
                             </button>
                         </div>`;
                     }
@@ -898,7 +898,7 @@ export function getWorkoutHistory(appState) {
             if (workout.rawData && workout.rawData.manualNotes) {
                 notesSection = `
                 <div class="wh-detail-manual-notes">
-                    <strong class="wh-detail-manual-notes__label">Workout Notes:</strong>
+                    <strong class="wh-detail-manual-notes__label">Workout notes:</strong>
                     <span>${escapeHtml(workout.rawData.manualNotes)}</span>
                 </div>`;
             }
@@ -911,7 +911,7 @@ export function getWorkoutHistory(appState) {
                 actionButtons = `
                 <div class="wh-detail-actions">
                     <button class="btn btn-primary" data-action="editWorkout" data-doc-id="${escapedDocId}">
-                        <i class="fas fa-edit"></i> Edit Workout
+                        <i class="fas fa-edit"></i> Edit workout
                     </button>
                     <button class="btn btn-danger" data-action="deleteWorkout" data-doc-id="${escapedDocId}">
                         <i class="fas fa-trash"></i> Delete
@@ -925,7 +925,7 @@ export function getWorkoutHistory(appState) {
                 actionButtons = `
                 <div class="wh-detail-actions">
                     <button class="btn btn-primary" data-action="editWorkout" data-doc-id="${escapedDocId}">
-                        <i class="fas fa-edit"></i> Edit Workout
+                        <i class="fas fa-edit"></i> Edit workout
                     </button>
                     <button class="btn btn-secondary" data-action="repeatWorkout" data-doc-id="${escapedDocId}">
                         <i class="fas fa-redo"></i> Repeat
@@ -1143,7 +1143,7 @@ export function getWorkoutHistory(appState) {
             }
 
             // Format date for display
-            let displayDate = 'Unknown Date';
+            let displayDate = 'Unknown date';
             if (date && date.match(/^\d{4}-\d{2}-\d{2}$/)) {
                 const safeDate = new Date(date + 'T12:00:00');
                 displayDate = safeDate.toLocaleDateString('en-US', {
@@ -1234,7 +1234,7 @@ export function getWorkoutHistory(appState) {
                     year: 'numeric',
                 });
             } else {
-                displayDate = 'Unknown Date';
+                displayDate = 'Unknown date';
             }
 
             // CORRECTED: Duration calculation - totalDuration is stored in SECONDS
@@ -1279,7 +1279,7 @@ export function getWorkoutHistory(appState) {
                 // In-progress workout - show Resume button
                 actionButtons = `
             <button class="btn btn-primary" data-action="resumeWorkout" data-doc-id="${escapedDocId}">
-                <i class="fas fa-play"></i> Resume Workout
+                <i class="fas fa-play"></i> Resume workout
             </button>
             <button class="btn btn-secondary" data-action="editWorkout" data-doc-id="${escapedDocId}">
                 <i class="fas fa-edit"></i> Edit
@@ -1290,7 +1290,7 @@ export function getWorkoutHistory(appState) {
             } else if (workoutStatus === 'cancelled' || workoutStatus === 'partial') {
                 actionButtons = `
             <button class="btn btn-primary" data-action="editWorkout" data-doc-id="${escapedDocId}">
-                <i class="fas fa-edit"></i> Edit Workout
+                <i class="fas fa-edit"></i> Edit workout
             </button>
             <button class="btn btn-danger" data-action="deleteWorkout" data-doc-id="${escapedDocId}">
                 <i class="fas fa-trash"></i> Delete
@@ -1302,7 +1302,7 @@ export function getWorkoutHistory(appState) {
                 // Completed workout - show Edit and Repeat buttons
                 actionButtons = `
             <button class="btn btn-primary" data-action="editWorkout" data-doc-id="${escapedDocId}">
-                <i class="fas fa-edit"></i> Edit Workout
+                <i class="fas fa-edit"></i> Edit workout
             </button>
             <button class="btn btn-secondary" data-action="repeatWorkout" data-doc-id="${escapedDocId}">
                 <i class="fas fa-redo"></i> Repeat

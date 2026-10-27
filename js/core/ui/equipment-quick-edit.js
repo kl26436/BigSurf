@@ -97,15 +97,15 @@ function renderBody() {
 
     // Exercise-link chips + suggested chip for the in-context exercise
     const exerciseChips = state.exerciseTypes.map((name, i) => `
-        <span class="qe-chip">
+        <span class="chip chip--sm">
             ${escapeHtml(name)}
-            <button type="button" class="qe-chip__remove" onclick="qeRemoveExercise(${i})" aria-label="Unlink ${escapeAttr(name)}">
+            <button type="button" class="chip-remove" onclick="qeRemoveExercise(${i})" aria-label="Unlink ${escapeAttr(name)}">
                 <i class="fas fa-times"></i>
             </button>
         </span>
     `).join('');
     const suggestChip = (state.contextExercise && !state.exerciseTypes.includes(state.contextExercise))
-        ? `<button type="button" class="qe-chip qe-chip--add" onclick="qeAddExercise('${escapeAttr(state.contextExercise)}')">
+        ? `<button type="button" class="chip chip--sm chip--add" onclick="qeAddExercise('${escapeAttr(state.contextExercise)}')">
                <i class="fas fa-plus"></i> ${escapeHtml(state.contextExercise)}
            </button>`
         : '';
@@ -115,7 +115,7 @@ function renderBody() {
     const link = state.catalogLink;
     const linkChip = link
         ? `<div class="qe-chips qe-chips--link">
-               <button type="button" class="qe-chip qe-chip--add${state.linkCatalog ? ' qe-chip--on' : ''}"
+               <button type="button" class="chip chip--sm chip--add${state.linkCatalog ? ' active' : ''}"
                        onclick="qeToggleCatalogLink()" aria-pressed="${state.linkCatalog}">
                    <i class="fas ${state.linkCatalog ? 'fa-check' : 'fa-link'}"></i>
                    ${state.linkCatalog ? 'Linked to' : 'Link to'} ${escapeHtml(link.brandName)} ${escapeHtml(link.name)}
@@ -133,9 +133,9 @@ function renderBody() {
 
     // Gym-tag chips + add-chips for untagged saved gyms
     const gymChips = state.locations.map((name, i) => `
-        <span class="qe-chip">
+        <span class="chip chip--sm">
             <i class="fas fa-map-marker-alt"></i> ${escapeHtml(name)}
-            <button type="button" class="qe-chip__remove" onclick="qeRemoveGym(${i})" aria-label="Remove from ${escapeAttr(name)}">
+            <button type="button" class="chip-remove" onclick="qeRemoveGym(${i})" aria-label="Remove from ${escapeAttr(name)}">
                 <i class="fas fa-times"></i>
             </button>
         </span>
@@ -149,7 +149,7 @@ function renderBody() {
         .sort()
         .slice(0, 6)
         .map(g => `
-            <button type="button" class="qe-chip qe-chip--add" onclick="qeAddGym('${escapeAttr(g)}')">
+            <button type="button" class="chip chip--sm chip--add" onclick="qeAddGym('${escapeAttr(g)}')">
                 <i class="fas fa-plus"></i> ${escapeHtml(g)}
             </button>
         `).join('');

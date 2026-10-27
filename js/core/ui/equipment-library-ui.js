@@ -21,6 +21,7 @@ import { getExercisePRs } from '../features/pr-tracker.js';
 import { findBestMatch } from '../features/fuzzy-match.js';
 import { suggestExercisesForMachine } from '../features/machine-exercise-matcher.js';
 import { composeEquipmentName } from '../utils/equipment-name.js';
+import { catalogPatternFor } from '../data/equipment-catalog-helpers.js';
 import { suggestedBaseWeight } from '../data/equipment-create.js';
 import { resolveLocationId } from '../data/location-id-resolver.js';
 import { normalizeEquipName } from '../data/equipment-id-resolver.js';
@@ -718,7 +719,7 @@ export async function autoLinkAllOrphans() {
     const confirmed = await confirmSheet({
         title: `Auto-link ${targets.length} orphan${targets.length !== 1 ? 's' : ''}?`,
         message: 'Only matches with at least 85% confidence get linked.',
-        confirmLabel: 'Auto-link',
+        confirmLabel: 'Auto-link', cancelLabel: 'Not now',
     });
     if (!confirmed) return;
 
@@ -1562,19 +1563,26 @@ function renderQuickAddBody() {
         ? `
         <div class="qa-custom">
             <div class="qa-custom__title">Add custom equipment</div>
-            <input type="text" id="qa-custom-name" class="qa-sheet__search-input qa-custom__name"
-                   placeholder="Equipment name" value="${escapeAttr(customName)}"
-                   oninput="setQuickAddCustomName(this.value)">
-            <div class="chips qa-custom__types">
-                ${EQUIPMENT_TYPES_LIST.map((t) => `
-                    <button class="chip${customType === t ? ' active' : ''}"
-                            onclick="setQuickAddCustomType('${escapeAttr(t)}')"
-                            aria-pressed="${customType === t}">${escapeHtml(t)}</button>
-                `).join('')}
+            <!-- DS-1 — the same fields, chips and buttons as the active workout's add-machine form. -->
+            <div class="field">
+                <div class="field-label">Name</div>
+                <input type="text" id="qa-custom-name" class="field-input" autocomplete="off" enterkeyhint="done"
+                       placeholder="Equipment name" value="${escapeAttr(customName)}"
+                       oninput="setQuickAddCustomName(this.value)">
+            </div>
+            <div class="field">
+                <div class="field-label">Type</div>
+                <div class="chips qa-custom__types">
+                    ${EQUIPMENT_TYPES_LIST.map((t) => `
+                        <button type="button" class="chip chip--sm${customType === t ? ' active' : ''}"
+                                onclick="setQuickAddCustomType('${escapeAttr(t)}')"
+                                aria-pressed="${customType === t}">${escapeHtml(t)}</button>
+                    `).join('')}
+                </div>
             </div>
             <div class="qa-custom__actions">
-                <button class="btn-ghost qa-custom__cancel" onclick="toggleQuickAddCustom()">Cancel</button>
-                <button class="btn-redesign qa-custom__save" onclick="commitQuickAddCustom()">Add ${escapeHtml(customType)}</button>
+                <button type="button" class="btn btn-ghost" onclick="toggleQuickAddCustom()">Back to results</button>
+                <button type="button" class="btn btn-primary" onclick="commitQuickAddCustom()">Add ${escapeHtml(customType)}</button>
             </div>
         </div>`
         : `<button class="qa-custom__open" onclick="toggleQuickAddCustom()"><i class="fas fa-plus"></i> Can't find it? Add custom equipment</button>`;
@@ -2401,15 +2409,15 @@ function renderLibraryTab() {
     // are gated on having locations.
     const filterHTML = `
         <div class="equip-filter-row">
-            <button class="btn-icon-sm" onclick="toggleEquipmentSearch()" aria-label="Search">
+            <button class="btn-icon btn-icon--filled" onclick="toggleEquipmentSearch()" aria-label="Search">
                 <i class="fas fa-search"></i>
             </button>
             ${locations.length > 0 ? `
             <div class="equip-location-pills">
-                <button class="filter-pill ${!currentLocationFilter ? 'active' : ''}"
+                <button class="chip chip--sm ${!currentLocationFilter ? 'active' : ''}"
                         onclick="filterEquipmentByLocation(null)">All gyms</button>
                 ${locations.map((loc) => `
-                    <button class="filter-pill ${currentLocationFilter === loc ? 'active' : ''}"
+                    <button class="chip chip--sm ${currentLocationFilter === loc ? 'active' : ''}"
                             onclick="filterEquipmentByLocation('${escapeAttr(loc)}')">${escapeHtml(loc)}</button>
                 `).join('')}
             </div>` : ''}
@@ -2418,13 +2426,13 @@ function renderLibraryTab() {
 
     const searchHTML = `
         <div class="equip-search-bar ${currentSearchTerm ? '' : 'hidden'}" id="equip-search-bar">
-            <div class="equip-lib-search ${currentSearchTerm ? 'equip-lib-search--with-clear' : ''}">
-                <i class="fas fa-search"></i>
+            <div class="field-search equip-search-bar__field ${currentSearchTerm ? 'field-search--with-clear' : ''}">
+                <i class="fas fa-search" aria-hidden="true"></i>
                 <input type="text" placeholder="Search equipment, brand, line, exercises…"
                        value="${escapeAttr(currentSearchTerm)}"
                        oninput="filterEquipmentBySearch(this.value)"
                        onfocus="setTimeout(() => this.scrollIntoView({ block: 'start' }), 200)">
-                ${currentSearchTerm ? `<button class="equip-lib-search__clear" onclick="filterEquipmentBySearch('')" aria-label="Clear search">✕</button>` : ''}
+                ${currentSearchTerm ? `<button class="field-search__clear" onclick="filterEquipmentBySearch('')" aria-label="Clear search"><i class="fas fa-times" aria-hidden="true"></i></button>` : ''}
             </div>
         </div>
     `;
@@ -2529,7 +2537,9 @@ function renderDiscoveryBlock() {
  * the home gym barely has. Silent with a single gym (D6).
  */
 function renderBranchScoutingCard() {
-    const { homeGym, gaps } = branchScouting(allEquipment, null, { patternsFor: (doc) => patternsForEquipment(doc) });
+    // LB-5 — a machine linked to the catalog before LB-5 gets the catalog's movement now, not on its next link.
+    const catalogPattern = (ref) => catalogPatternFor(ref, getCatalogSync(), augmentStaticCatalog(EQUIPMENT_CATALOG));
+    const { homeGym, gaps } = branchScouting(allEquipment, null, { patternsFor: (doc) => patternsForEquipment(doc, undefined, { catalogPattern }) });
     if (!gaps.length || !homeGym) return '';
     const g = gaps[0];
     const label = movementLabel(g.pattern).toLowerCase() || g.pattern;
@@ -2584,13 +2594,13 @@ function renderCatalogTab() {
     const catalog = getCatalogSync();
 
     const searchHTML = `
-        <div class="qa-sheet__search catalog-search">
-            <input type="text" id="catalog-search-input"
-                   class="qa-sheet__search-input"
+        <div class="catalog-search field-search ${term ? 'field-search--with-clear' : ''}">
+            <i class="fas fa-search" aria-hidden="true"></i>
+            <input type="search" id="catalog-search-input"
                    placeholder="Search 1.3k catalog machines…"
                    value="${escapeAttr(catalogSearchTerm)}"
                    oninput="setCatalogSearch(this.value)">
-            ${term ? `<button class="qa-sheet__result-count catalog-search__clear" onclick="setCatalogSearch('')" aria-label="Clear search">✕</button>` : ''}
+            ${term ? `<button class="field-search__clear" onclick="setCatalogSearch('')" aria-label="Clear search"><i class="fas fa-times" aria-hidden="true"></i></button>` : ''}
         </div>
     `;
 
@@ -3024,12 +3034,12 @@ export function filterEquipmentByLocation(location) {
     // and doesn't need to be rebuilt for a filter change.
     renderEquipmentLibraryList();
     // Update the active state on the pill row in place.
-    document.querySelectorAll('.equip-location-pills .filter-pill').forEach(btn => {
+    document.querySelectorAll('.equip-location-pills .chip').forEach(btn => {
         btn.classList.remove('active');
     });
     const target = location
         ? document.querySelector(`.equip-location-pills [onclick*="'${location.replace(/'/g, "\\'")}"]`)
-        : document.querySelector('.equip-location-pills .filter-pill:first-child');
+        : document.querySelector('.equip-location-pills .chip:first-child');
     if (target) target.classList.add('active');
 }
 
@@ -3336,9 +3346,9 @@ export function openEquipmentBaseWeightSheet(equipmentId) {
                        value="${equipment.baseWeight || 0}"
                        onchange="saveEquipmentBaseWeight('${escapeAttr(equipmentId)}', this.value)">
                 <div class="equip-base-weight-unit-toggle">
-                    <button class="unit-chip ${unit === 'lbs' ? 'active' : ''}"
+                    <button class="chip chip--sm unit-chip ${unit === 'lbs' ? 'active' : ''}"
                             onclick="setEquipmentBaseWeightUnit('${escapeAttr(equipmentId)}', 'lbs', this)">lb</button>
-                    <button class="unit-chip ${unit === 'kg' ? 'active' : ''}"
+                    <button class="chip chip--sm unit-chip ${unit === 'kg' ? 'active' : ''}"
                             onclick="setEquipmentBaseWeightUnit('${escapeAttr(equipmentId)}', 'kg', this)">kg</button>
                 </div>
             </div>
@@ -4018,8 +4028,8 @@ function renderFieldPicker() {
                 </button>
             </div>
             ${scopeHint ? `<div class="function-picker__hint">${escapeHtml(scopeHint)}</div>` : ''}
-            <div class="function-picker__search">
-                <i class="fas fa-search"></i>
+            <div class="field-search function-picker__field">
+                <i class="fas fa-search" aria-hidden="true"></i>
                 <input type="text" placeholder="Search…"
                        value="${escapeAttr(searchTerm)}"
                        oninput="filterFieldPicker(this.value)">
@@ -4217,7 +4227,7 @@ function renderAddFlow() {
                 <button class="page-header__back" onclick="backToEquipmentList()" aria-label="Back">
                     <i class="fas fa-chevron-left"></i>
                 </button>
-                <div class="page-header__title">Add Equipment</div>
+                <div class="page-header__title">Add equipment</div>
             </div>
         `;
     }
@@ -4228,7 +4238,7 @@ function renderAddFlow() {
 
     container.innerHTML = `
         <div class="add-flow">
-            <div class="add-step__label">New Equipment</div>
+            <div class="add-step__label">New equipment</div>
             <div class="add-step__hint">Pick a brand, its product line, then the specific machine.</div>
 
             <div class="field">
@@ -4283,11 +4293,11 @@ function renderAddFlow() {
 
             <div class="add-step__actions">
                 <button class="btn btn-primary" onclick="confirmAddEquipment()">
-                    <i class="fas fa-plus"></i> Add Equipment
+                    <i class="fas fa-plus"></i> Add equipment
                 </button>
                 ${line ? `
                     <button class="btn btn-secondary" onclick="confirmAddEquipment(true)">
-                        Add Another to ${escapeHtml(line)}
+                        Add another to ${escapeHtml(line)}
                     </button>
                 ` : ''}
             </div>

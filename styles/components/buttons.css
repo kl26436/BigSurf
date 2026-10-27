@@ -1,5 +1,16 @@
 /* ===========================================
    4. BUTTONS (iOS-style flat, minimal)
+
+   THE button vocabulary (DS-3) — every .btn* class is defined here and
+   nowhere else (design-audit: buttonClassesOutsideButtonsCss = 0):
+     .btn + .btn-primary | .btn-secondary | .btn-ghost | .btn-success | .btn-danger
+     .btn-text, .btn-text-small     text-only
+     .btn-icon (+ .btn-icon--filled) icon-only, 44 px — needs aria-label (C-10)
+     sizes: .btn-sm (.btn-small) | .btn-lg ; width: .btn-block (.btn-full)
+   Color semantics: primary = the action, secondary/ghost = dismiss or
+   alternative (never red), danger = destroys something. A component that
+   needs its own button shape names it after the component (.tpl-start,
+   .exlib-add-btn), not .btn-*.
    =========================================== */
 .btn {
     min-height: var(--tap);
@@ -65,4 +76,74 @@
     min-height: var(--tap);
     padding: 0 var(--space-16);
     font-size: var(--font-sm);
+}
+
+/* Disabled — every variant. */
+.btn:disabled,
+.btn[aria-disabled='true'] {
+    background: var(--bg-card-hi);
+    color: var(--text-muted);
+    cursor: default;
+    transform: none;
+}
+
+/* Ghost: outlined, no fill — the dismiss / alternative next to a primary. */
+.btn-ghost {
+    background: transparent;
+    border: 1px solid var(--border-light);
+    color: var(--text-main);
+}
+.btn-ghost:active {
+    background: var(--bg-card);
+}
+
+/* Large: footer / onboarding call to action (was .btn-redesign). */
+.btn-lg {
+    min-height: calc(var(--tap) + var(--space-8));
+    font-weight: 700;
+}
+
+.btn-block {
+    width: 100%;
+}
+
+/* Small text-only button (inline "Discard", "Undo"). */
+.btn-text-small {
+    background: none;
+    border: none;
+    padding: var(--space-4) var(--space-8);
+    color: var(--text-muted);
+    font-size: var(--font-xs);
+    cursor: pointer;
+}
+.btn-text-small:active {
+    color: var(--text-strong);
+}
+
+/* Icon-only: 44 px tap target. Always with aria-label. */
+.btn-icon {
+    width: var(--tap);
+    height: var(--tap);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    font-size: var(--font-md);
+    cursor: pointer;
+    border-radius: var(--radius-pill);
+}
+.btn-icon:active {
+    background: var(--border-light);
+}
+/* Filled: on a card background (was .btn-icon-sm). */
+.btn-icon--filled {
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    font-size: var(--font-sm);
+}
+.btn-icon--filled:active {
+    background: var(--bg-card-hi);
+    color: var(--primary);
 }

@@ -871,7 +871,7 @@ function renderSetRow(key, idx, set, displayUnitForExercise) {
                 <button class="weh-set__commit" aria-label="Save set" onclick="wehCommitSet('${escapeAttr(key)}', ${idx})">
                     <i class="fas fa-check"></i>
                 </button>
-                <button class="weh-set__cancel" aria-label="Cancel" onclick="wehCancelSetEdit()">
+                <button class="weh-set__cancel" aria-label="Discard set changes" onclick="wehCancelSetEdit()">
                     <i class="fas fa-times"></i>
                 </button>
             </div>

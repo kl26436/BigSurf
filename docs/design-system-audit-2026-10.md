@@ -6,6 +6,14 @@
 
 ---
 
+## As built 2026-10-27 — DS-1 … DS-5
+
+- **DS-5 first:** [`scripts/copy-lint.js`](../scripts/copy-lint.js) (replaces copy-lint.sh) reads visible text with jargon-audit's extractor and checks every C-rule; found 178 → 0. design-audit gains `copyRuleHits: 0`, `buttonRulesOutsideButtonsCss: 0`, `chipClassesOutsideChipsCss: 27` (ratchet), and tightens `inlineStylesInJs` 15→10, `rawFontSizeInPages` 12→10, `duplicateClassDefs` 5→0 (the three fixed); the shell budget `searchInputsOutsideFieldSearch` 5→0. `npm run check` = lint + audit:design:strict + preload check + tests. Rules doc corrected (DS-2 `.page-header`, DS-3 chips, new 3b buttons, DS-4 search) and the color semantics moved to the top of `tokens.css`, with the `--highlight-warm` decision: page-local — superset on the active workout, the coach / "partly here" elsewhere; never an error.
+- **DS-1:** both add-machine forms use `.field` / `.field-input` / `.chip.chip--sm` / `.btn-ghost` + `.btn-primary`; the dismiss reads "Back to list" / "Back to results" (neutral, as argued above).
+- **DS-2:** every finding fixed — the native confirm → `confirmSheet`, 13 Cancel/OK labels named (and `confirmSheet`'s default is "Go back", `promptSheet`'s "Close"), title case, `…`, "templates" → "workouts", 14 icon-only buttons labelled. The legacy `exercise-ui.js` overflow menu was re-cased, not deleted (still reachable from the v1 cards). Stored fallback keys ("Unknown Equipment") stay — they're matched against saved data — and carry `copy-ok`.
+- **DS-3:** `buttons.css` owns `.btn-ghost`, `.btn-lg`, `.btn-block`, `.btn-icon(--filled)`, `.btn-text-small`, `:disabled`; `.btn-redesign` and `.btn-icon-sm` retired; component buttons renamed (`.tpl-start`, `.exlib-*-btn`, `.set-control`); `tests/unit/button-vocab.test.js`.
+- **DS-4:** `.filter-pill`, `.aw-sheet__chip`, `quick-add-chip`, `unit-chip`, `bs-sub-chip`, `aw-fastpath-chip`, `category-pill` (category tint via `cat-*`), `qe-chip` → `.chip` (+ `chip--add` / `--used` / `--favorite`); `.onb-chip` → `.onb-option`; `vol-chip` → `vol-badge`; the manual-workout input / stepper chips moved into chips.css. Search: the equipment library, catalog, function picker, reassign and exercise-library inputs → `.field-search` (+ `.field-search__clear`).
+
 ## 0. Verdict
 
 **Mostly intact. The machine-checked rules are all green; the drift is in the rules the scripts don't check.** `npm run audit:design` passes every budget (inline styles 10/15, raw font-size 10/12, raw radius 0, raw rgba 2/2, raw hex 0, duplicate classes 3/5, bare backdrops 0). The 10 remaining inline styles are all CSS custom properties (`--bar-width`, `--dot-color`…), which DS-8 explicitly allows; the 10 raw font sizes are the documented hero/micro one-offs. Copy lints: 0 "please", 0 "cannot", 0 "successfully", 0 "Are you sure" in user strings.

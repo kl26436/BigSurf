@@ -95,7 +95,6 @@ dialog[open] > .modal-content {
 }
 
 /* Full-width button utility — replaces inline `style="width:100%"` on buttons. */
-.btn-block { width: 100%; }
 .recent-workouts-load-more { margin-top: var(--space-12); }
 
 /* Text color utilities — replace inline `style="color: var(--X);"` */
@@ -352,17 +351,6 @@ dialog[open] > .modal-content {
     gap: var(--space-8);
     align-items: center;
 }
-.btn-text-small {
-    background: none;
-    border: none;
-    color: var(--text-muted);
-    font-size: var(--font-sm);
-    cursor: pointer;
-    padding: var(--space-4) var(--space-8);
-}
-.btn-text-small:active {
-    color: var(--danger);
-}
 
 /* ===========================================
    19. RESPONSIVE
@@ -422,25 +410,6 @@ dialog[open] > .modal-content {
 }
 /* Filter pill — horizontal chip-style filter button with active state.
    Consolidated here from exercise-lib.css during dedup sweep. */
-.filter-pill {
-    padding: var(--space-8) var(--space-16);
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-pill);
-    color: var(--text-main);
-    font-size: var(--font-sm);
-    white-space: nowrap;
-    cursor: pointer;
-    transition: background var(--anim-fast), border-color var(--anim-fast), color var(--anim-fast);
-}
-.filter-pill:hover {
-    border-color: var(--primary);
-}
-.filter-pill.active {
-    background: var(--primary);
-    color: var(--bg-app);
-    border-color: var(--primary);
-}
 .saved-locations-list {
     margin-top: var(--space-12);
 }

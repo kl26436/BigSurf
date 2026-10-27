@@ -1,6 +1,21 @@
 /* ===========================================
    1. DESIGN TOKENS
    =========================================== */
+/* ============================================================================
+   COLOR SEMANTICS — what each accent MEANS, app-wide (DS-5, 2026-10-27).
+   Use a color for its meaning, not its look.
+   - --primary  (teal-green) = the action / the user's current focus
+                (the primary button, the current set, an active chip)
+   - --success  (green)      = done (completed sets, met goals)
+   - --danger   (red)        = destroys something (delete, discard, cancel a
+                workout). Never on a dismiss: "Back", "Close", "Keep current"
+                stay neutral (.btn-secondary / .btn-ghost).
+   - --warning  (amber)      = needs attention (incomplete, stale, behind)
+   - --highlight-warm (orange) = page-local accent, never an error or warning:
+                on the active workout it means SUPERSET and nothing else;
+                elsewhere it's the coach's accent and "partly here" gym
+                compatibility. Don't introduce a new meaning for it.
+   ============================================================================ */
 :root {
     /* Colors - iOS-style limited accent usage */
     --primary: #1dd3b0;

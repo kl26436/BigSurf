@@ -268,7 +268,7 @@ export async function sendTestNotification() {
         const sendImmediate = httpsCallable(functions, 'sendImmediateNotification');
         await sendImmediate({
             subscription: pushSubscription.toJSON(),
-            title: 'Test Notification',
+            title: 'Test notification',
             body: 'Push notifications are working!',
         });
         return true;

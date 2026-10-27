@@ -141,7 +141,7 @@ export function selectBodyPartCategory(bodyPart) {
     }
 
     // Reset equipment filter pills
-    const pills = document.querySelectorAll('.filter-pill');
+    const pills = document.querySelectorAll('.equipment-filter-pills .chip');
     pills.forEach((pill) => {
         pill.classList.toggle('active', pill.dataset.equipment === '');
     });
@@ -162,7 +162,7 @@ export function filterByEquipment(equipmentType) {
     currentEquipmentFilter = equipmentType;
 
     // Update pill active states
-    const pills = document.querySelectorAll('.filter-pill');
+    const pills = document.querySelectorAll('.equipment-filter-pills .chip');
     pills.forEach((pill) => {
         pill.classList.toggle('active', pill.dataset.equipment === equipmentType);
     });
@@ -381,7 +381,7 @@ function renderExercises() {
             <div class="exercise-empty-state">
                 <i class="fas fa-dumbbell"></i>
                 <p>No exercises found</p>
-                <button class="btn-add-exercise" onclick="showAddExerciseModal()">
+                <button class="btn btn-secondary btn-sm" onclick="showAddExerciseModal()">
                     <i class="fas fa-plus"></i> Add exercise
                 </button>
             </div>
@@ -637,7 +637,7 @@ function renderEditExerciseMarkup(title, v, showDelete) {
             <div id="edit-selected-equipment" class="edit-selected-equipment hidden">
                 <i class="fas fa-check-circle"></i>
                 <span id="edit-selected-equipment-text"></span>
-                <button type="button" class="btn-clear" onclick="clearSelectedEquipment()" aria-label="Clear selection">
+                <button type="button" class="exlib-clear-btn" onclick="clearSelectedEquipment()" aria-label="Clear selection">
                     <i class="fas fa-times"></i>
                 </button>
             </div>
@@ -647,7 +647,7 @@ function renderEditExerciseMarkup(title, v, showDelete) {
                 <div class="edit-equipment-empty">No equipment saved for this exercise</div>
             </div>
 
-            <button type="button" class="btn-add-equipment" onclick="addEquipmentForExerciseFromCatalog()">
+            <button type="button" class="exlib-add-btn" onclick="addEquipmentForExerciseFromCatalog()">
                 <i class="fas fa-plus"></i> Add equipment
             </button>
 
@@ -659,7 +659,7 @@ function renderEditExerciseMarkup(title, v, showDelete) {
         </div>
 
         <div class="page-footer">
-            <button type="button" id="edit-ex-save-footer" class="btn-primary" onclick="saveExerciseFromSection()" disabled>
+            <button type="button" id="edit-ex-save-footer" class="btn btn-primary" onclick="saveExerciseFromSection()" disabled>
                 <i class="fas fa-check"></i> Save exercise
             </button>
         </div>
@@ -919,7 +919,7 @@ async function populateEquipmentListForSection(
                     <div class="edit-equipment-item-name">${escapeHtml(eq.name)}</div>
                     ${locationDisplay ? `<div class="edit-equipment-item-location">${escapeHtml(locationDisplay)}</div>` : ''}
                 </div>
-                <button type="button" class="edit-equipment-item-edit" data-equipment-id="${escapeAttr(eq.id)}" title="Edit equipment">
+                <button type="button" class="edit-equipment-item-edit" data-equipment-id="${escapeAttr(eq.id)}" title="Edit equipment" aria-label="Edit equipment">
                     <i class="fas fa-pen"></i>
                 </button>
             </div>
@@ -1579,7 +1579,7 @@ function renderEquipmentEditorLocations() {
                 <i class="fas fa-map-marker-alt"></i>
                 ${escapeHtml(loc)}
             </span>
-            <button type="button" class="remove-location-btn" onclick="removeLocationFromEquipmentEditor(${index})" title="Remove location">
+            <button type="button" class="remove-location-btn" onclick="removeLocationFromEquipmentEditor(${index})" title="Remove gym" aria-label="Remove gym">
                 <i class="fas fa-times"></i>
             </button>
         </div>
@@ -1618,7 +1618,7 @@ function renderEquipmentExerciseVideos() {
                            placeholder="YouTube URL"
                            onchange="editEquipmentExerciseVideo('${safeExName}', this.value)">
                 </div>
-                ${videoUrl ? `<button type="button" class="btn-text" onclick="editEquipmentExerciseVideo('${safeExName}', ''); this.closest('.equipment-video-row').querySelector('input').value='';" title="Clear video">
+                ${videoUrl ? `<button type="button" class="btn-text" onclick="editEquipmentExerciseVideo('${safeExName}', ''); this.closest('.equipment-video-row').querySelector('input').value='';" title="Clear video" aria-label="Clear video">
                     <i class="fas fa-times"></i>
                 </button>` : ''}
             </div>
@@ -1962,7 +1962,7 @@ export async function confirmReassignmentTarget() {
     if (!content || !headerEl) return;
 
     // Show loading
-    content.innerHTML = `<div class="reassign-loading"><i class="fas fa-spinner fa-spin"></i> Scanning workouts...</div>`;
+    content.innerHTML = `<div class="reassign-loading"><i class="fas fa-spinner fa-spin"></i> Scanning workouts…</div>`;
 
     // Count impact
     const impact = await countReassignmentImpact(reassignmentState.equipmentName, reassignmentState.oldExerciseName);
@@ -1971,7 +1971,7 @@ export async function confirmReassignmentTarget() {
 
     // Show confirmation preview
     headerEl.innerHTML = `
-        <h3 class="reassign-preview__title">Confirm Reassignment</h3>
+        <h3 class="reassign-preview__title">Confirm reassignment</h3>
         <div class="reassign-preview">
             <div class="reassign-from">
                 <span class="text-muted">From:</span>
@@ -2001,7 +2001,7 @@ export async function confirmReassignmentTarget() {
             <span class="reassign-progress-text">Updating…</span>
         </div>
         <div class="reassign-confirm-actions">
-            <button class="btn btn-secondary" onclick="closeReassignModal()">Cancel</button>
+            <button class="btn btn-secondary" onclick="closeReassignModal()">Keep assignment</button>
             <button class="btn btn-primary" id="reassign-commit-btn" onclick="commitReassignment()">
                 <i class="fas fa-check"></i> Reassign
             </button>
@@ -2062,7 +2062,7 @@ export async function commitReassignment() {
         }
     } catch (error) {
         console.error('❌ Equipment reassignment failed:', error);
-        showNotification('Reassignment failed — please try again', 'error');
+        showNotification("Couldn't reassign — try again", 'error');
         if (commitBtn) commitBtn.disabled = false;
     }
 }

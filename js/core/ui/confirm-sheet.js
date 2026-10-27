@@ -94,7 +94,7 @@ function openSheet({ title, message, bodyHTML, actionsHTML, onWire, iconHTML = '
  * @param {boolean} [opts.destructive] Danger styling + focus lands on cancel
  * @returns {Promise<boolean>}
  */
-export function confirmSheet({ title, message = '', confirmLabel, cancelLabel = 'Cancel', destructive = false }) {
+export function confirmSheet({ title, message = '', confirmLabel, cancelLabel = 'Go back', destructive = false }) {
     return openSheet({
         title,
         message,
@@ -132,7 +132,7 @@ export function confirmSheet({ title, message = '', confirmLabel, cancelLabel = 
  * @param {string} [opts.cancelLabel]
  * @returns {Promise<string|null>}
  */
-export function promptSheet({ title, message = '', placeholder = '', initialValue = '', confirmLabel = 'Save', cancelLabel = 'Cancel' }) {
+export function promptSheet({ title, message = '', placeholder = '', initialValue = '', confirmLabel = 'Save', cancelLabel = 'Close' }) {
     return openSheet({
         title,
         message,

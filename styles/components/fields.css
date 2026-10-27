@@ -237,3 +237,24 @@ textarea.field-input {
 .field-search input::placeholder {
     color: var(--text-muted);
 }
+
+/* DS-4 — the clear (×) button inside a search field. */
+.field-search__clear {
+    position: absolute;
+    right: var(--space-4);
+    top: 50%;
+    transform: translateY(-50%);
+    min-width: var(--tap-sm);
+    min-height: var(--tap-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: 0;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: var(--font-sm);
+}
+.field-search--with-clear input {
+    padding-right: var(--space-36);
+}

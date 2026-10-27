@@ -216,18 +216,10 @@
     font-variant-numeric: tabular-nums;
 }
 
-/* Catalog tab — search input sits in the qa-sheet__search pattern, with a
-   summary line below the search and an empty-state for no matches. */
+/* Catalog tab — a .field-search with a summary line below it and an
+   empty-state for no matches. */
 .catalog-search {
     padding: var(--space-12) var(--pad-page) var(--space-6);
-}
-.catalog-search__clear {
-    appearance: none;
-    background: transparent;
-    border: 0;
-    color: var(--text-very-muted);
-    cursor: pointer;
-    padding: var(--space-4) var(--space-8);
 }
 .catalog-search__summary {
     padding: var(--space-6) var(--pad-page) 0;

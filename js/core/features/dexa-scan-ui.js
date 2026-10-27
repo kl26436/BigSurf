@@ -33,7 +33,7 @@ export async function renderDexaCard() {
             <div class="dexa-card-empty">
                 <p>Upload a DEXA scan to track body composition over time.</p>
                 <button class="btn btn-primary btn-sm" onclick="showDexaUploadModal()">
-                    <i class="fas fa-upload"></i> Upload Scan
+                    <i class="fas fa-upload"></i> Upload scan
                 </button>
             </div>
         </div>
@@ -51,7 +51,7 @@ export async function renderDexaCard() {
             summaryItems += `
                 <div class="dexa-stat">
                     <span class="dexa-stat-value">${latest.totalBodyFat}%</span>
-                    <span class="dexa-stat-label">Body Fat</span>
+                    <span class="dexa-stat-label">Body fat</span>
                 </div>
             `;
         }
@@ -99,7 +99,7 @@ export async function renderDexaCard() {
                     <button class="btn btn-primary btn-sm" onclick="showDexaUploadModal()">
                         <i class="fas fa-upload"></i> New scan
                     </button>
-                    <button class="btn btn-sm btn-outline" onclick="showDexaHistory()">
+                    <button class="btn btn-sm btn-secondary" onclick="showDexaHistory()">
                         <i class="fas fa-list"></i> History
                     </button>
                 </div>
@@ -139,7 +139,7 @@ export function showDexaUploadModal() {
                 <div class="dexa-drop__icon"><i class="fas fa-file-upload"></i></div>
                 <div class="dexa-drop__title">Upload scan results</div>
                 <div class="dexa-drop__desc">PDF or CSV from your DEXA facility</div>
-                <span class="btn-primary dexa-drop__btn">Choose file</span>
+                <span class="btn btn-primary dexa-drop__btn">Choose file</span>
             </label>
             <input type="file" id="dexa-file-input" class="hidden"
                    accept=".pdf,.csv,.xlsx" onchange="handleDexaFileSelect()">
@@ -147,7 +147,7 @@ export function showDexaUploadModal() {
             <div id="dexa-file-selected" class="dexa-file-selected hidden">
                 <i class="fas fa-file-pdf"></i>
                 <span id="dexa-file-name"></span>
-                <button class="btn-icon" onclick="clearDexaFile()" title="Remove">
+                <button class="btn-icon" onclick="clearDexaFile()" title="Remove" aria-label="Remove file">
                     <i class="fas fa-times"></i>
                 </button>
             </div>
@@ -490,7 +490,7 @@ export function showDexaReviewForm(scanId, prefillData = {}, isManual = false) {
 
             <!-- VAT -->
             <div class="form-group ${lowConf('vat')}">
-                <label>Visceral Adipose Tissue ${reviewBadge('vat')} <span class="optional-label">(optional)</span></label>
+                <label>Visceral fat ${reviewBadge('vat')} <span class="optional-label">(optional)</span></label>
                 <input type="number" id="dexa-vat" class="form-input"
                        placeholder="e.g. 0.8" step="0.1" min="0" max="50" inputmode="decimal"
                        value="${data.vat ?? ''}">
@@ -698,7 +698,7 @@ export async function showDexaHistory() {
                 <div class="empty-state-title">No scans yet</div>
                 <div class="empty-state-description">Upload your first DEXA scan to start tracking body composition.</div>
                 <button class="btn btn-primary btn-sm" onclick="closeDexaHistory(); showDexaUploadModal();">
-                    <i class="fas fa-upload"></i> Upload Scan
+                    <i class="fas fa-upload"></i> Upload scan
                 </button>
             </div>
         `;

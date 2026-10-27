@@ -688,7 +688,7 @@
 .dash-week-row__txt b { color: var(--text-main); font-weight: 600; }
 
 /* ── Body-part volume chip (Low / On target / High vs MEV/MRV) ── */
-.vol-chip {
+.vol-badge {
     font-size: var(--font-2xs);
     font-weight: 700;
     padding: 2px 7px;
@@ -697,13 +697,13 @@
     letter-spacing: 0.04em;
     margin-left: 6px;
 }
-.vol-chip--low  { background: var(--warning-bg-subtle); color: var(--warning-moderate); border: 1px solid var(--warning-border); }
-.vol-chip--good { background: var(--success-bg-subtle); color: var(--success); border: 1px solid var(--success-border); }
-.vol-chip--high { background: var(--danger-moderate-bg); color: var(--danger); border: 1px solid var(--danger-border); }
+.vol-badge--low  { background: var(--warning-bg-subtle); color: var(--warning-moderate); border: 1px solid var(--warning-border); }
+.vol-badge--good { background: var(--success-bg-subtle); color: var(--success); border: 1px solid var(--success-border); }
+.vol-badge--high { background: var(--danger-moderate-bg); color: var(--danger); border: 1px solid var(--danger-border); }
 /* Scoreboard tags (AP-21): rep PR, stall rung, deload-week pattern */
-.vol-chip--pr    { background: var(--badge-gold-bg); color: var(--badge-gold); border: 1px solid var(--badge-gold-border); }
-.vol-chip--rung  { background: var(--warning-bg-subtle); color: var(--warning-moderate); border: 1px solid var(--warning-border); }
-.vol-chip--muted { background: var(--bg-card-hover); color: var(--text-muted); border: 1px solid var(--border-subtle); }
+.vol-badge--pr    { background: var(--badge-gold-bg); color: var(--badge-gold); border: 1px solid var(--badge-gold-border); }
+.vol-badge--rung  { background: var(--warning-bg-subtle); color: var(--warning-moderate); border: 1px solid var(--warning-border); }
+.vol-badge--muted { background: var(--bg-card-hover); color: var(--text-muted); border: 1px solid var(--border-subtle); }
 
 /* ── Main lifts scoreboard (AP-21): headline, one row per main lift,
    movement-pattern strip — rides inside a .dash-week-card ── */
@@ -747,7 +747,7 @@
     gap: var(--space-6);
     padding: var(--space-10) var(--space-12);
 }
-.sb-patterns .vol-chip { margin-left: 0; }
+.sb-patterns .vol-badge { margin-left: 0; }
 .sb-card__debug {
     padding: 0 var(--space-12) var(--space-8);
     font-family: monospace;

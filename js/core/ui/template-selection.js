@@ -439,7 +439,7 @@ function renderPlanGroup(container, allTemplates) {
                 </div>
                 ${x.template.planOwned ? `<button class="ws-plan-row__save" data-action="savePlanSession" data-template-id="${escapeAttr(x.template.id)}" aria-label="${escapeAttr(`Save ${name} to my workouts`)}"><i class="fas fa-bookmark" aria-hidden="true"></i></button>` : ''}
                 <div class="template-row__start">
-                    <button class="btn-start-small" data-action="startTemplateRow" data-workout="${escapeAttr(name)}" aria-label="${escapeAttr(`Start ${name}`)}">
+                    <button class="tpl-start" data-action="startTemplateRow" data-workout="${escapeAttr(name)}" aria-label="${escapeAttr(`Start ${name}`)}">
                         <i class="fas fa-play"></i>
                     </button>
                 </div>
@@ -491,11 +491,9 @@ function hydrateLastSession() {
 
 function renderCategoryPills(container, categories) {
     const pills = categories.map(cat => {
-        const color = CATEGORY_COLORS[cat] || CATEGORY_COLORS.Other;
         const isActive = activeSelectorCategory === cat;
         return `
-            <button class="category-pill ${isActive ? 'active' : ''}"
-                    ${isActive ? `style="--pill-color: ${color};"` : ''}
+            <button class="chip category-pill cat-${escapeAttr(cat.toLowerCase())} ${isActive ? 'active' : ''}"
                     data-category="${escapeAttr(cat)}">
                 <i class="${getCategoryIcon(cat.toLowerCase())}"></i> ${escapeHtml(cat)}
             </button>
@@ -504,14 +502,14 @@ function renderCategoryPills(container, categories) {
 
     // "Works here" filter pill — only when badges are live at a gym.
     const possiblePill = (gymContext?.gym && gymContext.equipmentCount > 0)
-        ? `<button class="category-pill category-pill--possible ${possibleHereFilter ? 'active' : ''}"
+        ? `<button class="chip category-pill ${possibleHereFilter ? 'active' : ''}"
                    data-category="__possible-here__" aria-pressed="${possibleHereFilter}">
                <i class="fas fa-check-circle"></i> Works here
            </button>`
         : '';
 
     container.innerHTML = `
-        <button class="category-pill ${!activeSelectorCategory ? 'active' : ''}" data-category="all">All</button>
+        <button class="chip category-pill ${!activeSelectorCategory ? 'active' : ''}" data-category="all">All</button>
         ${possiblePill}
         ${pills}
     `;
@@ -956,7 +954,7 @@ function renderSingleTemplateRow(template) {
             </div>
             <i class="fas fa-chevron-right template-row__chev" aria-hidden="true"></i>
             <div class="template-row__start">
-                <button class="btn-start-small" data-action="startTemplateRow" data-workout="${escapeAttr(templateName)}" aria-label="Start ${escapeAttr(templateName)}">
+                <button class="tpl-start" data-action="startTemplateRow" data-workout="${escapeAttr(templateName)}" aria-label="Start ${escapeAttr(templateName)}">
                     <i class="fas fa-play"></i>
                 </button>
             </div>

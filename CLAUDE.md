@@ -49,7 +49,7 @@ js/
     │   ├── server-sync.js          # TP-6 j: listens to users/{uid}/meta/sync; refreshAfterServerWrite() after coach / Sunday-roll writes
     │   ├── data-export-import.js   # CSV export, JSON export/import
     │   ├── exercise-library.js     # Exercise database with favorites
-    │   ├── equipment-catalog.js    # Equipment catalog seed data
+    │   ├── equipment-catalog.js    # Equipment catalog seed data; machine `pattern` is GENERATED (LB-5) — re-run scripts/stamp-catalog-patterns.mjs after editing
     │   ├── equipment-catalog-firestore.js  # Catalog Firestore reads/writes
     │   ├── equipment-catalog-helpers.js    # Catalog lookup/normalization helpers
     │   ├── catalog-search.js       # Pure catalog free-text search + type inference (equipment pickers)
@@ -521,9 +521,10 @@ These rules are canonical for all new CSS and JS that renders markup. When in do
 ### Pattern rules (what to reach for)
 
 1. **One row pattern, one card pattern.** Every list item with `[icon][title/subtitle][trailing]` uses `.row-card` (or a modifier like `.row-card--pr`). Every "section hero" card uses `.hero-card`. Don't create new `*-row` / `*-item` / `*-card-list` classes for the same shape. Canonical patterns live in [styles/components/cards.css](styles/components/cards.css).
-2. **One section header pattern.** `.section-header-row` (in [components/page-header.css](styles/components/page-header.css)) is the pinned page header (back arrow + title + optional action + safe-area-inset). Don't re-implement `.stats-section-header`, `.dash-section-head`, etc. — they've been consolidated.
-3. **One chip/pill pattern.** Use `.chip` / `.chip--sm` / category variants in [components/chips.css](styles/components/chips.css). Don't create `aw-sheet__chip`, `filter-pill`, `onb-chip`, etc. for the same shape.
-4. **One search field.** Use `.field-search` (optional `.field-search--sticky`) from [components/fields.css](styles/components/fields.css). The `history-search-input-wrapper` / `exercise-search-wrapper` / `aw-sheet__search` patterns have all been migrated.
+2. **One page header.** `.page-header` (in [components/page-header.css](styles/components/page-header.css)) is the pinned page header (back + title + optional actions + safe-area-inset). `.section-header-row` is legacy (one use) — don't add more.
+3. **One chip/pill pattern.** An interactive chip is `.chip` (+ `.chip--sm`, `.active`, category `cat-*`, `chip--add` / `chip--used` / `chip--favorite`, `.chip-remove`) from [components/chips.css](styles/components/chips.css); chip variants live there. A non-interactive status label is a *badge* — name it `*-badge` (`vol-badge`). A selectable card is not a chip (`.onb-option`). `chipClassesOutsideChipsCss` in design-audit counts the remaining local chip shapes (the workout pill, day circles, set chips…) and only goes down.
+3b. **One button vocabulary (DS-3).** `.btn` + `.btn-primary` | `.btn-secondary` | `.btn-ghost` | `.btn-success` | `.btn-danger`; `.btn-text` / `.btn-text-small`; `.btn-icon` (+ `.btn-icon--filled`, always with `aria-label`); sizes `.btn-sm` / `.btn-lg`, width `.btn-block`. All defined in [components/buttons.css](styles/components/buttons.css) and nowhere else (`buttonRulesOutsideButtonsCss: 0`; [button-vocab.test.js](tests/unit/button-vocab.test.js) checks markup). A component's own button shape gets a component name (`.tpl-start`, `.exlib-add-btn`), never `.btn-*`. Dismiss buttons are `.btn-secondary` / `.btn-ghost`, never red — see the color semantics at the top of [tokens.css](styles/tokens.css).
+4. **One search field.** Every search input is a `.field-search` (icon + input, `--sticky` when pinned, `.field-search__clear` + `--with-clear` for a clear button) from [components/fields.css](styles/components/fields.css); `openSheet({ search })` renders it for sheets. `searchInputsOutsideFieldSearch: 0`.
 
 4b. **One shell (SH-5).** New bottom sheet → `openSheet()` ([sheet.js](js/core/ui/sheet.js)). New page header → `.page-header`. Never write `env(safe-area-inset-top)` (use `var(--safe-top)`), a new `position: fixed; bottom: 0` overlay root, or `body.style.overflow` outside the primitives (`sheet.css`, `page-header.css`, `tokens.css`, `page-lock.js`). `npm run audit:design:strict` now includes the shell budgets from [shell-audit.js](scripts/shell-audit.js); they only go down. Before a prod promote, run [docs/ux-shell-checklist.md](docs/ux-shell-checklist.md) on the phone.
 
@@ -642,7 +643,7 @@ The user thinks "workouts." Keep "template" as a code-side concept; never expose
 
 ### 11. Lint pass before merging UI changes
 
-Quick searches that catch most regressions:
+`npm run lint:copy` ([scripts/copy-lint.js](scripts/copy-lint.js)) checks every rule above against VISIBLE text only — title case, "please", `...`, "cannot", "Are you sure", "successfully", `!` on success toasts, Cancel/OK/Submit buttons (and confirm sheets without a `cancelLabel`), "template", native dialogs, icon-only buttons without `aria-label`. It's in `audit:design:strict` (`copyRuleHits: 0`). A deliberate exception (a stored data key, a CSV header) carries `// copy-ok: <reason>`. The greps below are the old manual pass, kept for reference:
 
 ```bash
 # Title-case violations in source strings
@@ -701,7 +702,7 @@ After meaningful changes, run the relevant subset before saying a task is comple
 | Sheets, overlays, headers, back/close buttons | `npm run audit:shell:strict` (budgets in scripts/shell-audit.js only go down) |
 | Coach prompt, tool, context or loop change | `npm run eval:coach` (needs `ANTHROPIC_API_KEY`; `EVAL_ONLY=id1,id2` to iterate) — no new regressions vs tests/coach-eval/baseline.json; then `EVAL_UPDATE_BASELINE=1` and commit the baseline. `npm run eval:coach:check` (also the pre-push hook — `npm run hooks:install`) fails while the coach is newer than the baseline |
 
-`npm run audit:design --strict` is the must-pass variant. Lint baseline: 17 warnings, 0 errors — `npm run lint` enforces this with `--max-warnings 17` (ratchet: if you fix warnings, lower the number in package.json; never raise it). Pre-existing failures on `main` are noted but not fixed as part of unrelated work.
+**One command:** `npm run check` = lint + `audit:design:strict` (tokens, copy, buttons, chips, jargon, shell) + the modulepreload check + the test suite. `npm run audit:design --strict` is the must-pass variant. Lint baseline: 17 warnings, 0 errors — `npm run lint` enforces this with `--max-warnings 17` (ratchet: if you fix warnings, lower the number in package.json; never raise it). Pre-existing failures on `main` are noted but not fixed as part of unrelated work.
 
 ## Important Notes
 

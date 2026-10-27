@@ -1407,7 +1407,7 @@ export function showMidWorkoutSummary() {
         <div class="completion-summary">
             <div class="completion-header">
                 <i class="fas fa-chart-bar completion-hero__chart"></i>
-                <h2>Session So Far</h2>
+                <h2>Session so far</h2>
                 <p class="completion-workout-name">${escapeHtml(AppState.currentWorkout.workoutType || 'Workout')}</p>
             </div>
 
@@ -1803,7 +1803,7 @@ export async function editHistoricalWorkout(docIdOrDate) {
     // Update section title to "Edit Workout"
     const sectionTitle = document.getElementById('active-workout-title');
     if (sectionTitle) {
-        sectionTitle.innerHTML = '<i class="fas fa-edit"></i> Edit Workout';
+        sectionTitle.innerHTML = '<i class="fas fa-edit"></i> Edit workout';
     }
 
     // Show close button for edit mode (X in top right)
@@ -1843,7 +1843,7 @@ function updateWorkoutButtonsForEditMode(isEditing) {
     } else {
         // Normal mode: Cancel = cancel workout, Finish = complete workout
         if (cancelBtn) {
-            cancelBtn.innerHTML = '<i class="fas fa-times"></i> Cancel';
+            cancelBtn.innerHTML = '<i class="fas fa-times"></i> Cancel workout';
             cancelBtn.onclick = cancelWorkout;
         }
         if (finishBtn) {
@@ -1851,7 +1851,7 @@ function updateWorkoutButtonsForEditMode(isEditing) {
         }
         // Reset section title to "Active Workout"
         if (sectionTitle) {
-            sectionTitle.innerHTML = '<i class="fas fa-dumbbell"></i> Active Workout';
+            sectionTitle.innerHTML = '<i class="fas fa-dumbbell"></i> Active workout';
         }
         // Hide close button
         if (closeBtn) closeBtn.classList.add('hidden');
@@ -2287,10 +2287,10 @@ function renderSubstitutionRows() {
                     ${detail ? `<div class="bs-sub-row__detail">${detail}</div>` : ''}
                 </div>
                 <div class="bs-sub-row__choices">
-                    <button type="button" class="bs-sub-chip ${row.choice === 'keep' ? 'active' : ''}" onclick="_bsSubSetChoice(${i}, 'keep')">Keep</button>
-                    <button type="button" class="bs-sub-chip" onclick="_bsSubPickMachine(${i})">Machine</button>
-                    <button type="button" class="bs-sub-chip ${row.choice === 'swap' ? 'active' : ''}" onclick="_bsSubPickSwap(${i})">Swap</button>
-                    <button type="button" class="bs-sub-chip ${row.choice === 'skip' ? 'active' : ''}" onclick="_bsSubSetChoice(${i}, 'skip')">Skip</button>
+                    <button type="button" class="chip chip--sm ${row.choice === 'keep' ? 'active' : ''}" onclick="_bsSubSetChoice(${i}, 'keep')">Keep</button>
+                    <button type="button" class="chip chip--sm" onclick="_bsSubPickMachine(${i})">Machine</button>
+                    <button type="button" class="chip chip--sm ${row.choice === 'swap' ? 'active' : ''}" onclick="_bsSubPickSwap(${i})">Swap</button>
+                    <button type="button" class="chip chip--sm ${row.choice === 'skip' ? 'active' : ''}" onclick="_bsSubSetChoice(${i}, 'skip')">Skip</button>
                 </div>
             </div>
         `;
