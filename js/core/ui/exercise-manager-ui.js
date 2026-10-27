@@ -8,6 +8,11 @@ import { FirebaseWorkoutManager } from '../data/firebase-workout-manager.js';
 import { countReassignmentImpact, reassignEquipment } from '../data/data-manager.js';
 import { setBottomNavVisible, enterSection, navigateBack } from './navigation.js';
 import { getExerciseName, formatBodyPart } from '../utils/workout-helpers.js';
+import {
+    BODY_PARTS as TAXONOMY_BODY_PARTS, BODY_PART_FOCUS, FOCUS_TAGS,
+    canonicalBodyPart, focusTagForBodyPart, labelsFor, movementChoices, movementLabel, normalizeBodyPart,
+} from '../features/exercise-taxonomy.js';
+import { inferPattern, PATTERNS } from '../features/movement-patterns.js';
 
 let allExercises = [];
 let filteredExercises = [];
@@ -25,17 +30,22 @@ let exerciseUsageCounts = null; // Cache: exercise name → usage count
 // Edit-section chip state (Phase F §1 rewrite — replaces <select> dropdowns)
 let selectedBodyPart = 'Chest';
 let selectedEquipmentType = 'Machine';
+// LB-3/LB-4 — labels on the edit page. `selectedPattern` is the user's
+// explicit Movement pick (null = use the suggestion inferred from the name);
+// only an explicit pick is saved, so the equipment can still decide an
+// unlabelled back extension.
+let selectedTags = [];
+let selectedPattern = null;
+let showAllMovements = false;
+let currentPatternFilter = ''; // Movement filter in the library list
 
-const BODY_PARTS = [
-    { value: 'Chest',     chipClass: 'cat-push' },
-    { value: 'Back',      chipClass: 'cat-pull' },
-    { value: 'Legs',      chipClass: 'cat-legs' },
-    { value: 'Shoulders', chipClass: 'cat-shoulders' },
-    { value: 'Arms',      chipClass: 'cat-arms' },
-    { value: 'Core',      chipClass: 'cat-core' },
-    { value: 'Calves',    chipClass: 'cat-legs' },
-    { value: 'Abs',       chipClass: 'cat-core' },
-];
+// LB-3 — the eight body parts from the one taxonomy. Calves / Abs are focus
+// tags under Legs / Core now, not body parts of their own.
+const BODY_PART_CHIP_CLASS = {
+    Chest: 'cat-push', Back: 'cat-pull', Shoulders: 'cat-shoulders', Arms: 'cat-arms',
+    Legs: 'cat-legs', Glutes: 'cat-legs', Core: 'cat-core', Cardio: 'cat-cardio',
+};
+const BODY_PARTS = TAXONOMY_BODY_PARTS.map((value) => ({ value, chipClass: BODY_PART_CHIP_CLASS[value] || '' }));
 
 const EQUIPMENT_TYPES = ['Machine', 'Cable', 'Dumbbell', 'Barbell', 'Bodyweight'];
 
@@ -111,6 +121,7 @@ export function showCategoryView() {
     // Reset filters
     currentBodyPartFilter = '';
     currentEquipmentFilter = '';
+    currentPatternFilter = '';
 
     // Clear search
     const searchInput = document.getElementById('exercise-search-input');
@@ -121,6 +132,7 @@ export function showCategoryView() {
 export function selectBodyPartCategory(bodyPart) {
     currentBodyPartFilter = bodyPart;
     currentEquipmentFilter = '';
+    currentPatternFilter = '';
 
     // Update title
     const title = document.getElementById('exercise-list-title');
@@ -167,9 +179,10 @@ export function handleExerciseSearch() {
         // Switch to list view with search results
         currentBodyPartFilter = '';
         currentEquipmentFilter = '';
+        currentPatternFilter = '';
 
         const title = document.getElementById('exercise-list-title');
-        if (title) title.textContent = 'Search Results';
+        if (title) title.textContent = 'Search results';
 
         const categoryView = document.getElementById('exercise-category-view');
         const listView = document.getElementById('exercise-list-view');
@@ -200,39 +213,74 @@ function filterAndRenderExercises(searchTerm = '') {
         searchTerm = searchTerm.toLowerCase();
     }
 
-    filteredExercises = allExercises.filter((exercise) => {
-        const matchesSearch =
-            !searchTerm ||
-            exercise.name.toLowerCase().includes(searchTerm) ||
-            exercise.bodyPart.toLowerCase().includes(searchTerm) ||
-            exercise.equipmentType.toLowerCase().includes(searchTerm);
-
-        // Handle body part filter - check for Biceps/Triceps mapping to Arms
-        let matchesBodyPart = !currentBodyPartFilter;
-        if (currentBodyPartFilter) {
-            if (currentBodyPartFilter === 'Biceps' || currentBodyPartFilter === 'Triceps') {
-                // Check if exercise body part matches directly or is "Arms"
-                matchesBodyPart =
-                    exercise.bodyPart === currentBodyPartFilter ||
-                    (exercise.bodyPart === 'Arms' &&
-                        exercise.name.toLowerCase().includes(currentBodyPartFilter.toLowerCase()));
-            } else if (currentBodyPartFilter === 'Arms') {
-                matchesBodyPart =
-                    exercise.bodyPart === 'Arms' || exercise.bodyPart === 'Biceps' || exercise.bodyPart === 'Triceps';
-            } else {
-                matchesBodyPart = exercise.bodyPart === currentBodyPartFilter;
-            }
-        }
-
-        const matchesEquipment = !currentEquipmentFilter || exercise.equipmentType === currentEquipmentFilter;
-
-        return matchesSearch && matchesBodyPart && matchesEquipment;
+    const base = filterLibraryExercises(allExercises, {
+        search: searchTerm, bodyPart: currentBodyPartFilter, equipmentType: currentEquipmentFilter,
     });
+    // The Movement strip offers what this body part / search actually has;
+    // a stale pick (no longer present) falls back to all.
+    const movements = movementsPresent(base);
+    if (currentPatternFilter && !movements.includes(currentPatternFilter)) currentPatternFilter = '';
+    filteredExercises = filterLibraryExercises(base, { pattern: currentPatternFilter });
 
+    renderMovementFilterChips(movements);
     renderExercises();
     // A changed filter/search is a new result set — jump back to the top so
     // the user isn't stranded mid-scroll over unrelated results.
     document.getElementById('exercise-manager-grid')?.closest('.content-section-body')?.scrollTo?.(0, 0);
+}
+
+/**
+ * LB-3/LB-4 — the library list filter. Body part goes through the one
+ * classifier (`canonicalBody`, set in loadExercises), never raw string
+ * equality: a stored "Calves" shows under Legs, "Lower Back" under Back,
+ * Glutes has its own card. Search also matches the movement ("hinge").
+ * @param {object[]} list - library rows as loadExercises maps them
+ * @param {{search?:string, bodyPart?:string, equipmentType?:string, pattern?:string}} f
+ */
+export function filterLibraryExercises(list, { search = '', bodyPart = '', equipmentType = '', pattern = '' } = {}) {
+    const term = String(search || '').toLowerCase();
+    return (list || []).filter((exercise) => {
+        const view = exercise._view || {};
+        const matchesSearch = !term
+            || exercise.name.toLowerCase().includes(term)
+            || String(view.bodyPart || exercise.bodyPart || '').toLowerCase().includes(term)
+            || String(view.movement || '').toLowerCase().includes(term)
+            || String(exercise.equipmentType || '').toLowerCase().includes(term)
+            || (exercise.tags || []).some((t) => String(t).toLowerCase() === term);
+        const matchesBodyPart = !bodyPart || view.bodyPart === bodyPart;
+        const matchesEquipment = !equipmentType || exercise.equipmentType === equipmentType;
+        const matchesPattern = !pattern || view.pattern === pattern;
+        return matchesSearch && matchesBodyPart && matchesEquipment && matchesPattern;
+    });
+}
+
+/** The movement patterns present in a list, in vocabulary order. */
+export function movementsPresent(list) {
+    const present = new Set((list || []).map((ex) => ex._view?.pattern).filter(Boolean));
+    return PATTERNS.filter((p) => present.has(p));
+}
+
+/** Movement chip strip over the library list (hidden when there's nothing to choose). */
+function renderMovementFilterChips(movements) {
+    const strip = document.getElementById('exercise-movement-chips');
+    if (!strip) return;
+    if (movements.length < 2) {
+        strip.classList.add('hidden');
+        strip.innerHTML = '';
+        return;
+    }
+    strip.classList.remove('hidden');
+    const chip = (value, label) => `
+        <button type="button" class="chip chip--sm${currentPatternFilter === value ? ' active' : ''}"
+                aria-pressed="${currentPatternFilter === value}"
+                onclick="filterByMovement('${escapeAttr(value)}')">${escapeHtml(label)}</button>`;
+    strip.innerHTML = chip('', 'All movements') + movements.map((p) => chip(p, movementLabel(p))).join('');
+}
+
+/** Movement filter tap ('' = all). */
+export function filterByMovement(pattern) {
+    currentPatternFilter = currentPatternFilter === pattern ? '' : (pattern || '');
+    filterAndRenderExercises();
 }
 
 // Close exercise manager section. SH-6 — back goes where you came from (the
@@ -262,6 +310,44 @@ async function buildUsageCache() {
     }
 }
 
+/**
+ * One library exercise as the manager shows and edits it. LB-2: `tags` and
+ * `pattern` ride along — dropping them here is what made every saved
+ * override write `tags: []`. `_view` holds the computed labels (body part
+ * through the one classifier, inferred movement); it's display-only and
+ * never saved.
+ */
+export function toLibraryRow(exercise) {
+    const row = {
+        id: exercise.id || `ex_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        name: getExerciseName(exercise),
+        machine: exercise.machine || exercise.name,
+        bodyPart: exercise.bodyPart || 'General',
+        equipmentType: exercise.equipmentType || exercise.equipment || 'Machine',
+        sets: exercise.sets || 3,
+        reps: exercise.reps || 10,
+        weight: exercise.weight || 50,
+        video: exercise.video || '',
+        tags: Array.isArray(exercise.tags) ? [...exercise.tags] : [],
+        pattern: PATTERNS.includes(exercise.pattern) ? exercise.pattern : null,
+        equipment: exercise.equipment || null,
+        equipmentLocation: exercise.equipmentLocation || null,
+        isCustom: exercise.isCustom || false,
+        isDefault: exercise.isDefault || false,
+        isOverride: exercise.isOverride || false,
+    };
+    const labels = labelsFor(row);
+    row._view = { bodyPart: labels.bodyPart, pattern: labels.pattern, movement: labels.movement };
+    return row;
+}
+
+/** "Legs · Hinge · Machine" — the library card's meta line. */
+export function libraryCardMeta(row) {
+    const view = row._view || {};
+    return [view.bodyPart || formatBodyPart(row.bodyPart), view.movement !== view.bodyPart ? view.movement : '', row.equipmentType]
+        .filter(Boolean).join(' · ');
+}
+
 // Load exercises from AppState
 async function loadExercises() {
     // Initialize workout manager if needed
@@ -279,22 +365,7 @@ async function loadExercises() {
         return;
     }
 
-    allExercises = AppState.exerciseDatabase.map((exercise) => ({
-        id: exercise.id || `ex_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        name: getExerciseName(exercise),
-        machine: exercise.machine || exercise.name,
-        bodyPart: exercise.bodyPart || 'General',
-        equipmentType: exercise.equipmentType || exercise.equipment || 'Machine',
-        sets: exercise.sets || 3,
-        reps: exercise.reps || 10,
-        weight: exercise.weight || 50,
-        video: exercise.video || '',
-        equipment: exercise.equipment || null,
-        equipmentLocation: exercise.equipmentLocation || null,
-        isCustom: exercise.isCustom || false,
-        isDefault: exercise.isDefault || false,
-        isOverride: exercise.isOverride || false,
-    }));
+    allExercises = AppState.exerciseDatabase.map(toLibraryRow);
 
     filteredExercises = [...allExercises];
     renderExercises();
@@ -357,7 +428,7 @@ function renderExercises() {
                 </div>
                 <div class="exercise-card-info">
                     <span class="exercise-card-name">${escapeHtml(exercise.name)}</span>
-                    <span class="exercise-card-meta">${escapeHtml(exercise.bodyPart)}${exercise.equipmentType ? ' · ' + escapeHtml(exercise.equipmentType) : ''}</span>
+                    <span class="exercise-card-meta">${escapeHtml(libraryCardMeta(exercise))}</span>
                 </div>
                 ${originBadge}
                 ${usageBadge}
@@ -415,9 +486,16 @@ export function openEditExerciseSection(exercise) {
         else title = 'Edit exercise';
     }
 
+    // LB-3 — a legacy body part ("Calves", "Abs", "Lower Back") opens as one
+    // of the eight plus its focus tag, and saves that way.
+    const legacyFocus = focusTagForBodyPart(exercise?.bodyPart);
+    selectedTags = [...new Set([...(Array.isArray(exercise?.tags) ? exercise.tags : []), ...(legacyFocus ? [legacyFocus] : [])])];
+    selectedPattern = exercise && PATTERNS.includes(exercise.pattern) ? exercise.pattern : null;
+    showAllMovements = false;
+
     const initial = {
         name: exercise?.name || '',
-        bodyPart: exercise?.bodyPart || 'Chest',
+        bodyPart: (exercise && (normalizeBodyPart(exercise.bodyPart) || canonicalBodyPart(exercise))) || 'Chest',
         equipmentType: exercise?.equipmentType || 'Machine',
         sets: exercise?.sets ?? 3,
         reps: exercise?.reps ?? 10,
@@ -442,6 +520,8 @@ export function openEditExerciseSection(exercise) {
     const nameInput = document.getElementById('edit-exercise-name');
     if (nameInput) {
         nameInput.addEventListener('input', updateEditExerciseValidity);
+        // The suggested Movement follows the name until the user picks one.
+        nameInput.addEventListener('input', () => { if (!selectedPattern) renderMovementRow(); });
     }
 
     // Initial save-button state
@@ -487,6 +567,17 @@ function renderEditExerciseMarkup(title, v, showDelete) {
                 <div class="field-label">Body part</div>
                 <div class="chips" id="edit-ex-bp-row">${bpChips}
                 </div>
+            </div>
+
+            <div class="field${focusChoices().length ? '' : ' hidden'}" id="edit-ex-focus-field">
+                <div class="field-label">Focus <span class="field-label__hint">(optional)</span></div>
+                <div class="chips" id="edit-ex-focus-row">${focusChipsHTML()}</div>
+            </div>
+
+            <div class="field">
+                <div class="field-label">Movement <span class="field-label__hint">(optional)</span></div>
+                <div class="chips" id="edit-ex-move-row">${movementChipsHTML(v.name)}</div>
+                <div class="field-helper" id="edit-ex-move-hint">${escapeHtml(movementHint(v.name))}</div>
             </div>
 
             <div class="field">
@@ -596,7 +687,113 @@ export function setExerciseBodyPart(value) {
     row.querySelectorAll('.chip').forEach((chip) => {
         chip.classList.toggle('active', chip.dataset.bp === value);
     });
+    renderFocusRow();
+    renderMovementRow();
     updateEditExerciseValidity();
+}
+
+// --- LB-3 focus tags / LB-4 movement on the edit page ------------------------
+
+function editFormName(fallback = '') {
+    return document.getElementById('edit-exercise-name')?.value.trim() ?? fallback;
+}
+
+/** The movement the name (+ focus tags) suggests when nothing is picked. */
+export function suggestedMovement(name, tags = []) {
+    return inferPattern({ name, tags });
+}
+
+/** The movement the form will show as chosen: the explicit pick, else the suggestion. */
+function effectiveMovement(name) {
+    return selectedPattern || suggestedMovement(name, selectedTags);
+}
+
+/** Focus tags offered for the selected body part, plus any already on the exercise. */
+function focusChoices() {
+    const offered = BODY_PART_FOCUS[selectedBodyPart] || [];
+    const held = selectedTags.filter((t) => FOCUS_TAGS.includes(t) && !offered.includes(t));
+    return [...offered, ...held];
+}
+
+function focusChipsHTML() {
+    return focusChoices().map((tag) => {
+        const on = selectedTags.includes(tag);
+        const label = tag.charAt(0).toUpperCase() + tag.slice(1);
+        return `<button type="button" class="chip${on ? ' active' : ''}" data-focus="${escapeAttr(tag)}"
+                        aria-pressed="${on}" onclick="toggleExerciseFocusTag('${escapeAttr(tag)}')">${escapeHtml(label)}</button>`;
+    }).join('');
+}
+
+function movementChipsHTML(name) {
+    const current = effectiveMovement(name);
+    const choices = movementChoices(selectedBodyPart, current, { all: showAllMovements });
+    const chips = choices.map((p) => {
+        const on = current === p;
+        return `<button type="button" class="chip${on ? ' active' : ''}" data-move="${escapeAttr(p)}"
+                        aria-pressed="${on}" onclick="setExerciseMovement('${escapeAttr(p)}')">${escapeHtml(movementLabel(p))}</button>`;
+    }).join('');
+    const more = !showAllMovements && choices.length < PATTERNS.length
+        ? '<button type="button" class="chip" onclick="showAllExerciseMovements()">More…</button>'
+        : '';
+    return chips + more;
+}
+
+function movementHint(name) {
+    if (selectedPattern) return 'Tap it again to go back to the suggestion.';
+    if (suggestedMovement(name, selectedTags)) return 'Suggested from the name — tap another to change it.';
+    return 'Pick one so this exercise counts toward your movement balance.';
+}
+
+function renderFocusRow() {
+    const field = document.getElementById('edit-ex-focus-field');
+    const row = document.getElementById('edit-ex-focus-row');
+    if (!field || !row) return;
+    field.classList.toggle('hidden', focusChoices().length === 0);
+    row.innerHTML = focusChipsHTML();
+}
+
+function renderMovementRow() {
+    const row = document.getElementById('edit-ex-move-row');
+    if (!row) return;
+    const name = editFormName();
+    row.innerHTML = movementChipsHTML(name);
+    const hint = document.getElementById('edit-ex-move-hint');
+    if (hint) hint.textContent = movementHint(name);
+}
+
+/** Focus tag chip — toggles the tag on the exercise (multi-select). */
+export function toggleExerciseFocusTag(tag) {
+    selectedTags = selectedTags.includes(tag)
+        ? selectedTags.filter((t) => t !== tag)
+        : [...selectedTags, tag];
+    renderFocusRow();
+    if (!selectedPattern) renderMovementRow();
+}
+
+/** Movement chip — an explicit pick; tapping the picked chip again clears it. */
+export function setExerciseMovement(pattern) {
+    if (!PATTERNS.includes(pattern)) return;
+    selectedPattern = selectedPattern === pattern ? null : pattern;
+    renderMovementRow();
+}
+
+export function showAllExerciseMovements() {
+    showAllMovements = true;
+    renderMovementRow();
+}
+
+/**
+ * The label fields a save writes (LB-2/LB-3/LB-4): one of the eight body
+ * parts, the tags (focus tags edited, every other tag kept), and the
+ * Movement only when the user picked one — null means "infer it", so the
+ * machine can still decide an unlabelled back extension.
+ */
+export function labelFieldsForSave({ bodyPart, tags, pattern }) {
+    return {
+        bodyPart: normalizeBodyPart(bodyPart) || 'Chest',
+        tags: [...new Set((tags || []).map((t) => String(t).toLowerCase()))],
+        pattern: PATTERNS.includes(pattern) ? pattern : null,
+    };
 }
 
 export function setExerciseEquipmentType(value) {
@@ -1030,6 +1227,7 @@ export async function saveExercise(event) {
                 ...formData,
                 id: currentEditingExercise.id,
             };
+            delete exerciseToSave._view; // display-only labels, never stored
             await workoutManager.saveUniversalExercise(exerciseToSave, true);
         } else {
             // New exercise
@@ -1193,7 +1391,9 @@ export async function saveExerciseFromSection() {
 
     const formData = {
         name: document.getElementById('edit-exercise-name')?.value.trim() || '',
-        bodyPart: selectedBodyPart || 'Chest',
+        // LB-3/LB-4 — one of the eight body parts, focus tags, and the
+        // Movement only when picked (null = infer it).
+        ...labelFieldsForSave({ bodyPart: selectedBodyPart, tags: selectedTags, pattern: selectedPattern }),
         equipmentType: selectedEquipmentType || 'Machine',
         sets: parseInt(document.getElementById('edit-exercise-sets')?.value) || 3,
         reps: parseInt(document.getElementById('edit-exercise-reps')?.value) || 10,
@@ -1226,6 +1426,7 @@ export async function saveExerciseFromSection() {
                 ...formData,
                 id: currentEditingExercise.id,
             };
+            delete exerciseToSave._view; // display-only labels, never stored
             await workoutManager.saveUniversalExercise(exerciseToSave, true);
         } else {
             // New exercise
@@ -1880,3 +2081,10 @@ export function closeReassignModal() {
         impactWorkouts: 0, impactTemplates: 0,
     };
 }
+
+// LB-3/LB-4 — handlers rendered only by this module's own templates (the
+// edit page's Focus / Movement chips, the library's Movement strip).
+window.filterByMovement = filterByMovement;
+window.toggleExerciseFocusTag = toggleExerciseFocusTag;
+window.setExerciseMovement = setExerciseMovement;
+window.showAllExerciseMovements = showAllExerciseMovements;

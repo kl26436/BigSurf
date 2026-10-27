@@ -336,24 +336,32 @@ export async function goalDelete(id) {
 // ── Events ──────────────────────────────────────────────────────────
 
 let _eventKind = 'look';
+let _eventLevel = 'hotel';
 
 export function openAddEventSheet() {
     _eventKind = 'look';
+    _eventLevel = 'hotel';
     renderEventSheet();
 }
 
 function renderEventSheet() {
-    const kinds = [{ value: 'look', label: 'Look my best' }, { value: 'perform', label: 'Perform' }, { value: 'other', label: 'Other' }];
+    const kinds = [{ value: 'look', label: 'Look my best' }, { value: 'perform', label: 'Perform' }, { value: 'travel', label: 'Travel' }, { value: 'other', label: 'Other' }];
     const name = document.getElementById('event-name')?.value || '';
     const date = document.getElementById('event-date')?.value || '';
+    const end = document.getElementById('event-end')?.value || '';
+    const travel = _eventKind === 'travel';
+    // TP-7 c — a trip keeps the plan's sessions; it only needs dates and the gym's size.
+    const levels = [['hotel', 'Hotel gym'], ['standard', 'Regular gym'], ['full', 'Big gym'], ['home', 'No gym']];
     openSheet({
         id: ADD_EVENT_SHEET,
-        title: 'A date to be ready for',
-        subtitle: 'Your plan lightens the week before and holds steady through it',
+        title: travel ? 'A trip' : 'A date to be ready for',
+        subtitle: travel ? 'Your sessions stay on the plan, with what to do on the gym you have' : 'Your plan lightens the week before and holds steady through it',
         bodyHTML: `
-            <div class="field"><div class="field-label">What</div><input class="field-input" id="event-name" type="text" maxlength="60" placeholder="Beach trip, wedding, meet…" value="${escapeAttr(name)}"></div>
-            <div class="field"><div class="field-label">When</div><input class="field-input" id="event-date" type="date" value="${escapeAttr(date)}"></div>
-            <div class="field"><div class="field-label">For</div><div class="chips">${kinds.map(k => `<button class="chip chip--sm${k.value === _eventKind ? ' active' : ''}" onclick="eventSetKind('${k.value}')">${escapeHtml(k.label)}</button>`).join('')}</div></div>`,
+            <div class="field"><div class="field-label">What</div><input class="field-input" id="event-name" type="text" maxlength="60" placeholder="${travel ? 'Bellagio weekend, work trip…' : 'Beach trip, wedding, meet…'}" value="${escapeAttr(name)}"></div>
+            <div class="field"><div class="field-label">${travel ? 'From' : 'When'}</div><input class="field-input" id="event-date" type="date" value="${escapeAttr(date)}"></div>
+            ${travel ? `<div class="field"><div class="field-label">To</div><input class="field-input" id="event-end" type="date" value="${escapeAttr(end)}"></div>` : ''}
+            <div class="field"><div class="field-label">For</div><div class="chips">${kinds.map(k => `<button class="chip chip--sm${k.value === _eventKind ? ' active' : ''}" onclick="eventSetKind('${k.value}')">${escapeHtml(k.label)}</button>`).join('')}</div></div>
+            ${travel ? `<div class="field"><div class="field-label">Gym there</div><div class="chips">${levels.map(([v, l]) => `<button class="chip chip--sm${v === _eventLevel ? ' active' : ''}" onclick="eventSetLevel('${v}')">${escapeHtml(l)}</button>`).join('')}</div></div>` : ''}`,
         footerHTML: '<button class="btn btn-primary btn-block" onclick="eventSave()">Save date</button>',
     });
 }
@@ -363,15 +371,21 @@ export function eventSetKind(kind) {
     renderEventSheet();
 }
 
+export function eventSetLevel(level) {
+    _eventLevel = level;
+    renderEventSheet();
+}
+
 export async function eventSave() {
     const name = document.getElementById('event-name')?.value || '';
     const date = document.getElementById('event-date')?.value || '';
+    const endDate = document.getElementById('event-end')?.value || '';
     if (!name.trim()) { showNotification('Add a name', 'warning'); return; }
     if (!date) { showNotification('Pick a date', 'warning'); return; }
     await once('event-save', async () => {
         const dup = _state?.events.find(e => e.date === date && e.name.trim().toLowerCase() === name.trim().toLowerCase());
         if (dup) { closeSheet(ADD_EVENT_SHEET); showNotification(`${dup.name} is already on your plan`, 'info', 2000); return; }
-        const r = await createEvent({ name, date, kind: _eventKind }, { today: AppState.getTodayDateString() });
+        const r = await createEvent({ name, date, kind: _eventKind, ...(_eventKind === 'travel' ? { endDate: endDate || date, level: _eventLevel } : {}) }, { today: AppState.getTodayDateString() });
         if (!r.ok) { showNotification(r.error, 'warning', 3500); return; }
         if (_state) _state.events = [..._state.events, r.event].sort((a, b) => String(a.date).localeCompare(String(b.date)));
         closeSheet(ADD_EVENT_SHEET);
@@ -426,6 +440,7 @@ if (typeof window !== 'undefined') {
     window.openAddEventSheet = openAddEventSheet;
     window.eventSetKind = eventSetKind;
     window.eventSave = eventSave;
+    window.eventSetLevel = eventSetLevel;
     window.openEventActions = openEventActions;
     window.goalsAskCoach = goalsAskCoach;
 }

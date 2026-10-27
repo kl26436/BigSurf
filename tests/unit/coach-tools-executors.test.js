@@ -354,21 +354,26 @@ describe('planner tools (AP-23)', () => {
         ...extra,
     });
 
-    it('get_rotation_candidates: same pattern at this gym, never-used first, primaries held', async () => {
+    it('get_rotation_candidates: this gym first (never-used first), then other gyms, then the movement on generic gear; primaries held', async () => {
         const out = await exec(fakeAdminDb(seed())).get_rotation_candidates({ exercise: 'Back Extension' });
         expect(out.location).toBe('Downtown');
         expect(out.pattern).toBe('hip-dominant'); // AU-13: back extension is a hinge
-        expect(out.candidates.map(c => [c.name, c.reason])).toEqual([['Reverse Hyper', 'idle since 2026-07']]);
+        expect(out.candidates[0]).toMatchObject({ name: 'Reverse Hyper', reason: 'idle since 2026-07', tier: 1 });
+        // TP-7 — an unmapped machine is never a reason to offer nothing.
+        expect(out.candidates.slice(1).map(c => [c.name, c.tier])).toEqual([
+            ['Hyperextension', 2], ['Dumbbell Romanian Deadlift', 3], ['Cable Pull-Through', 3], ['Hip Thrust Machine', 3],
+        ]);
+        expect(out.note).toBeUndefined();
         expect(out.heldPrimaries.map(h => h.name)).toEqual(['Bench Press', 'Squat']);
         const uptown = await exec(fakeAdminDb(seed())).get_rotation_candidates({ exercise: 'Back Extension', location: 'Uptown' });
-        expect(uptown.candidates.map(c => c.name)).toEqual(['Hyperextension']);
-        expect(uptown.candidates[0].reason).toBe('never used');
+        expect(uptown.candidates[0]).toMatchObject({ name: 'Hyperextension', reason: 'never used', tier: 1 });
     });
 
-    it('get_rotation_candidates: nothing to offer says so; no input is an error', async () => {
+    it('get_rotation_candidates: nothing mapped here says so, and still offers the movement; no input is an error', async () => {
         const none = await exec(fakeAdminDb(seed())).get_rotation_candidates({ pattern: 'calf' });
-        expect(none.candidates).toEqual([]);
-        expect(none.note).toMatch(/No other calf machine at Downtown/);
+        expect(none.candidates.every(c => c.tier === 3 && c.unmapped)).toBe(true);
+        expect(none.candidates.length).toBeGreaterThan(0);
+        expect(none.note).toMatch(/No other calf machine mapped at Downtown — the candidates are the movement/);
         expect((await exec(fakeAdminDb(seed())).get_rotation_candidates({})).error.code).toBe('invalid_input');
     });
 

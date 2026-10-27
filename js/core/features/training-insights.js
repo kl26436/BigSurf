@@ -154,7 +154,7 @@ export function analyzeFrequency(workouts, exerciseDatabase, weeks = 4) {
         const weekKey = getISOWeekKey(workout.date);
 
         for (const exercise of withResolvedNames(workout)) {
-            const bodyPart = exercise.bodyPart || getBodyPartForExercise(exercise.name, exerciseDatabase);
+            const bodyPart = getBodyPartForExercise(exercise, exerciseDatabase);
             if (!bodyPart) continue;
 
             if (!bodyPartWeeks[bodyPart]) bodyPartWeeks[bodyPart] = {};

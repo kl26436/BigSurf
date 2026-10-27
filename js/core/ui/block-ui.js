@@ -15,8 +15,9 @@ import { debugLog } from '../utils/config.js';
 import { buildBlockSession } from '../features/block-view.js';
 import { buildPlanTimeline } from '../features/plan-timeline.js';
 import { rollUndoable } from '../features/plan-roller.js';
-import { waitingSwaps, rankRotationCandidates, rotationHistory } from '../features/exercise-rotation.js';
-import { inferRole } from '../features/movement-patterns.js';
+import { waitingSwaps, rankRotationCandidates, rotationHistory, variantForWeek, DEFAULT_VARIETY_CADENCE } from '../features/exercise-rotation.js';
+import { inferRole, inferPattern } from '../features/movement-patterns.js';
+import { travelOn, genericFallbacks, gymLevel, usualGym, LEVEL_LABELS } from '../features/gym-profile.js';
 import { planWeekSessions } from '../features/plan-sessions.js';
 import { weekOverrideOf } from '../features/session-intent.js';
 import { openSheet, closeSheet } from './sheet.js';
@@ -31,7 +32,16 @@ export function openBlockPage() {
     navigateTo('plan');
 }
 
+// TP-6 b — another surface (the Sunday card's "Pick a different one") opens
+// the Plan page with the rotate sheet already on one exercise.
+let _pendingRotate = null;
+export function openRotateFromCard(templateId, index) {
+    _pendingRotate = { templateId, index: Number(index) };
+    navigateTo('plan');
+}
+
 const fmtDate = (d) => new Date(`${d}T12:00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+const varietyCadence = () => _ctx?.plan?.varietyCadence || DEFAULT_VARIETY_CADENCE;
 
 function plates(unit) {
     return unit === 'kg' ? AppState.settings?.plateKg : AppState.settings?.plateLbs;
@@ -73,6 +83,11 @@ export async function renderBlockPage() {
         if (!_ctx.plan && !_ctx.programs.length && !hasSplit) { container.innerHTML = emptyHTML(); return; }
         _tl = buildPlanTimeline({ ..._ctx, plates: plates(_ctx.unit) });
         container.innerHTML = planHTML(_tl, _ctx);
+        if (_pendingRotate) {
+            const r = _pendingRotate;
+            _pendingRotate = null;
+            openRotateSheet(r.templateId, r.index);
+        }
     } catch (e) {
         console.error('❌ Plan page failed:', e);
         container.innerHTML = `${headerHTML('Your plan', '')}<div class="d-content"><div class="empty-state">
@@ -240,6 +255,20 @@ function primaryLine(cell, unit) {
     return p.target ? `${p.name} · target ${fmt(p.target)} ${unit}` : `${p.name} · no history yet`;
 }
 
+/** TP-7 c — the trip a date falls on (the plan keeps the session; the gym changes). */
+function tripOf(date) {
+    return date ? travelOn(date, _ctx?.events || []) : null;
+}
+
+/** TP-8 — any session this week on a different version than last week. */
+function switchesThisWeek(w) {
+    if (!w.programId || !(w.waveWeek > 1)) return false;
+    const byId = new Map((_ctx?.templates || []).map(t => [t.id, t]));
+    const cad = varietyCadence();
+    return w.days.some(c => (byId.get(c.templateId)?.exercises || []).some((row, i) =>
+        variantForWeek(row, w.waveWeek, cad, i).variantIndex !== variantForWeek(row, w.waveWeek - 1, cad, i).variantIndex));
+}
+
 function weekHTML(w, idx) {
     const unit = _ctx?.unit || 'lbs';
     const meta = [w.projected ? 'projected' : w.levers, `${fmtDate(w.weekStart)}–${fmtDate(w.weekEnd)}`].filter(Boolean).join(' · ');
@@ -250,7 +279,7 @@ function weekHTML(w, idx) {
                 <h3>${escapeHtml(w.label)}${w.state === 'current' ? ' <span class="block-week__now">This week</span>' : ''}</h3>
                 <span class="dash-section-head__meta">${escapeHtml(meta)}</span>
             </div>
-            ${w.markers.length ? `<div class="plan-markers">${w.markers.map(m => `<span class="chip chip--sm"><i class="fas ${m.type === 'event' ? 'fa-calendar-day' : 'fa-bullseye'}" aria-hidden="true"></i> ${escapeHtml(m.label)}</span>`).join('')}</div>` : ''}
+            ${w.markers.length || switchesThisWeek(w) ? `<div class="plan-markers">${w.markers.map(m => `<span class="chip chip--sm"><i class="fas ${{ event: 'fa-calendar-day', travel: 'fa-plane', goal: 'fa-bullseye' }[m.type] || 'fa-calendar-day'}" aria-hidden="true"></i> ${escapeHtml(m.label)}</span>`).join('')}${switchesThisWeek(w) ? '<span class="chip chip--sm"><i class="fas fa-rotate" aria-hidden="true"></i> Accessories switch</span>' : ''}</div>` : ''}
             ${w.override ? `<div class="block-week__override"><i class="fas fa-feather"></i> ${escapeHtml(w.override.label)}${w.override.levers ? ` · ${escapeHtml(w.override.levers)}` : ''}${w.override.reason ? ` — ${escapeHtml(w.override.reason)}` : ''}</div>` : ''}
             <div class="block-week__cells">
                 ${w.days.map((c, i) => `
@@ -260,6 +289,7 @@ function weekHTML(w, idx) {
                         <div class="row-card__content">
                             <div class="row-card__title">${escapeHtml(c.dayLabel)} · ${escapeHtml(c.name)}</div>
                             ${primaryLine(c, unit) ? `<div class="row-card__detail">${escapeHtml(primaryLine(c, unit))}</div>` : ''}
+                            ${tripOf(c.date) ? `<div class="row-card__detail"><i class="fas fa-plane" aria-hidden="true"></i> ${escapeHtml(tripOf(c.date).name)} · ${escapeHtml(LEVEL_LABELS[tripOf(c.date).level || 'hotel'].toLowerCase())}</div>` : ''}
                         </div>
                         ${c.status === 'today'
         ? `<button class="btn btn-primary btn-sm block-cell__start" onclick="event.stopPropagation(); blockStartSession('${escapeAttr(c.name)}')">Start</button>`
@@ -285,11 +315,25 @@ export function openBlockSession(weekIdx, cellIdx) {
     const program = w.programId ? (_ctx.programs || []).find(p => p.id === w.programId) : null;
     const rows = w.projected
         ? (template?.exercises || []).map(ex => ({ name: ex.machine || ex.name, sets: Number(ex.sets) || 3, primary: ex.role === 'primary', target: null, logged: null })).filter(r => r.name)
-        : buildBlockSession({ cell, template, workouts: _ctx.workouts, program, override: _ctx.override, unit: _ctx.unit, plates: plates(_ctx.unit) });
+        : buildBlockSession({ cell, template, workouts: _ctx.workouts, program, override: _ctx.override, unit: _ctx.unit, plates: plates(_ctx.unit), week: w.waveWeek, cadence: varietyCadence() });
+    // TP-7 c — on a trip, each exercise gets what to do on the gym there.
+    const trip = tripOf(cell.date);
+    const tripText = (r) => {
+        if (!trip) return '';
+        const f = genericFallbacks(inferPattern({ name: r.name }), trip.level || 'hotel', { exclude: [r.name] })[0];
+        return f ? ` · ${LEVEL_LABELS[trip.level || 'hotel'].toLowerCase()}: ${f.name}` : '';
+    };
+    // TP-8 — "Rope Face Pulls from Nov 9": the date the slot switches next.
+    const switchText = (r) => {
+        if (!r.next || !program?.startDate) return '';
+        const d = new Date(`${program.startDate}T12:00:00`);
+        d.setDate(d.getDate() + (r.next.week - 1) * 7);
+        return ` · ${r.next.name} from ${d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}`;
+    };
     // TP-6 b — accessories swap from here in one tap (not on a session already done).
     const swapIndex = (name) => {
         if (!template || cell.status === 'done' || w.state === 'past') return -1;
-        const i = (template.exercises || []).findIndex(ex => (ex.machine || ex.name) === name);
+        const i = (template.exercises || []).findIndex(ex => (ex.machine || ex.name) === name || (ex.alternates || []).some(a => a?.name === name));
         return i >= 0 && inferRole(template.exercises[i], i) !== 'primary' ? i : -1;
     };
     const fmt = (x) => (x ? `${x.weight}${x.reps ? ` × ${x.reps}` : ''}` : '—');
@@ -302,12 +346,12 @@ export function openBlockSession(weekIdx, cellIdx) {
     openSheet({
         id: BLOCK_SESSION_SHEET_ID,
         title: cell.name,
-        subtitle: `${w.label} · ${status}`,
+        subtitle: `${w.label} · ${status}${trip ? ` · ${trip.name}` : ''}`,
         bodyHTML: rows.length ? rows.map(r => `
                 <div class="js-row">
                     <div class="js-row__info">
                         <div class="js-row__name">${escapeHtml(r.name)}${r.primary ? ' <span class="block-session__main">Main lift</span>' : ''}</div>
-                        <div class="js-row__meta">${r.sets} sets${w.projected ? ' · targets fill in when these weeks are set' : ` · target ${escapeHtml(fmt(r.target))} ${escapeHtml(_ctx.unit)}`}${r.logged ? ` · logged ${escapeHtml(fmt(r.logged))}` : ''}</div>
+                        <div class="js-row__meta">${r.sets} sets${w.projected ? ' · targets fill in when these weeks are set' : ` · target ${escapeHtml(fmt(r.target))} ${escapeHtml(_ctx.unit)}`}${r.logged ? ` · logged ${escapeHtml(fmt(r.logged))}` : ''}${r.variantOf ? ` · in place of ${escapeHtml(r.variantOf)}` : ''}${escapeHtml(switchText(r))}${escapeHtml(tripText(r))}</div>
                     </div>
                     ${swapIndex(r.name) >= 0 ? `<button class="btn btn-secondary btn-sm" onclick="closeBlockSession({ immediate: true }); openRotateSheet('${escapeAttr(template.id)}', ${swapIndex(r.name)})" aria-label="${escapeAttr(`Swap ${r.name}`)}"><i class="fas fa-arrow-right-arrow-left" aria-hidden="true"></i></button>` : ''}
                 </div>`).join('') : `
@@ -404,6 +448,7 @@ const SETTING_OPTIONS = {
     horizonWeeks: [[4, '1 month'], [8, '2 months'], [12, '3 months'], [26, '6 months']],
     rotationPolicy: [['ask', 'Ask me first'], ['auto', 'Swap them for me']],
     paused: [[false, 'Keep going'], [true, 'Paused']],
+    varietyCadence: [['biweekly', 'Every 2 weeks'], ['weekly', 'Every week'], ['wave', 'Only with new weeks']],
 };
 
 function segmentedHTML(key) {
@@ -433,6 +478,8 @@ function planSettingsBody() {
             ${segmentedHTML('lighter')}
             <div class="field-label">How far ahead to fill in</div>
             ${segmentedHTML('horizonWeeks')}
+            <div class="field-label">Accessories with an alternate switch</div>
+            ${segmentedHTML('varietyCadence')}
             <div class="field-label">When the next weeks are set up, accessory swaps</div>
             ${segmentedHTML('rotationPolicy')}
             <p class="plan-settings__hint">Main lifts never swap. Accessories swap when you've been on one a long time.</p>
@@ -452,6 +499,7 @@ export function openPlanSettings() {
         horizonWeeks: Number(p.horizonWeeks) || 12,
         rotationPolicy: p.rotationPolicy === 'auto' ? 'auto' : 'ask',
         paused: p.paused === true,
+        varietyCadence: p.varietyCadence || DEFAULT_VARIETY_CADENCE,
     };
     openSheet({
         id: PLAN_SETTINGS_ID,
@@ -493,6 +541,7 @@ async function savePlanSettingsNow() {
     if (_draft.horizonWeeks !== (Number(p.horizonWeeks) || 12)) patch.horizonWeeks = _draft.horizonWeeks;
     const policyChanged = _draft.rotationPolicy !== (p.rotationPolicy === 'auto' ? 'auto' : 'ask');
     if (policyChanged) patch.rotationPolicy = _draft.rotationPolicy;
+    if (_draft.varietyCadence !== (p.varietyCadence || DEFAULT_VARIETY_CADENCE)) patch.varietyCadence = _draft.varietyCadence;
     if (_draft.paused !== (p.paused === true)) Object.assign(patch, _draft.paused ? { paused: true, pausedAt: new Date().toISOString(), pausedBy: 'plan-settings' } : { paused: false });
     if (!Object.keys(patch).length) { closePlanSettings(); return; }
     const { savePlan } = await import('../features/plan.js');
@@ -589,20 +638,31 @@ export async function rotatePick(templateId, index) {
     if (!row) return;
     const name = nameOfRow(row);
     const byName = new Map((AppState.exerciseDatabase || []).filter(e => e?.name).map(e => [lc(e.name), e]));
+    // TP-7 — start from what's at the gym you usually train at, then plan
+    // what isn't mapped there (machines from other gyms, the movement on
+    // dumbbells or a cable) — you pick the machine when you get there.
+    const equipment = await equipmentNow();
+    const gym = usualGym(_ctx.workouts || [], { today: _ctx.today });
+    const gymDoc = (AppState._cachedLocations || []).find(l => l?.name === gym) || null;
+    const mapped = gym ? equipment.filter(e => (e.locations || []).some(l => lc(l) === lc(gym))).length : 0;
     const ranked = rankRotationCandidates({
-        exercise: name, slot: row, equipment: await equipmentNow(), location: null,
+        exercise: name, slot: row, equipment, location: gym,
         lookup: (n) => byName.get(lc(n)), exclude: (t.exercises || []).map(nameOfRow).filter(Boolean),
-        history: rotationHistory(_ctx.programs || []), today: _ctx.today, limit: 3,
+        history: rotationHistory(_ctx.programs || []), today: _ctx.today, limit: 4,
+        widen: true, level: gymLevel(gymDoc, mapped),
     });
     _rotate = { templateId, index, candidates: ranked.candidates };
+    const cadText = { biweekly: 'every 2 weeks', weekly: 'every week', wave: 'with new weeks' }[varietyCadence()] || 'every 2 weeks';
     const rows = ranked.candidates.map((c, i) => `
-        <button class="js-row" onclick="rotateApply(${i})">
-            <div class="js-row__info"><div class="js-row__name">${escapeHtml(c.name)}</div><div class="js-row__meta">${escapeHtml(c.equipment)} · ${escapeHtml(c.reason)}</div></div>
-            <i class="fas fa-arrow-right-arrow-left" aria-hidden="true"></i>
-        </button>`).join('');
+        <div class="js-row">
+            <div class="js-row__info"><div class="js-row__name">${escapeHtml(c.name)}</div><div class="js-row__meta">${c.equipment ? `${escapeHtml(c.equipment)} · ` : ''}${escapeHtml(c.reason)}</div></div>
+            <button class="btn btn-secondary btn-sm" onclick="rotateAlternate(${i})" aria-label="${escapeAttr(`Alternate ${name} with ${c.name}, ${cadText}`)}">Alternate</button>
+            <button class="btn btn-primary btn-sm" onclick="rotateApply(${i})" aria-label="${escapeAttr(`Replace ${name} with ${c.name}`)}">Replace</button>
+        </div>`).join('');
     const left = (ranked.excluded || []).map(x => `${x.name} (${x.reason})`).join(', ');
     const body = `
-        <div class="field-label">Replace ${escapeHtml(name)} with</div>
+        <div class="field-label">Replace ${escapeHtml(name)}, or alternate with it ${escapeHtml(cadText)}</div>
+        ${(row.alternates || []).length ? `<p class="plan-settings__hint">Alternates now with ${escapeHtml(row.alternates.map(a => a.name).join(', '))} — picking another replaces that.</p>` : ''}
         ${rows || `<div class="empty-state-compact"><p>Nothing else in your equipment trains this</p><p class="empty-state-hint">Ask the coach — it can suggest one and you pick the machine at the gym.</p></div>`}
         ${left ? `<p class="plan-settings__hint">Left out: ${escapeHtml(left)} — you just moved off ${(ranked.excluded || []).length === 1 ? 'it' : 'them'}.</p>` : ''}
         <button class="btn btn-secondary btn-sm" onclick="rotateBack()">Back to the list</button>`;
@@ -618,6 +678,36 @@ export async function rotatePick(templateId, index) {
             { label: 'Ask the coach instead', onClick: `closeRotateSheet(); blockSwapAccessory('${escapeAttr(name)}')` },
         ],
     });
+}
+
+/** TP-8 — keep the exercise and add an alternate (the plan switches between them). */
+export function rotateAlternate(i) {
+    return once('plan-rotate', () => rotateAlternateNow(i));
+}
+
+async function rotateAlternateNow(i) {
+    const c = _rotate?.candidates?.[i];
+    const t = (_ctx?.templates || []).find(x => x.id === _rotate?.templateId);
+    const row = t?.exercises?.[_rotate.index];
+    if (!c || !row) return;
+    try {
+        const { setAlternate } = await import('../features/plan.js');
+        const done = await setAlternate(t.id, _rotate.index, { name: c.name, equipment: c.equipment });
+        if (!done) { showNotification("Couldn't add it — try again", 'error'); return; }
+        closeRotateSheet();
+        showNotification(`${nameOfRow(row)} and ${c.name} now take turns`, 'success', null, {
+            label: 'Undo',
+            onClick: async () => {
+                await setAlternate(t.id, _rotate?.index ?? done.index, null, { restore: done.prior });
+                showNotification(`${nameOfRow(row)} stays as it was`, 'success', 1500);
+                await renderBlockPage();
+            },
+        });
+        await renderBlockPage();
+    } catch (e) {
+        console.error('❌ Alternate failed:', e);
+        showNotification("Couldn't add it — try again", 'error');
+    }
 }
 
 /** Single-flight (busy.js): a second tap while this runs is ignored. */
@@ -755,6 +845,7 @@ if (typeof window !== 'undefined') {
     window.rotatePick = rotatePick;
     window.rotateBack = rotateBack;
     window.rotateApply = rotateApply;
+    window.rotateAlternate = rotateAlternate;
     window.planApplySwaps = planApplySwaps;
     window.planUndoRoll = planUndoRoll;
     window.saveSessionToMyWorkouts = saveSessionToMyWorkouts;

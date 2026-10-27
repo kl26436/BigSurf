@@ -7,6 +7,7 @@ import { openSheet, closeSheet } from '../ui/sheet.js';
 import { saveWorkoutData } from '../data/data-manager.js';
 import { normalizeWorkoutToTemplate } from '../utils/template-helpers.js';
 import { getSessionLocation, detectLocation } from '../features/location-service.js';
+import { once } from '../ui/busy.js';
 import {
     getEquipmentAtLocation,
     getExercisesAtLocation,
@@ -48,7 +49,12 @@ export function initializeWorkoutManagement(appState) {
  * user on the workout-selector with the new template's row pre-expanded so
  * they can rename it inline. Replaces the legacy showTemplateEditor flow.
  */
-export async function saveWorkoutAsTemplate(workoutData) {
+/** Single-flight (busy.js): a second tap while this runs is ignored. */
+export function saveWorkoutAsTemplate(...args) {
+    return once('save-as-workout', () => saveWorkoutAsTemplateNow(...args));
+}
+
+async function saveWorkoutAsTemplateNow(workoutData) {
     const template = normalizeWorkoutToTemplate(workoutData);
     if (!template) {
         showNotification("Couldn't save as a workout", 'error');
@@ -160,7 +166,12 @@ function askTemplateKind(bestMatch) {
  * inline editing (rename + add exercises). Replaces the legacy
  * showTemplateEditor flow.
  */
-export async function createNewTemplate() {
+/** Single-flight (busy.js): a second tap while this runs is ignored. */
+export function createNewTemplate(...args) {
+    return once('create-workout', () => createNewTemplateNow(...args));
+}
+
+async function createNewTemplateNow() {
     const name = await promptSheet({
         title: 'Name your new workout',
         placeholder: 'e.g. Upper body',

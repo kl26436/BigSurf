@@ -7,6 +7,8 @@ import { AppState } from '../utils/app-state.js';
 import { FirebaseWorkoutManager } from '../data/firebase-workout-manager.js';
 import { getSessionLocation, setSessionLocation, getCurrentPosition, getLastGeoError, findNearbyLocation } from './location-service.js';
 import { functions, httpsCallable } from '../data/firebase-config.js';
+import { once } from '../ui/busy.js';
+import { EQUIPMENT_LEVELS, LEVEL_LABELS, gymLevel } from './gym-profile.js';
 
 let workoutManager = null;
 let cachedLocations = [];
@@ -494,7 +496,12 @@ function showLocationOnMap(lat, lon, name) {
 /**
  * Add a new location from the management page
  */
-export async function addNewLocationFromManagement() {
+/** Single-flight (busy.js): a second tap while this runs is ignored. */
+export function addNewLocationFromManagement(...args) {
+    return once('gym-add', () => addNewLocationFromManagementNow(...args));
+}
+
+async function addNewLocationFromManagementNow() {
     const input = document.getElementById('new-location-name-input');
     if (!input) return;
 
@@ -844,7 +851,12 @@ export function closeAddLocationModal() {
 /**
  * Save new location from modal
  */
-export async function saveNewLocationFromModal() {
+/** Single-flight (busy.js): a second tap while this runs is ignored. */
+export function saveNewLocationFromModal(...args) {
+    return once('gym-save', () => saveNewLocationFromModalNow(...args));
+}
+
+async function saveNewLocationFromModalNow() {
     const input = document.getElementById('add-location-name-input');
     const locationName = input?.value?.trim();
 
@@ -979,6 +991,19 @@ export function showLocationDetail(locationId) {
             </div>
         </div>
 
+        <!-- TP-7 b — what kind of gym: the plan assumes its basic gear without mapping it -->
+        <div class="field">
+            <div class="field-label">Size of this gym</div>
+            <div class="loc-radius-chips">
+                ${EQUIPMENT_LEVELS.map(lv => `<div class="chip ${gymLevel(location, locationEquip.length) === lv ? 'active' : ''}" onclick="updateLocationLevel('${escapeAttr(locationId)}', '${lv}')">${escapeHtml(LEVEL_LABELS[lv])}</div>`).join('')}
+            </div>
+            <p class="loc-level-hint">Dumbbells, cables and the usual machines count as here without adding them. Your plan suggests exercises on them and you pick the machine when you get there.</p>
+        </div>
+        <div class="field">
+            <div class="field-label">What's here (optional)</div>
+            <input class="field-input" id="loc-detail-note" maxlength="200" placeholder="Two cable stacks, a full rack, no leg curl…" value="${escapeAttr(location.equipmentNote || '')}">
+        </div>
+
         <!-- Equipment at this location -->
         <div class="sec-head"><h4>Equipment here <span class="count">${locationEquip.length} items</span></h4></div>
         ${locationEquip.map(eq => `
@@ -997,6 +1022,20 @@ export function showLocationDetail(locationId) {
             </button>
         </div>
     `;
+
+    // TP-7 b — the note the coach reads when it plans for this gym
+    const noteInput = document.getElementById('loc-detail-note');
+    noteInput?.addEventListener('change', async () => {
+        const note = noteInput.value.trim().slice(0, 200);
+        try {
+            await getWorkoutManager().updateLocation(locationId, { equipmentNote: note });
+            location.equipmentNote = note;
+            showNotification('Saved', 'success', 1000);
+        } catch (e) {
+            console.error('❌ Gym note save failed:', e);
+            showNotification("Couldn't save the note — try again", 'error');
+        }
+    });
 
     // Save name on change
     const nameInput = document.getElementById('loc-detail-name');
@@ -1056,6 +1095,23 @@ function initLocationDetailMiniMap(lat, lon) {
 
     window.L.marker([lat, lon]).addTo(map);
 }
+
+/** TP-7 b — set what kind of gym this is (big / regular / hotel / home). */
+export async function updateLocationLevel(locationId, level) {
+    if (!EQUIPMENT_LEVELS.includes(level)) return;
+    try {
+        await getWorkoutManager().updateLocation(locationId, { equipmentLevel: level });
+        for (const list of [cachedLocations, AppState._cachedLocations || []]) {
+            const loc = list.find(l => l.id === locationId);
+            if (loc) loc.equipmentLevel = level;
+        }
+        showLocationDetail(locationId);
+    } catch (error) {
+        console.error('❌ Gym size save failed:', error);
+        showNotification("Couldn't save that — try again", 'error');
+    }
+}
+if (typeof window !== 'undefined') window.updateLocationLevel = updateLocationLevel;
 
 /**
  * Update a location's match radius.

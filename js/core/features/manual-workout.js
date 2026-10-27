@@ -11,6 +11,7 @@ import { AppState } from '../utils/app-state.js';
 import { showNotification, escapeHtml, escapeAttr } from '../ui/ui-helpers.js';
 import { confirmSheet, promptSheet } from '../ui/confirm-sheet.js';
 import { navigateTo, navigateBack } from '../ui/navigation.js';
+import { once } from '../ui/busy.js';
 
 // ===================================================================
 // STATE
@@ -690,7 +691,12 @@ export function editManualDuration() {
 // SAVE WORKOUT
 // ===================================================================
 
-export async function saveManualWorkout() {
+/** Single-flight (busy.js): a second tap while this runs is ignored. */
+export function saveManualWorkout(...args) {
+    return once('manual-workout-save', () => saveManualWorkoutNow(...args));
+}
+
+async function saveManualWorkoutNow() {
     if (!AppState.currentUser) {
         showNotification('Sign in to save workouts', 'warning');
         return;

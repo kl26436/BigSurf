@@ -68,7 +68,14 @@
 /* ── Match-radius chip row ── */
 .loc-radius-chips {
     display: flex;
+    flex-wrap: wrap;
     gap: var(--space-8);
+}
+/* TP-7 b — under the gym-size chips */
+.loc-level-hint {
+    margin: var(--space-6) 0 0;
+    font-size: var(--font-xs);
+    color: var(--text-muted);
 }
 
 /* ── Equipment-here rows ── */

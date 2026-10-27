@@ -123,25 +123,5 @@ export function branchScouting(equipment = [], homeGym = null, { patternsFor, mi
     return { homeGym: home, gaps: gaps.slice(0, max) };
 }
 
-/** "hip-dominant" → "hip-dominant" stays; "knee-flexion" → "leg curl" reads better for humans. */
-export const PATTERN_LABELS = {
-    'horizontal-push': 'chest press',
-    'vertical-push': 'overhead press',
-    'horizontal-pull': 'row',
-    'vertical-pull': 'pulldown',
-    'knee-dominant': 'squat / leg press',
-    'knee-flexion': 'leg curl',
-    'hip-dominant': 'hip hinge / thrust',
-    'calf': 'calf',
-    'lateral-delt': 'lateral raise',
-    'rear-delt': 'rear delt',
-    'elbow-flex': 'curl',
-    'elbow-ext': 'triceps',
-    'trunk-flex': 'ab',
-    'trunk-ext': 'back extension',
-    'anti-rotation': 'rotation / oblique',
-    'anti-extension': 'plank / rollout',
-    'abduction': 'hip abduction',
-    'adduction': 'hip adduction',
-    'cardio': 'cardio',
-};
+// LB-4 — the pattern labels live in exercise-taxonomy.js#MOVEMENT_LABELS now
+// (one table; this one disagreed with the scoreboard's).

@@ -31,6 +31,7 @@ import { confidentEquipmentId } from './equipment-id-resolver.js';
 import { resolveLocationId } from './location-id-resolver.js';
 import { captureWarning } from '../utils/error-handler.js';
 import { matchOwnedEquipment, parseEquipmentName, knownBrands } from './equipment-create.js';
+import { mergeExerciseOverride } from '../features/exercise-taxonomy.js';
 
 // One-shot guard for the legacy `location` → `locations[]` write sweep in
 // getUserEquipment. Module-scoped (not per-instance) because the manager is
@@ -189,6 +190,8 @@ export class FirebaseWorkoutManager {
                 weight: exerciseData.weight,
                 video: exerciseData.video,
                 tags: exerciseData.tags || [],
+                // LB-2 — the movement label survives an edit (null = inferred).
+                pattern: exerciseData.pattern || null,
                 isDefault: false,
                 isCustom: false,
                 isOverride: true,
@@ -280,9 +283,10 @@ export class FirebaseWorkoutManager {
             const override = overrideById || overrideByName;
 
             if (override) {
+                // LB-2 — an override saved with `tags: []` (all of them, before
+                // this) no longer erases the built-in's tags or pattern.
                 return {
-                    ...exercise,
-                    ...override,
+                    ...mergeExerciseOverride(exercise, override),
                     isOverridden: true,
                     originalData: exercise, // Keep reference to original
                 };
@@ -429,6 +433,11 @@ export class FirebaseWorkoutManager {
                             weight: data.weight || 50,
                             video: data.video || '',
                             tags: data.tags || [],
+                            // LB-2 — the CP-1 labels were dropped here, so the
+                            // client never saw a stamped pattern.
+                            pattern: data.pattern || null,
+                            ...(data.role ? { role: data.role } : {}),
+                            ...(data.progression ? { progression: data.progression } : {}),
                             isDefault: true,
                             isCustom: false,
                         });
@@ -513,6 +522,7 @@ export class FirebaseWorkoutManager {
                 weight: exerciseData.weight,
                 video: exerciseData.video || '',
                 tags: exerciseData.tags || [],
+                pattern: exerciseData.pattern || null,
                 id: exerciseId,
                 isCustom: true,
                 isDefault: false,

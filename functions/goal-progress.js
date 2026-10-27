@@ -20,6 +20,7 @@
 const { bestE1rmBetween, buildScoreboard, PATTERN_LABELS } = require('./progress-scoreboard');
 const { weightIncrement } = require('./progression');
 const { PATTERNS } = require('./movement-patterns');
+const { EQUIPMENT_LEVELS } = require('./gym-profile');
 const { weightAverage, scanLeanMass, scanBodyFatPct, scansAsOf, shiftDate, daysBetween } = require('./body-stats');
 
 const GOAL_TYPES = ['lift', 'bodyweight', 'composition', 'consistency', 'balance'];
@@ -31,7 +32,7 @@ const GOAL_METRICS = {
     balance: ['patternSets'],
 };
 const GOAL_STATUSES = ['active', 'met', 'missed', 'paused'];
-const EVENT_KINDS = ['look', 'perform', 'other'];
+const EVENT_KINDS = ['look', 'perform', 'other', 'travel'];
 
 /** Weeks of history a lift's estimated max is read over (the scoreboard's window). */
 const LIFT_WINDOW_DAYS = 28;
@@ -125,9 +126,23 @@ function normalizeEvent(input, { today } = {}) {
     if (!name) return { ok: false, error: 'an event needs a name' };
     const date = String(input?.date || '');
     if (!ISO.test(date)) return { ok: false, error: `date must be YYYY-MM-DD (got ${JSON.stringify(input?.date)})` };
-    if (today && date <= today) return { ok: false, error: `the event date must be after today (${today}) — got ${date}` };
     const kind = input.kind || 'other';
     if (!EVENT_KINDS.includes(kind)) return { ok: false, error: `kind must be one of ${EVENT_KINDS.join(', ')} (got ${JSON.stringify(input.kind)})` };
+    // TP-7 c — a trip: dates, and what kind of gym. It never reshapes the
+    // plan's weeks; the sessions stay, with fallbacks for the gym.
+    if (kind === 'travel') {
+        if (today && date < today) return { ok: false, error: `the trip must start today or later (${today}) — got ${date}` };
+        const endDate = input.endDate == null || input.endDate === '' ? date : String(input.endDate);
+        if (!ISO.test(endDate) || endDate < date) return { ok: false, error: `endDate must be YYYY-MM-DD on or after ${date} (got ${JSON.stringify(input.endDate)})` };
+        if (daysBetween(date, endDate) > 28) return { ok: false, error: 'a trip is at most four weeks — add a second one for longer' };
+        const level = input.level == null ? 'hotel' : input.level;
+        if (!EQUIPMENT_LEVELS.includes(level)) return { ok: false, error: `level must be one of ${EQUIPMENT_LEVELS.join(', ')} (got ${JSON.stringify(input.level)})` };
+        return {
+            ok: true,
+            event: { name, date, endDate, kind, level, place: clip(input.place, 60) || null, note: clip(input.note, 200) || null, peakWeeks: 0, lighterBefore: false },
+        };
+    }
+    if (today && date <= today) return { ok: false, error: `the event date must be after today (${today}) — got ${date}` };
     const peakWeeks = input.peakWeeks == null ? 2 : Number(input.peakWeeks);
     if (!Number.isInteger(peakWeeks) || peakWeeks < 0 || peakWeeks > 4) return { ok: false, error: `peakWeeks is 0–4 (got ${JSON.stringify(input.peakWeeks)})` };
     return {

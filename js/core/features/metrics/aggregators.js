@@ -3,6 +3,7 @@
 
 import { AppState } from '../../utils/app-state.js';
 import { convertWeight } from '../../ui/ui-helpers.js';
+import { canonicalBodyPart, dashboardBodyPart } from '../exercise-taxonomy.js';
 
 // ===================================================================
 // EXERCISE NAME RESOLVER
@@ -40,33 +41,16 @@ function withResolvedNames(workout) {
 // BODY PART CLASSIFICATION
 // ===================================================================
 
-// Reuses the keyword matching from training-insights.js
-const BP_MAP = {
-    chest: 'chest', back: 'back', shoulders: 'shoulders',
-    legs: 'legs', arms: 'arms', core: 'core', glutes: 'legs',
-};
-
+/**
+ * Dashboard card key for an exercise name — 'chest' | 'back' | 'legs' |
+ * 'shoulders' | 'arms' | 'core' | 'cardio' | 'other'. LB-3: the one
+ * classifier (exercise-taxonomy.js) folded to the six cards, so Calves and
+ * Glutes land in Legs, Abs in Core, Lower Back in Back — nothing a stored
+ * label names is dropped from the cards any more.
+ */
 function classifyBodyPart(exerciseName) {
     if (!exerciseName) return 'other';
-
-    // Check exercise database first
-    const db = AppState.exerciseDatabase || [];
-    const match = db.find(ex => (ex.name || ex.machine || '').toLowerCase() === exerciseName.toLowerCase());
-    if (match && match.bodyPart) {
-        const bp = match.bodyPart.toLowerCase();
-        return BP_MAP[bp] || bp;
-    }
-
-    // Keyword fallback
-    const name = exerciseName.toLowerCase();
-    if (name.includes('bench') || name.includes('chest') || name.includes('fly') || name.includes('pec')) return 'chest';
-    if (name.includes('row') || name.includes('pull') || name.includes('lat') || name.includes('back') || name.includes('deadlift')) return 'back';
-    if (name.includes('shoulder') || name.includes('delt') || name.includes('lateral raise')) return 'shoulders';
-    if (name.includes('squat') || name.includes('leg') || name.includes('lunge') || name.includes('hamstring') || name.includes('quad') || name.includes('calf') || name.includes('glute') || name.includes('hip thrust')) return 'legs';
-    if (name.includes('bicep') || name.includes('curl') || name.includes('tricep') || name.includes('arm') || name.includes('extension')) return 'arms';
-    if (name.includes('core') || name.includes('ab') || name.includes('crunch') || name.includes('plank')) return 'core';
-    if (name.includes('press') && !name.includes('leg')) return 'shoulders';
-    return 'other';
+    return dashboardBodyPart(canonicalBodyPart(exerciseName, { library: AppState.exerciseDatabase || [] }));
 }
 
 // ===================================================================

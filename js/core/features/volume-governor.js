@@ -28,7 +28,7 @@ export function governSetDelta({ setDelta, exercises = [], weeklyVolume = [], ex
     for (const v of weeklyVolume || []) {
         if (v?.bodyPart) done[v.bodyPart] = (done[v.bodyPart] || 0) + (Number(v.weeklySets) || 0);
     }
-    const partOf = (ex) => ex?.bodyPart || getBodyPartForExercise(ex?.machine || ex?.name, exerciseDatabase) || null;
+    const partOf = (ex) => getBodyPartForExercise(ex, exerciseDatabase) || null;
 
     // Baseline sets this session already commits per muscle.
     const base = {};

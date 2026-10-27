@@ -499,6 +499,57 @@ export function buildScenarios() {
         });
     }
 
+    // 32 — TP-8: "same exercises every week" → alternates inside the plan,
+    // main lifts unchanged, the switch weeks named.
+    {
+        const user = baseUser({ today: '2026-10-25' });
+        user.workouts = pplHistory({ today: '2026-10-25' });
+        user.program = programOn('2026-10-25', { weeks: 4, deloadWeek: 4 });
+        user.plan = { name: 'My plan', cadence: { buildWeeks: 3, lighterWeek: true }, horizonWeeks: 12, rotationPolicy: 'ask' };
+        list.push({
+            id: 'plan-variety', title: 'Same accessories every week → alternates inside the plan, main lifts kept',
+            mode: 'chat', user,
+            question: 'The same exercises show up every single week. Set up my next few weeks so a few accessories change up every couple of weeks but still hit the same muscles — keep my main lifts. Go ahead.',
+            expect: {
+                kind: 'action', maxWords: 650, mustCall: ['create_program'], alternates: true,
+                mustMention: ['(every (2|two) weeks|every other week|weeks? \\d)'],
+            },
+        });
+    }
+
+    // 33 — TP-7: a gym with more than the app knows → candidates beyond the
+    // library, the implement named, nothing refused for being unmapped.
+    {
+        const user = baseUser({ today: '2026-10-25' });
+        user.workouts = pplHistory({ today: '2026-10-25' });
+        list.push({
+            id: 'richer-gym', title: 'A gym with more than the app knows → suggest beyond the mapped machines',
+            mode: 'chat', user,
+            question: "My gym has way more cables and machines than what's in the app. Give me a different face pull option for pull day — don't limit it to what I've mapped.",
+            expect: {
+                kind: 'question', maxWords: 220,
+                mustCall: ['get_rotation_candidates'],
+                mustNotMention: ["(isn't|not) (mapped|available|in your (library|equipment))", "can't (do|find) (that|it) (here|there)"],
+            },
+        });
+    }
+
+    // 34 — TP-7 c: a hotel weekend → a trip on the plan, the sessions kept, no workout rewritten.
+    {
+        const user = baseUser({ today: '2026-10-25' });
+        user.workouts = pplHistory({ today: '2026-10-25' });
+        user.plan = { name: 'My plan', cadence: { buildWeeks: 3, lighterWeek: true }, horizonWeeks: 12, rotationPolicy: 'ask' };
+        list.push({
+            id: 'hotel-weekend', title: 'Hotel gym this weekend → a trip on the plan, sessions kept, nothing rewritten',
+            mode: 'chat', user,
+            question: "I'm at the Bellagio next Saturday and Sunday (Oct 31 – Nov 1), just the hotel gym. Keep my plan going and put the trip on it.",
+            expect: {
+                kind: 'action', maxWords: 350, travelEvent: true,
+                mustNotCall: ['create_workout_template', 'update_workout_template', 'replace_day', 'create_program'],
+            },
+        });
+    }
+
     return list;
 }
 

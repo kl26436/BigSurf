@@ -96,6 +96,8 @@ js/
     │   ├── coach-live-context.js   # AP-20c: PURE live-workout snapshot (buildLiveWorkoutContext; re-exported by coach-live.js)
     │   ├── coach-guards.js         # AP-17/18: what the coach's write tools enforce (deload lock, stall/loadability, equipment, dedupe, program shape)
     │   ├── fuzzy-match.js          # Dice similarity (catalog/exercise/equipment matching) — mirrored for the coach's equipment check
+    │   ├── gym-profile.js          # TP-7: gym levels (full/standard/hotel/home), generic movement × implement, usualGym, travelOn — mirrored
+    │   ├── exercise-taxonomy.js    # LB-3/4: THE body-part classifier (8 parts, aliases Calves→Legs…), volume/dashboard groups, MOVEMENT_LABELS, override merge — mirrored
     │   ├── plain-language.js       # TP-0: the user's words — TERMS, findJargon/BANNED_UI_TERMS, formatters (effort, week kind, stuck, volume) — mirrored
     │   ├── body-stats.js           # TP-1: 7-day bodyweight average (outlier-guarded), scan lean mass / body fat — mirrored
     │   ├── goal-progress.js        # TP-1: goal validation, baseline from the data, rate math, status + sentence, formatGoalsContext — mirrored
@@ -469,13 +471,17 @@ The coach's tools and the Sunday roll write through the Admin SDK, so the phone'
 
 **Home and the Plan page read one header (TP-6 c).** Home's plan line is `planSummaryLine(buildPlanTimeline(...).header)` over `loadPlanSummary()` (plan.js, session-cached; `clearPlanCache()` after any plan write). Never render "week N of M" — say the week's kind.
 
+**Any gym, any machine (TP-7).** What's mapped at a gym is what's *remembered* there, never what's *possible*. User-facing pickers and the coach call `rankRotationCandidates({ widen: true, level })` (tier 1 this gym → 2 another gym → 3 the movement on generic gear, equipment `null` = "pick the machine there"); the engine that writes machines automatically (`selectRotation`, the roll) stays tier 1. A trip is an event `kind: 'travel'`; its sessions carry `sessionIntent.travel` and stay out of a lift's series unless it was the same machine.
+
+**Alternates (TP-8).** A template row's `alternates` switch on `plan.varietyCadence` (default biweekly); `variantForWeek` / `resolveWeekExercises` is the only place that decides — start, Plan page and coach all call it. A write path that rebuilds template rows must keep the stored row's fields (`role`, `pattern`, `alternates`, `rotatedFrom`) — see `updateExistingTemplate`.
+
 **Swaps are written, not described (TP-6 f/l).** A plan's "what's new" must match the workouts: `create_program` applies `swaps` + `rationale.changed` via `resolveSwaps`; the rotation engine never proposes what a slot just moved off (`rotatedOutOf`, `ROTATION_MEMORY_DAYS`).
 
 ### Mirrored rule modules (client ↔ functions/)
 
 Server-only (not mirrored): `functions/coach-routing.js` — model routing per turn + `coachTraces` doc builder (top-level collection, admin-only read); `functions/coach-prompts.js` — system prompts, model per tier, `buildModeRequest`; `functions/coach-loop.js` — `runCoachToolLoop`, THE tool loop (coachChatStream and the AP-20 eval both call it — change the loop there, never inline). `functions/weekly-review.js` — `buildWeeklyReviewRequest` (the review's prompt + data; index.js only sends/saves/pushes). `functions/plan-roll.js` — `loadPlanData` / `rollPlanForUser` (the Sunday job rolls the next wave before the card; the plan tools read the same load). `functions/report-card-request.js` — `buildReportCardRequest` / `reportCardDoc` (the Sunday card's data load + the one cheap model turn; index.js `sundayReportCard` / `requestReportCard` send, save, push).
 
-`functions/` deploys standalone and can't import `js/`, so pure rule modules are COPIED: session-intent, progression, training-rules, progress-scoreboard, coach-rules, coach-guards, fuzzy-match, coach-outcomes, week-targets, movement-patterns, exercise-rotation, plain-language, body-stats, goal-progress, report-card, block-view, plan-timeline, plan-roller, plan-sessions. Edit the client file, then `node scripts/sync-mirror.mjs js/core/features/<m>.js functions/<m>.js`; `movement-patterns-mirror.test.js` fails on drift. A mirrored module may import ONLY other mirrored siblings (`import { a } from './x.js'`) — never ui-helpers, Config, AppState or Firebase.
+`functions/` deploys standalone and can't import `js/`, so pure rule modules are COPIED: session-intent, progression, training-rules, progress-scoreboard, coach-rules, coach-guards, fuzzy-match, coach-outcomes, week-targets, movement-patterns, exercise-taxonomy, exercise-rotation, gym-profile, plain-language, body-stats, goal-progress, report-card, block-view, plan-timeline, plan-roller, plan-sessions. Edit the client file, then `node scripts/sync-mirror.mjs js/core/features/<m>.js functions/<m>.js`; `movement-patterns-mirror.test.js` fails on drift. A mirrored module may import ONLY other mirrored siblings (`import { a } from './x.js'`) — never ui-helpers, Config, AppState or Firebase.
 
 ### Touching active-workout code
 

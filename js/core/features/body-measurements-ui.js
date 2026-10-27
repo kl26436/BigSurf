@@ -5,6 +5,7 @@ import { AppState } from '../utils/app-state.js';
 import { escapeHtml, escapeAttr, showNotification, formatHeight, parseHeightToCm } from '../ui/ui-helpers.js';
 import { formatRelativeDate, getDateString } from '../utils/date-helpers.js';
 import { navigateTo, navigateBack } from '../ui/navigation.js';
+import { once } from '../ui/busy.js';
 import {
     saveBodyWeight,
     loadBodyWeightHistory,
@@ -256,7 +257,12 @@ export function closeWeightEntryModal() {
 /**
  * Save body weight from the entry modal.
  */
-export async function saveBodyWeightEntry() {
+/** Single-flight (busy.js): a second tap while this runs is ignored. */
+export function saveBodyWeightEntry(...args) {
+    return once('weight-save', () => saveBodyWeightEntryNow(...args));
+}
+
+async function saveBodyWeightEntryNow() {
     const weightInput = document.getElementById('body-weight-input');
     const fatInput = document.getElementById('body-fat-input');
     const muscleInput = document.getElementById('muscle-mass-input');

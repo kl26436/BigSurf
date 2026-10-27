@@ -8,6 +8,8 @@ import { toCommonJs } from '../../scripts/mirror-transform.mjs';
 
 const MIRRORS = [
     ['js/core/features/movement-patterns.js', 'functions/movement-patterns.js'],
+    // LB-3 — one body-part taxonomy; training-rules imports it, list_exercises reads it.
+    ['js/core/features/exercise-taxonomy.js', 'functions/exercise-taxonomy.js'],
     ['js/core/features/week-targets.js', 'functions/week-targets.js'],
     ['js/core/features/exercise-rotation.js', 'functions/exercise-rotation.js'],
     // AP-15c — was a hand-kept copy; now generated so the server's unit
@@ -36,6 +38,8 @@ const MIRRORS = [
     ['js/core/features/plan-roller.js', 'functions/plan-roller.js'],
     // TP-4 — plan-owned sessions (the roll archives the unused ones server-side).
     ['js/core/features/plan-sessions.js', 'functions/plan-sessions.js'],
+    // TP-7 — gym levels and generic movements: the coach's candidates and the Plan page's.
+    ['js/core/features/gym-profile.js', 'functions/gym-profile.js'],
 ];
 
 describe('functions/ mirrors of pure client modules', () => {

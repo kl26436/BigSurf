@@ -1,6 +1,8 @@
 // Input validation utilities - core/utils/validation.js
 // Sanitize and validate user input before Firestore writes
 
+import { PATTERNS } from '../features/movement-patterns.js';
+
 /**
  * Sanitize a string: trim, enforce max length, strip HTML tags
  */
@@ -55,7 +57,7 @@ export function validateWorkoutData(data) {
 export function validateExerciseData(data) {
     if (!data || typeof data !== 'object') return null;
 
-    return {
+    const clean = {
         ...data,
         name: sanitizeString(data.name, 200),
         bodyPart: sanitizeString(data.bodyPart || '', 100),
@@ -63,6 +65,16 @@ export function validateExerciseData(data) {
         video: sanitizeString(data.video || '', 500),
         notes: sanitizeString(data.notes || '', 1000),
     };
+    // LB-2 — the movement label is a closed vocabulary. An unknown value is
+    // dropped (null = "infer it"), the same rule prescriptionFieldErrors
+    // applies to template rows.
+    if (clean.pattern != null && !PATTERNS.includes(clean.pattern)) clean.pattern = null;
+    if (clean.tags != null) {
+        clean.tags = Array.isArray(clean.tags)
+            ? [...new Set(clean.tags.map((t) => sanitizeString(String(t), 40).toLowerCase()).filter(Boolean))]
+            : [];
+    }
+    return clean;
 }
 
 /**

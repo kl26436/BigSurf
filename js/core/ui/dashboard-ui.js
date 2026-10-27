@@ -35,12 +35,15 @@ import { chartSparkline } from '../features/charts/chart-sparkline.js';
 import { chartLine } from '../features/charts/chart-line.js';
 import { buildScoreboard } from '../features/progress-scoreboard.js';
 import { weightIncrement } from '../features/progression.js';
+import { DASHBOARD_BODY_PARTS } from '../features/exercise-taxonomy.js';
 
 // ===================================================================
 // CONSTANTS
 // ===================================================================
 
-const BODY_PARTS = ['chest', 'back', 'legs', 'shoulders', 'arms', 'core'];
+// LB-3 — the six cards come from the one taxonomy (Glutes/Calves fold into
+// legs, Abs into core — see exercise-taxonomy.js#dashboardBodyPart).
+const BODY_PARTS = DASHBOARD_BODY_PARTS;
 const BP_ICONS = {
     chest: 'fa-hand-paper', back: 'fa-fist-raised', legs: 'fa-walking',
     shoulders: 'fa-arrows-alt-v', arms: 'fa-hand-rock', core: 'fa-bullseye',
@@ -1156,6 +1159,7 @@ function renderScoreboardCard(allWorkouts) {
             unit,
             today: AppState.getTodayDateString(),
             config: { patternTarget: Config.PATTERN_TARGET_SETS, mrv: Config.VOLUME_MRV, increment: weightIncrement(unit, plates) },
+            library: AppState.exerciseDatabase || [],
         });
     } catch (e) {
         debugLog('scoreboard failed', e);

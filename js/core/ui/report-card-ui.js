@@ -216,7 +216,8 @@ function proposalHTML(d) {
             <div class="rc-proposal__actions">
                 ${applied
                     ? '<span class="coach-receipt-tag">Applied</span>'
-                    : `<button class="btn btn-primary" onclick="reportCardApply()">${escapeHtml(BUTTON[o.kind] || 'Apply')}</button>`}
+                    : `${o.kind === 'swap' && o.payload?.templateId ? '<button class="btn btn-secondary" onclick="reportCardPickDifferent()">Pick a different one</button>' : ''}
+                       <button class="btn btn-primary" onclick="reportCardApply()">${escapeHtml(BUTTON[o.kind] || 'Apply')}</button>`}
             </div>
         </div>`;
 }
@@ -262,6 +263,14 @@ async function applySwap(p) {
     const { db, doc, setDoc } = await fs();
     await setDoc(doc(db, 'users', AppState.currentUser.uid, 'workoutTemplates', t.id), { exercises, lastUpdated: new Date().toISOString() }, { merge: true });
     t.exercises = exercises;
+}
+
+/** TP-6 b — the card's swap, but your pick: the Plan page's rotate sheet on that exercise. */
+export function reportCardPickDifferent() {
+    const p = _doc?.chosenOption?.payload;
+    if (!p?.templateId) return;
+    import('./block-ui.js').then(m => m.openRotateFromCard(p.templateId, p.index))
+        .catch((e) => { console.error('❌ Open rotate failed:', e); showNotification("Couldn't open your plan — try again", 'error'); });
 }
 
 /** Single-flight (busy.js): a second tap while this runs is ignored. */
@@ -325,6 +334,34 @@ export async function reportCardEnable(btn) {
     }
     showNotification('Report card on — every Sunday at 7:30 pm', 'success', 2000);
     btn?.closest('.rc-enable')?.remove();
+    document.getElementById('rc-nudge')?.remove();
+}
+
+/** TP-6 c — the Home nudge, dismissed for good (quiet, no confirm). */
+export function reportCardDismissNudge(event) {
+    event?.stopPropagation?.();
+    document.getElementById('rc-nudge')?.remove();
+    import('./settings-ui.js').then(m => m.updateSetting('reportCardNudgeDismissed', true)).catch(() => {});
+}
+
+/**
+ * TP-6 c — Sunday / Monday with a plan running and the report card off (it's
+ * off by default, and without it there's no Sunday card and no swap offer):
+ * offer it once on Home. Dismissed or turned on, it never shows again.
+ */
+function reportCardNudgeHTML() {
+    const s = AppState.settings || {};
+    if (s.reportCard === true || s.reportCardNudgeDismissed === true || !AppState._activeProgram) return '';
+    return `
+        <div class="row-card rc-entry" id="rc-nudge">
+            <div class="row-card__icon"><i class="fas fa-clipboard-check" aria-hidden="true"></i></div>
+            <div class="row-card__content">
+                <div class="row-card__title">Want your week on one page Sunday night?</div>
+                <div class="row-card__detail">A grade, your numbers, and one choice for next week.</div>
+            </div>
+            <button class="btn btn-primary btn-sm" onclick="reportCardEnable(this)">Turn it on</button>
+            <button class="dash-alt-row__dismiss" onclick="reportCardDismissNudge(event)" aria-label="Dismiss"><i class="fas fa-times" aria-hidden="true"></i></button>
+        </div>`;
 }
 
 export function reportCardDiscuss() {
@@ -348,7 +385,7 @@ export async function reportCardEntryHTML() {
         if (dow !== 6 && dow !== 0) return '';
         // PF-2 — session-cached: the dashboard asks on every visit Sun/Mon.
         const d = await _entryCache.get(week.weekKey, AppState.currentUser?.uid || '', () => loadDoc(week.weekKey));
-        if (!d) return '';
+        if (!d) return reportCardNudgeHTML();
         return `
             <div class="row-card rc-entry" onclick="openReportCard('${escapeAttr(week.weekKey)}')">
                 <div class="row-card__icon"><i class="fas fa-clipboard-check"></i></div>
@@ -368,8 +405,10 @@ export async function reportCardEntryHTML() {
 if (typeof window !== 'undefined') {
     window.openReportCard = openReportCard;
     window.reportCardApply = reportCardApply;
+    window.reportCardPickDifferent = reportCardPickDifferent;
     window.reportCardBuildNow = reportCardBuildNow;
     window.reportCardEnable = reportCardEnable;
+    window.reportCardDismissNudge = reportCardDismissNudge;
     window.reportCardDiscuss = reportCardDiscuss;
     window.openExerciseDetailFromReport = openExerciseDetailFromReport;
 }

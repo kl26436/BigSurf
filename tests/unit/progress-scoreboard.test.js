@@ -201,6 +201,16 @@ describe('buildScoreboard — patterns and headline', () => {
         expect(lumbar.patterns.find(p => p.pattern === 'hip-dominant').setsThisWeek).toBe(0);
     });
 
+    it('LB-4: a Movement set on the library entry decides the pattern strip', () => {
+        const workouts = [wo('2026-10-23', [{ name: 'Reverse Hip Station', sets: [set(90, 10), set(90, 10)] }])];
+        const hingeSets = (sb) => sb.patterns.find(p => p.pattern === 'hip-dominant').setsThisWeek;
+        // The name alone says nothing…
+        expect(hingeSets(buildScoreboard({ workouts, today: TODAY }))).toBe(0);
+        // …the user's label in the library does.
+        const library = [{ name: 'Reverse Hip Station', bodyPart: 'Glutes', pattern: 'hip-dominant' }];
+        expect(hingeSets(buildScoreboard({ workouts, today: TODAY, library }))).toBe(2);
+    });
+
     it('two-weeks-under needs history that reaches back two weeks', () => {
         const newAccount = buildScoreboard({ workouts: [wo('2026-10-22', [{ name: 'Squat', sets: [set(200, 5)] }])], today: TODAY });
         expect(newAccount.patterns.find(p => p.pattern === 'hip-dominant').weeksUnder).toBe(1);

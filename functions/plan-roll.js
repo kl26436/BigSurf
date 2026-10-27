@@ -9,7 +9,7 @@
 // offers them. Idempotent: a retry finds the wave already rolled.
 
 const { rollWindow, draftNextWave, rolledProgramDoc } = require('./plan-roller');
-const { applyRotation } = require('./exercise-rotation');
+const { applyRotation, fillAlternates, rotationHistory, DEFAULT_VARIETY_CADENCE } = require('./exercise-rotation');
 const { reportWeek, DEFAULT_TIME_ZONE } = require('./report-card');
 const { planTemplatesToArchive } = require('./plan-sessions');
 
@@ -81,6 +81,23 @@ async function rollPlanForUser(userRef, { now = new Date() } = {}) {
             const exercises = Array.isArray(snap.data().exercises) ? snap.data().exercises : [];
             priorTemplates.push({ templateId: r.templateId, exercises });
             await ref.set({ exercises: applyRotation(exercises, r.swaps, { lookup: data.rotation.lookup, today }), lastUpdated: nowIso }, { merge: true });
+        }
+    }
+    // TP-8 — "swap them for me" also sets up alternates (same movement, a
+    // different machine, switching on the plan's cadence) where a slot has
+    // none. "Ask me first" adds nothing on its own.
+    const cadence = data.plan?.varietyCadence || DEFAULT_VARIETY_CADENCE;
+    if (data.plan?.rotationPolicy === 'auto' && cadence !== 'wave') {
+        const history = rotationHistory(data.programs);
+        for (const tid of [...new Set(Object.values(draft.split || {}).filter(v => v && v !== 'rest'))]) {
+            const ref = userRef.collection('workoutTemplates').doc(tid);
+            const snap = await ref.get();
+            if (!snap.exists) continue;
+            const exercises = Array.isArray(snap.data().exercises) ? snap.data().exercises : [];
+            const f = fillAlternates(exercises, { ...data.rotation, history, today });
+            if (!f.filled.length) continue;
+            if (!priorTemplates.some(x => x.templateId === tid)) priorTemplates.push({ templateId: tid, exercises });
+            await ref.set({ exercises: f.exercises, lastUpdated: nowIso }, { merge: true });
         }
     }
     // One active program at a time; the finished wave stays as history.

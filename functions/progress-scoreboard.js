@@ -23,6 +23,7 @@ const { buildExerciseSessions, stallState, fatigueState, sameMachine } = require
 const { convertToUnit } = require('./coach-outcomes');
 const { RULE_THRESHOLDS, shiftDay } = require('./training-rules');
 const { describeStuck } = require('./plain-language');
+const { MOVEMENT_LABELS, findInLibrary } = require('./exercise-taxonomy');
 
 const SCOREBOARD_WINDOW_DAYS = 28;
 
@@ -31,16 +32,10 @@ const SPINE_PATTERNS = [
     'knee-dominant', 'hip-dominant', 'horizontal-push', 'vertical-push', 'horizontal-pull', 'vertical-pull',
 ];
 
-const PATTERN_LABELS = {
-    'knee-dominant': 'Squat',
-    'hip-dominant': 'Hinge',
-    'horizontal-push': 'Horizontal push',
-    'vertical-push': 'Vertical push',
-    'horizontal-pull': 'Horizontal pull',
-    'vertical-pull': 'Vertical pull',
-    // LB-1 — labelled for display only; not in SPINE_PATTERNS, so never coverage.
-    'shrug': 'Shrug',
-};
+// LB-4 — one label table for every pattern (exercise-taxonomy.js). Shrug and
+// the other non-spine shapes are labelled for display only; they're not in
+// SPINE_PATTERNS, so never coverage.
+const PATTERN_LABELS = MOVEMENT_LABELS;
 
 /** Epley is unreliable past ~12 reps — those sets don't estimate a max. */
 const E1RM_MAX_REPS = 12;
@@ -247,7 +242,18 @@ function findRepPR(sessions, windowFrom) {
     return pr;
 }
 
-function patternRows(workouts, today, target, mrv) {
+/**
+ * LB-4 — the pattern a logged exercise trained: the library entry's labels
+ * (a Movement the user set in the editor, the built-in's stamp, its tags)
+ * when a library is given, else the name; the machine still decides an
+ * unlabelled back extension (LB-1).
+ */
+function loggedPattern(name, ex, library) {
+    const entry = library ? findInLibrary(name, library) : null;
+    return inferPattern(entry ? { ...entry, name } : { name }, { equipment: ex.equipment });
+}
+
+function patternRows(workouts, today, target, mrv, library = null) {
     const c0From = shiftDay(today, -6);
     const c1From = shiftDay(today, -13);
     const c1To = shiftDay(today, -7);
@@ -265,7 +271,7 @@ function patternRows(workouts, today, target, mrv) {
         if (rec && in1) rec1 = true;
         eachExercise(w, (name, ex) => {
             // LB-1 — equipment-aware: Back Extension on the 45° bench is Hinge.
-            const row = rows.get(inferPattern({ name }, { equipment: ex.equipment }));
+            const row = rows.get(loggedPattern(name, ex, library));
             if (!row) return;
             const n = countableSets(ex);
             if (!n) return;
@@ -338,6 +344,7 @@ function chooseHeadline(primaries, patterns, unit, target) {
  * @param {string} args.today - YYYY-MM-DD (local)
  * @param {{patternTarget?:number, mrv?:number, increment?:number}} [args.config]
  *   patternTarget = weekly sets per movement pattern (default 16); mrv caps it
+ * @param {object[]} [args.library] - exercise library (LB-4: stored Movement labels decide the pattern strip)
  * @returns {{unit:string, today:string, window:{from:string,to:string,prevFrom:string,prevTo:string},
  *   primaries:Array<{name:string, pattern:string|null, source:string, e1rmNow:number|null,
  *     e1rmPrev:number|null, e1rmPrev2:number|null, delta:number|null, deltaPct:number|null,
@@ -350,7 +357,7 @@ function chooseHeadline(primaries, patterns, unit, target) {
  *   counts:{up:number, flat:number, down:number}, headline:string, headlineKind:string}}
  *   trend 'new' = trained this window only, 'idle' = not trained this window.
  */
-function buildScoreboard({ workouts = [], templates = [], unit = 'lbs', today, config = {} } = {}) {
+function buildScoreboard({ workouts = [], templates = [], unit = 'lbs', today, config = {}, library = null } = {}) {
     const u = unit === 'kg' ? 'kg' : 'lbs';
     const target = config.patternTarget ?? RULE_THRESHOLDS.PATTERN_TARGET_SETS;
     const mrv = config.mrv ?? RULE_THRESHOLDS.VOLUME_MRV;
@@ -397,7 +404,7 @@ function buildScoreboard({ workouts = [], templates = [], unit = 'lbs', today, c
         };
     });
 
-    const patterns = patternRows(workouts, today, target, mrv);
+    const patterns = patternRows(workouts, today, target, mrv, library);
     const counts = { up: 0, flat: 0, down: 0 };
     for (const p of primaries) if (counts[p.trend] != null) counts[p.trend] += 1;
     const head = chooseHeadline(primaries, patterns, u, target);

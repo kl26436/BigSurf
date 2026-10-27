@@ -11,12 +11,13 @@ const {
     applyPrescriptionFields, prescriptionFieldErrors, ROLES, PATTERNS, PROGRESSIONS,
 } = require('./movement-patterns');
 // (inferRole is required below with the AP-23 helpers.)
-const { normalizeWeekTarget, isDeloadTarget } = require('./week-targets');
-const { selectRotation, applyRotation, resolveSwaps, rotationHistory } = require('./exercise-rotation');
+const { normalizeWeekTarget, isDeloadTarget, deriveProgramWeek } = require('./week-targets');
+const { selectRotation, applyRotation, resolveSwaps, rotationHistory, fillAlternates, variantForWeek, nextSwitchWeek, VARIETY_CADENCES, DEFAULT_VARIETY_CADENCE } = require('./exercise-rotation');
 const { convertToUnit } = require('./coach-outcomes');
 const { computeVerdicts, buildBlockRetrospective } = require('./coach-rules');
 const { getSessionIntent, weekOverrideOf } = require('./session-intent');
 const { rankRotationCandidates } = require('./exercise-rotation');
+const { gymLevel, LEVEL_LABELS } = require('./gym-profile');
 const { applyPrimaryChoice, pickPrimaries } = require('./progress-scoreboard');
 // TP-3 — the plan: timeline, roller, the same data load the Sunday roll uses.
 const { buildPlanTimeline, describeCadence, cadenceOf } = require('./plan-timeline');
@@ -184,6 +185,10 @@ const TOOL_DEFINITIONS = [
                         required: ['from', 'to'],
                     },
                 },
+                alternateAccessories: {
+                    type: 'boolean',
+                    description: "true = give every accessory that has none an ALTERNATE (same movement, a different machine at the user's gym): the plan switches between the two on its variety setting (default every 2 weeks: A, A, B, B). Main lifts never alternate. Use when the user wants variety week to week without losing their exercises; result.alternates lists each pair.",
+                },
                 rotateAccessories: {
                     type: 'boolean',
                     description: "true = also rotate every OTHER accessory on the split's templates to the stalest same-pattern machine at the user's current gym (never what that slot just moved off). Primaries and secondaries are never touched. The result's rotations.applied is what was written; the card lists every swap and undo restores the templates.",
@@ -265,7 +270,7 @@ const TOOL_DEFINITIONS = [
     },
     {
         name: 'get_rotation_candidates',
-        description: "Ranked replacements for ONE exercise (or a movement pattern) from the user's equipment at a gym — same-pattern machines, never-used first, then longest idle, each with its reason — plus the primaries held fixed. Nothing is written. Call this for ANY swap or rotation question and present its top choice with its reason; hand-pick only when it returns nothing.",
+        description: "Ranked replacements for ONE exercise (or a movement pattern), nothing written: tier 1 = machines mapped at the gym (never-used first, then longest idle); tier 2 = machines the user has used at another gym (the movement travels — they pick the machine here); tier 3 = the movement on a generic implement the gym's size has (dumbbells, cable…), unmapped:true. Each with its reason; plus the primaries held fixed and anything left out (just swapped off). Call this for ANY swap or rotation question and present its top choice with its reason; an unmapped machine is never a reason to refuse.",
         input_schema: {
             type: 'object',
             properties: {
@@ -330,13 +335,16 @@ const TOOL_DEFINITIONS = [
     },
     {
         name: 'add_event',
-        description: "Add a date the user is training toward (wedding, trip, meet). The plan lightens the week before and holds steady through it. Consent rule applies.",
+        description: "Add a date the user is training toward (wedding, meet) — the plan lightens the week before and holds steady through it — or a TRIP (kind 'travel', with endDate and the gym's size): the sessions stay on the plan, each exercise gets a fallback for that gym, and sessions logged on the trip stay out of the main lifts' trends. Consent rule applies.",
         input_schema: {
             type: 'object',
             properties: {
                 name: { type: 'string' },
-                date: { type: 'string', description: 'YYYY-MM-DD, after today' },
-                kind: { type: 'string', enum: ['look', 'perform', 'other'] },
+                date: { type: 'string', description: 'YYYY-MM-DD, after today (a trip may start today)' },
+                kind: { type: 'string', enum: ['look', 'perform', 'other', 'travel'] },
+                endDate: { type: 'string', description: "travel only: the trip's last day, YYYY-MM-DD" },
+                level: { type: 'string', enum: ['hotel', 'standard', 'full', 'home'], description: "travel only: the gym there — 'hotel' (default: dumbbells, a cable stack, a couple of machines), 'standard', 'full', 'home' (no gym)" },
+                place: { type: 'string', description: 'travel only: where (e.g. "Bellagio")' },
             },
             required: ['name', 'date'],
         },
@@ -384,6 +392,7 @@ const TOOL_DEFINITIONS = [
                 horizonWeeks: { type: 'integer', minimum: 4, maximum: 26 },
                 sessionMinutes: { type: 'integer', minimum: 15, maximum: 180 },
                 rotationPolicy: { type: 'string', enum: ['ask', 'auto'] },
+                varietyCadence: { type: 'string', enum: ['biweekly', 'weekly', 'wave'], description: "How often an accessory with an alternate switches: 'biweekly' (default — two weeks on each), 'weekly', or 'wave' (only when the next weeks are set up)." },
                 paused: { type: 'boolean' },
                 name: { type: 'string' },
                 split: SPLIT_SCHEMA,
@@ -504,7 +513,7 @@ const TOOL_DEFINITIONS = [
     },
     {
         name: 'list_exercises',
-        description: "The user's full exercise library (built-in + custom, minus hidden), each with body part, equipment type, tags and lastUsed (null = never logged). Call before suggesting or swapping exercises — the first-message summary only shows what is already in their templates. Filter by bodyPart, or unusedOnly for variety material.",
+        description: "The user's full exercise library (built-in + custom, minus hidden), each with body part (Chest, Back, Shoulders, Arms, Legs, Glutes, Core, Cardio), movement pattern, equipment type, tags and lastUsed (null = never logged). Call before suggesting or swapping exercises — the first-message summary only shows what is already in their templates. Filter by bodyPart, or unusedOnly for variety material.",
         input_schema: {
             type: 'object',
             properties: {
@@ -1276,6 +1285,9 @@ function makeToolExecutors({ db, userId, source = 'chat', unit: rawUnit = 'lbs',
         // functions/data/exercises.json mirrors it (parity-tested).
         async list_exercises(input) {
             const builtIn = require('./data/exercises.json');
+            // LB-2/LB-3 — one taxonomy: canonical body parts, the pattern each
+            // exercise trains, and the override merge the app uses.
+            const { mergeExerciseOverride, labelsFor } = require('./exercise-taxonomy');
             const [customSnap, overrideSnap, hiddenSnap, woSnap] = await Promise.all([
                 userDoc().collection('customExercises').get(),
                 userDoc().collection('exerciseOverrides').get(),
@@ -1303,7 +1315,8 @@ function makeToolExecutors({ db, userId, source = 'chat', unit: rawUnit = 'lbs',
                 }
             }
             const merged = [
-                ...builtIn.map(e => ({ ...e, ...(overrides.get((e.name || '').toLowerCase()) || {}) })),
+                // LB-2 — an override with empty tags keeps the built-in's tags/pattern.
+                ...builtIn.map(e => mergeExerciseOverride(e, overrides.get((e.name || '').toLowerCase()))),
                 ...customSnap.docs.map(d => ({ ...d.data(), isCustom: true })),
             ].filter(e => e.name && !hidden.has(e.name.toLowerCase()));
 
@@ -1312,15 +1325,20 @@ function makeToolExecutors({ db, userId, source = 'chat', unit: rawUnit = 'lbs',
             const byPart = {};
             let total = 0;
             for (const e of merged) {
-                const part = e.bodyPart || 'Other';
-                if (partFilter && !part.toLowerCase().includes(partFilter)) continue;
+                const labels = labelsFor(e);
+                const part = labels.bodyPart || 'Other';
+                const tags = Array.isArray(e.tags) ? e.tags : [];
+                // "calves" still finds calf raises (now Legs + tag calves).
+                if (partFilter && !part.toLowerCase().includes(partFilter)
+                    && !tags.some(t => String(t).toLowerCase() === partFilter)) continue;
                 const used = lastUsed.get(e.name.toLowerCase()) || null;
                 if (unusedOnly && used) continue;
                 if (!byPart[part]) byPart[part] = [];
                 byPart[part].push({
                     name: e.name,
                     equipmentType: e.equipmentType || null,
-                    tags: Array.isArray(e.tags) ? e.tags : [],
+                    pattern: labels.pattern,
+                    tags,
                     lastUsed: used,
                     ...(e.isCustom ? { custom: true } : {}),
                 });
@@ -1410,7 +1428,9 @@ function makeToolExecutors({ db, userId, source = 'chat', unit: rawUnit = 'lbs',
         },
 
         async list_equipment(input) {
-            const snap = await userDoc().collection('equipment').get();
+            const [snap, locSnap] = await Promise.all([
+                userDoc().collection('equipment').get(), userDoc().collection('locations').get(),
+            ]);
             const locFilter = String(input?.location || '').trim().toLowerCase();
             const byLocation = {};
             let total = 0;
@@ -1437,7 +1457,14 @@ function makeToolExecutors({ db, userId, source = 'chat', unit: rawUnit = 'lbs',
             for (const items of Object.values(byLocation)) {
                 items.sort((a, b) => ((a.lastUsed ? 1 : 0) - (b.lastUsed ? 1 : 0)) || a.name.localeCompare(b.name));
             }
-            return { totalPieces: total, byLocation };
+            // TP-7 — what's mapped is what's remembered, not what's possible:
+            // each gym's size says which generic gear is there without mapping.
+            const gyms = {};
+            for (const l of locSnap.docs.map(d => d.data()).filter(x => x?.name)) {
+                const level = gymLevel(l, (byLocation[l.name] || []).length);
+                gyms[l.name] = { size: level ? LEVEL_LABELS[level].toLowerCase() : 'not set', ...(l.equipmentNote ? { note: l.equipmentNote } : {}) };
+            }
+            return { totalPieces: total, byLocation, gyms, note: "Mapped machines are what's remembered at a gym; a big or regular gym also has dumbbells, cables, racks and the usual machines — plan the movement and the user picks the machine there." };
         },
 
         async list_templates() {
@@ -1587,7 +1614,8 @@ function makeToolExecutors({ db, userId, source = 'chat', unit: rawUnit = 'lbs',
                 ...(Array.isArray(input.swaps) ? input.swaps.filter(x => x && typeof x === 'object').slice(0, 20) : []),
                 ...((rationale?.changed || []).filter(c => c.from).map(c => ({ from: c.from, to: c.to, why: c.why }))),
             ];
-            if (input.rotateAccessories === true || agreed.length) {
+            let alternated = [];
+            if (input.rotateAccessories === true || agreed.length || input.alternateAccessories === true) {
                 try {
                     const [equipSnap, customSnap, woSnap, progSnap] = await Promise.all([
                         userDoc().collection('equipment').get(),
@@ -1632,13 +1660,24 @@ function makeToolExecutors({ db, userId, source = 'chat', unit: rawUnit = 'lbs',
                                 .filter(x => !swaps.some(y => y.index === x.index) && !taken.has(x.to.toLowerCase()));
                             swaps = [...swaps, ...engine];
                         }
-                        if (!swaps.length) continue;
+                        let next = swaps.length ? applyRotation(t.exercises, swaps, { lookup, today }) : t.exercises;
+                        // TP-8 — alternates: the same slot, two machines, switching on the plan's cadence.
+                        if (input.alternateAccessories === true) {
+                            const f = fillAlternates(next, { equipment, location, lookup, history, today });
+                            if (f.filled.length) {
+                                next = f.exercises;
+                                alternated = [...alternated, ...f.filled.map(x => ({ workout: t.name, exercise: x.name, alternate: x.alternate.name, equipment: x.alternate.equipment }))];
+                            }
+                        }
+                        if (next === t.exercises) continue;
                         priorTemplates.push({ templateId: t.id, exercises: t.exercises });
-                        await t.ref.set({ exercises: applyRotation(t.exercises, swaps, { lookup, today }), lastUpdated: nowIso }, { merge: true });
-                        rotation.push({
-                            templateId: t.id, name: t.name,
-                            swaps: swaps.map(x => ({ index: x.index, from: x.from, to: x.to, equipment: x.equipment || null, reason: x.reason })),
-                        });
+                        await t.ref.set({ exercises: next, lastUpdated: nowIso }, { merge: true });
+                        if (swaps.length) {
+                            rotation.push({
+                                templateId: t.id, name: t.name,
+                                swaps: swaps.map(x => ({ index: x.index, from: x.from, to: x.to, equipment: x.equipment || null, reason: x.reason })),
+                            });
+                        }
                     }
                     // The program remembers what it applied (the next wave's
                     // engine reads it) and its "what's new" says only what's true.
@@ -1677,6 +1716,7 @@ function makeToolExecutors({ db, userId, source = 'chat', unit: rawUnit = 'lbs',
                         },
                         rotatedCount,
                     } : {}),
+                    ...(alternated.length ? { alternates: alternated, varietyNote: 'Each pair switches every 2 weeks unless the plan says otherwise (update_plan varietyCadence).' } : {}),
                     ...((input.rotateAccessories === true || agreed.length) && !rotation ? { rotations: { applied: [], notApplied: agreed.map(x => ({ from: x.from, to: x.to, reason: 'the swap step failed — workouts unchanged' })) } } : {}),
                     ...(warnings.length ? { warnings } : {}),
                 },
@@ -1948,11 +1988,18 @@ function makeToolExecutors({ db, userId, source = 'chat', unit: rawUnit = 'lbs',
             const exclude = sameDay.flatMap(t => t.exercises.map(e => e.machine || e.name)).filter(Boolean);
             // TP-6 l — the slot's own swap history: never offer back what it just moved off.
             const slot = sameDay.flatMap(t => t.exercises).find(e => String(e.machine || e.name || '').toLowerCase() === exKey) || null;
-            const progSnap = await userDoc().collection('programs').get();
+            const [progSnap, locSnap] = await Promise.all([
+                userDoc().collection('programs').get(), userDoc().collection('locations').get(),
+            ]);
+            // TP-7 — the gym's size says which generic gear counts as there.
+            const locDoc = locSnap.docs.map(d => d.data()).find(l => String(l?.name || '').toLowerCase() === String(location || '').toLowerCase()) || null;
+            const mapped = (ctx.equipment || []).filter(e => (e.locations || []).some(l => String(l).toLowerCase() === String(location || '').toLowerCase())).length;
+            const level = gymLevel(locDoc, mapped);
             const ranked = rankRotationCandidates({
                 exercise: input.exercise || null, pattern: input.pattern || null,
                 equipment: ctx.equipment, location, lookup, exclude, limit: intIn(input.limit, 1, 10, 5),
                 slot, history: rotationHistory(progSnap.docs.map(d => d.data())), today: date,
+                widen: true, level,
             });
             const held = [];
             const seen = new Set();
@@ -1967,12 +2014,19 @@ function makeToolExecutors({ db, userId, source = 'chat', unit: rawUnit = 'lbs',
             return {
                 exercise: input.exercise || null,
                 location,
+                gymSize: level ? LEVEL_LABELS[level].toLowerCase() : 'not set (treated as a regular gym)',
+                ...(locDoc?.equipmentNote ? { gymNote: locDoc.equipmentNote } : {}),
                 pattern: ranked.pattern,
                 ...(ranked.role === 'primary' && input.exercise ? { warning: `${input.exercise} reads as a primary — rotating it resets its scoreboard trend.` } : {}),
                 candidates: ranked.candidates,
                 ...(ranked.excluded?.length ? { excluded: ranked.excluded } : {}),
                 heldPrimaries: held.slice(0, 8),
-                ...(ranked.candidates.length ? {} : { note: location ? `No other ${ranked.pattern || 'same-pattern'} machine at ${location}.` : 'No same-pattern alternative in the library.' }),
+                // TP-7 — nothing mapped here isn't nothing to offer: say which is which.
+                ...(ranked.candidates.some(c => (c.tier || 1) === 1) ? {} : {
+                    note: location
+                        ? `No other ${ranked.pattern || 'same-pattern'} machine mapped at ${location}${ranked.candidates.length ? ' — the candidates are the movement from another gym or on gear a gym that size has; the user picks the machine there' : ''}.`
+                        : 'No same-pattern alternative in the library.',
+                }),
             };
         },
 
@@ -2009,6 +2063,26 @@ function makeToolExecutors({ db, userId, source = 'chat', unit: rawUnit = 'lbs',
 
         // ── TP-3: the plan ─────────────────────────────────────────────
         async get_plan() {
+            // TP-8 — every alternating slot on the split: this week's version and when it switches.
+            const varietyOf = (d, active) => {
+                const cadence = VARIETY_CADENCES.includes(d.plan?.varietyCadence) ? d.plan.varietyCadence : DEFAULT_VARIETY_CADENCE;
+                const week = active?.startDate ? deriveProgramWeek(active, date) : null;
+                const wk = week && !week.finished ? week.week : null;
+                const ids = new Set(Object.values(d.weekPlan?.days || {}).filter(v => v && v !== 'rest'));
+                const slots = [];
+                for (const t of (d.templates || []).filter(x => ids.has(x.id))) {
+                    (t.exercises || []).forEach((row, i) => {
+                        if (!(row?.alternates || []).length) return;
+                        const now = variantForWeek(row, wk, cadence, i);
+                        const nx = nextSwitchWeek(row, wk, cadence, i);
+                        slots.push({
+                            workout: t.name || t.id, slot: row.machine || row.name, alternates: row.alternates.map(a => a.name),
+                            thisWeek: now.name, ...(nx && active?.startDate ? { switchesTo: nx.name, from: addDays(active.startDate, (nx.week - 1) * 7) } : {}),
+                        });
+                    });
+                }
+                return { cadence, slots };
+            };
             const d = await loadPlanCtx();
             const tl = buildPlanTimeline({ ...d, override: weekOverrideOf(d.settings) });
             const active = tl.activeProgram;
@@ -2024,6 +2098,7 @@ function makeToolExecutors({ db, userId, source = 'chat', unit: rawUnit = 'lbs',
                     thisWeek: tl.header.thisWeek, nextLighterWeek: tl.header.nextLighter,
                     next6Weeks: tl.weeks.filter(w => w.weekStart > date).slice(0, 6).map(w => ({ weekStart: w.weekStart, kind: w.label, projected: !!w.projected, markers: w.markers.map(m => m.label) })),
                     goals: tl.goalsStrip, events: d.events.filter(e => e.date > date).map(e => ({ id: e.id, name: e.name, date: e.date })),
+                    variety: varietyOf(d, active),
                     currentWave: active ? {
                         startDate: active.startDate, weeks: active.weeks, rolled: active.createdVia === 'auto-roll',
                         pendingSwaps: (active.pendingRotations || []).flatMap(r => r.swaps.map(x => `${x.from} → ${x.to} (${r.name})`)),
@@ -2058,6 +2133,10 @@ function makeToolExecutors({ db, userId, source = 'chat', unit: rawUnit = 'lbs',
                 if (typeof i.paused !== 'boolean') return toolError('invalid_input', 'paused must be true or false');
                 patch.paused = i.paused;
             }
+            if (i.varietyCadence !== undefined) {
+                if (!VARIETY_CADENCES.includes(i.varietyCadence)) return toolError('invalid_input', `varietyCadence must be one of ${VARIETY_CADENCES.join(', ')}`);
+                patch.varietyCadence = i.varietyCadence;
+            }
             if (i.name !== undefined) patch.name = clip(i.name, 40) || 'My plan';
             if (i.fixed !== undefined) {
                 // TP-5 — "I always bench Monday": stored on the plan, shown to the coach.
@@ -2079,7 +2158,7 @@ function makeToolExecutors({ db, userId, source = 'chat', unit: rawUnit = 'lbs',
                 if (out.error) return toolError('invalid_input', `split: ${errorText(out.error)}`);
                 splitSummary = out.result.summary;
             }
-            if (!Object.keys(patch).length && !splitSummary) return toolError('invalid_input', 'Nothing to change — pass cadence, horizonWeeks, sessionMinutes, rotationPolicy, paused, name, fixed or split.');
+            if (!Object.keys(patch).length && !splitSummary) return toolError('invalid_input', 'Nothing to change — pass cadence, horizonWeeks, sessionMinutes, rotationPolicy, varietyCadence, paused, name, fixed or split.');
             const nowIso = new Date().toISOString();
             if (Object.keys(patch).length) {
                 const ref = userDoc().collection('plan').doc('current');
@@ -2235,7 +2314,7 @@ function makeToolExecutors({ db, userId, source = 'chat', unit: rawUnit = 'lbs',
             await userDoc().collection('events').doc(id).set({ ...v.event, createdAt: new Date().toISOString(), source: 'chat' });
             return {
                 result: { eventId: id, ...v.event },
-                actionCard: { kind: 'event_added', name: v.event.name, summary: `${v.event.date} · ${v.event.kind === 'look' ? 'look my best' : v.event.kind}` },
+                actionCard: { kind: 'event_added', name: v.event.name, summary: v.event.kind === 'travel' ? `${v.event.date}${v.event.endDate !== v.event.date ? ` to ${v.event.endDate}` : ''} · trip · ${LEVEL_LABELS[v.event.level].toLowerCase()}` : `${v.event.date} · ${v.event.kind === 'look' ? 'look my best' : v.event.kind}` },
             };
         },
 

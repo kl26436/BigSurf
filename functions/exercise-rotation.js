@@ -16,6 +16,7 @@
 //   node scripts/sync-mirror.mjs js/core/features/exercise-rotation.js functions/exercise-rotation.js
 
 const { inferPattern, inferRole, patternsForEquipment } = require('./movement-patterns');
+const { genericFallbacks, IMPLEMENT_LABELS } = require('./gym-profile');
 
 const ROTATABLE_ROLES = new Set(['accessory', 'core']);
 
@@ -158,7 +159,7 @@ function atGymOf(equipment, location) {
  * @returns {{pattern:string|null, role:string|null, candidates:Array<{name:string, equipment:string,
  *   pattern:string, reason:string, lastUsed:string|null}>}}
  */
-function rankRotationCandidates({ exercise = null, pattern = null, equipment = [], location = null, lookup, exclude = [], limit = 5, slot = null, history = [], today = null } = {}) {
+function rankRotationCandidates({ exercise = null, pattern = null, equipment = [], location = null, lookup, exclude = [], limit = 5, slot = null, history = [], today = null, widen = false, level = null } = {}) {
     const row = exercise ? enrich({ ...(slot || {}), name: exercise }, lookup) : null;
     const p = pattern || (row ? inferPattern(row) : null);
     // TP-6 l — never offer back what this slot just moved off.
@@ -176,8 +177,38 @@ function rankRotationCandidates({ exercise = null, pattern = null, equipment = [
         candidates.push({
             name: c.exName, equipment: c.doc.name, pattern: p, reason: reasonFor(c.doc),
             lastUsed: c.doc.lastUsed ? String(c.doc.lastUsed).slice(0, 10) : null,
+            ...(widen ? { tier: 1 } : {}),
         });
         if (candidates.length >= limit) break;
+    }
+    // TP-7 — an unmapped machine is never a reason to drop an exercise. After
+    // what's remembered at this gym: (2) what's been used at another gym —
+    // the movement travels, the machine is picked there; (3) the movement on
+    // a generic implement the gym's level has. Neither names a machine.
+    if (widen && candidates.length < limit) {
+        if (location) {
+            const elsewhere = (equipment || []).filter(d => d?.name && !atGymOf([d], location).length);
+            for (const c of patternCandidates({ pattern: p, atGym: elsewhere, lookup, skipName: (k) => skip.has(k) })) {
+                const k = c.exName.toLowerCase();
+                if (seen.has(k)) continue;
+                seen.add(k);
+                const gym = (c.doc.locations || [])[0] || null;
+                candidates.push({
+                    name: c.exName, equipment: null, pattern: p, tier: 2, seenOn: c.doc.name,
+                    reason: `you've used ${c.doc.name}${gym ? ` at ${gym}` : ''} — pick the machine here`,
+                    lastUsed: c.doc.lastUsed ? String(c.doc.lastUsed).slice(0, 10) : null,
+                });
+                if (candidates.length >= limit) break;
+            }
+        }
+        for (const g of genericFallbacks(p, level || 'standard', { exclude: [...skip, ...seen] })) {
+            if (candidates.length >= limit) break;
+            seen.add(g.name.toLowerCase());
+            candidates.push({
+                name: g.name, equipment: null, pattern: p, tier: 3, implement: g.implement, unmapped: true,
+                reason: `${IMPLEMENT_LABELS[g.implement]} — pick the machine when you get there`, lastUsed: null,
+            });
+        }
     }
     return { pattern: p, role: row ? inferRole(row, 0) : null, candidates, excluded };
 }
@@ -359,4 +390,104 @@ function waitingSwaps(program, templates = []) {
     return out;
 }
 
-module.exports = { ROTATION_MEMORY_DAYS, rotationHistory, rotatedOutOf, rankRotationCandidates, selectRotation, applyRotation, resolveSwaps, waitingSwaps };
+// ── TP-8 — variety inside the plan: accessory slots that alternate ──────
+//
+// A template row may carry `alternates: [{ name, equipment?, equipmentId? }]`
+// (same movement, a different machine). The plan's `varietyCadence` says how
+// often a slot switches: 'biweekly' (A, A, B, B — the default: two shots at a
+// weight before switching), 'weekly' (A, B), or 'wave' (never inside a run of
+// weeks; rotation happens when the next weeks are set up). Main lifts never
+// vary. Every surface asks variantForWeek — the Plan page, the session start,
+// the coach — so they always agree.
+
+const VARIETY_CADENCES = ['biweekly', 'weekly', 'wave'];
+const DEFAULT_VARIETY_CADENCE = 'biweekly';
+
+/**
+ * Which version of a template row a plan week gets.
+ * @param {object} row - template row (machine|name, equipment, alternates?)
+ * @param {number|null} weekIndex - the program week, 1-based (null → the row as written)
+ * @param {string} [cadence]
+ * @param {number} [index] - the row's position (role inference)
+ * @returns {{name:string, equipment:string|null, equipmentId:string|null, variantIndex:number}}
+ */
+function variantForWeek(row, weekIndex, cadence = DEFAULT_VARIETY_CADENCE, index = 0) {
+    const base = { name: nameOf(row), equipment: row?.equipment || null, equipmentId: row?.equipmentId || null, variantIndex: 0 };
+    const alts = Array.isArray(row?.alternates) ? row.alternates.filter(a => a?.name) : [];
+    if (!alts.length || !Number.isInteger(weekIndex) || weekIndex < 1) return base;
+    if (!VARIETY_CADENCES.includes(cadence) || cadence === 'wave') return base;
+    if (inferRole(row, index) === 'primary') return base;
+    const period = cadence === 'weekly' ? 1 : 2;
+    const v = Math.floor((weekIndex - 1) / period) % (alts.length + 1);
+    if (v === 0) return base;
+    const alt = alts[v - 1];
+    return { name: alt.name, equipment: alt.equipment || null, equipmentId: alt.equipmentId || null, variantIndex: v };
+}
+
+/**
+ * A template's exercises as one plan week gets them: a row on its alternate
+ * takes that name and machine, keeps sets/reps, and drops the old machine's
+ * weight (its own history seeds it). `variantOf` names the row it stands in for.
+ */
+function resolveWeekExercises(exercises = [], weekIndex = null, cadence = DEFAULT_VARIETY_CADENCE) {
+    return (exercises || []).map((row, i) => {
+        const v = variantForWeek(row, weekIndex, cadence, i);
+        if (v.variantIndex === 0) return row;
+        const next = { ...row };
+        delete next.weight;
+        delete next.equipmentId;
+        delete next.alternates;
+        if ('machine' in next || !('name' in next)) next.machine = v.name;
+        if ('name' in next) next.name = v.name;
+        if (v.equipment) next.equipment = v.equipment; else delete next.equipment;
+        if (v.equipmentId) next.equipmentId = v.equipmentId;
+        next.variantOf = nameOf(row);
+        next.variantIndex = v.variantIndex;
+        return next;
+    });
+}
+
+/** The first plan week after `weekIndex` where this row switches version (null = it doesn't). */
+function nextSwitchWeek(row, weekIndex, cadence = DEFAULT_VARIETY_CADENCE, index = 0, maxWeeks = 16) {
+    if (!Number.isInteger(weekIndex)) return null;
+    const now = variantForWeek(row, weekIndex, cadence, index).variantIndex;
+    for (let w = weekIndex + 1; w <= weekIndex + maxWeeks; w++) {
+        const v = variantForWeek(row, w, cadence, index);
+        if (v.variantIndex !== now) return { week: w, name: v.name };
+    }
+    return null;
+}
+
+/**
+ * TP-8 — give every accessory slot that has none an alternate: the best
+ * same-movement candidate on a different machine (never what the slot just
+ * moved off, never another row of the same workout). Main lifts and
+ * secondaries are left alone. Returns a NEW array.
+ * @returns {{exercises: Array, filled: Array<{index:number, name:string, alternate:{name:string, equipment:string}}>}}
+ */
+function fillAlternates(exercises = [], { equipment = [], location = null, lookup, history = [], today = null, level = null, widen = false } = {}) {
+    const rows = exercises || [];
+    const taken = new Set(rows.flatMap(r => [nameOf(r), ...(r?.alternates || []).map(a => a?.name)]).filter(Boolean).map(n => n.toLowerCase()));
+    const filled = [];
+    const out = rows.map((row, index) => {
+        if (Array.isArray(row?.alternates) && row.alternates.length) return row;
+        const role = inferRole(enrich(row, lookup), index);
+        if (!ROTATABLE_ROLES.has(role)) return row;
+        const ranked = rankRotationCandidates({
+            exercise: nameOf(row), slot: row, equipment, location, lookup, history, today,
+            exclude: [...taken], limit: 8, widen, level,
+        });
+        // A machine at this gym first; with `widen`, the movement anyway (TP-7:
+        // plan what isn't mapped, adjust at the gym).
+        const pick = ranked.candidates.find(c => c.equipment && String(c.equipment).toLowerCase() !== String(row.equipment || '').toLowerCase())
+            || (widen ? ranked.candidates.find(c => !c.equipment) : null);
+        if (!pick) return row;
+        taken.add(pick.name.toLowerCase());
+        const alternate = pick.equipment ? { name: pick.name, equipment: pick.equipment } : { name: pick.name };
+        filled.push({ index, name: nameOf(row), alternate });
+        return { ...row, alternates: [alternate] };
+    });
+    return { exercises: out, filled };
+}
+
+module.exports = { ROTATION_MEMORY_DAYS, rotationHistory, rotatedOutOf, rankRotationCandidates, selectRotation, applyRotation, resolveSwaps, waitingSwaps, VARIETY_CADENCES, DEFAULT_VARIETY_CADENCE, variantForWeek, resolveWeekExercises, nextSwitchWeek, fillAlternates };

@@ -18,6 +18,7 @@
 
 const { isRecoveryWorkout } = require('./session-intent');
 const { buildExerciseSessions, fatigueState } = require('./progression');
+const { canonicalBodyPart, volumeGroup } = require('./exercise-taxonomy');
 
 const RULE_THRESHOLDS = {
     VOLUME_MEV: 8,              // Minimum Effective Volume (sets/muscle/week)
@@ -101,35 +102,19 @@ function normalizedWeight(set, displayUnit) {
 }
 
 /**
- * Map exercise name to body part using the exercise database.
- * Falls back to keyword matching if not found in database.
+ * The muscle group an exercise's weekly sets count against (LB-3): the one
+ * classifier in exercise-taxonomy.js, folded to its volume group — Calves
+ * and Abs are Legs and Core, Glutes count with Legs — so no muscle is held
+ * to the weekly minimum twice under two names.
+ * @param {string|object} exercise - a name, or a row/record (its own stored
+ *   bodyPart is read first)
+ * @param {Array} exerciseDatabase - the library (stored bodyPart by name)
+ * @returns {string|null} 'Chest' | 'Back' | 'Shoulders' | 'Arms' | 'Legs' | 'Core' | 'Cardio' | null
  */
-function getBodyPartForExercise(exerciseName, exerciseDatabase) {
-    if (!exerciseName) return null;
-
-    // Check database first
-    if (exerciseDatabase && exerciseDatabase.length > 0) {
-        const match = exerciseDatabase.find(
-            ex => (ex.name || ex.machine || '').toLowerCase() === exerciseName.toLowerCase()
-        );
-        if (match && match.bodyPart) return match.bodyPart;
-    }
-
-    // Keyword fallback. Order matters: specific words before the generic
-    // ones they collide with — "lateral raise" before back's "lat", and legs
-    // before the bare "press" (Leg Press used to count as shoulders).
-    const name = exerciseName.toLowerCase();
-    if (name.includes('bench') || name.includes('chest') || name.includes('fly') || name.includes('pec')) return 'Chest';
-    if (name.includes('shoulder') || name.includes('delt') || name.includes('lateral raise')) return 'Shoulders';
-    if (name.includes('row') || name.includes('pull') || name.includes('lat') || name.includes('back')) return 'Back';
-    if (name.includes('squat') || name.includes('leg') || name.includes('lunge') || name.includes('hamstring') || name.includes('quad') || name.includes('calf')) return 'Legs';
-    if (name.includes('press')) return 'Shoulders';
-    if (name.includes('bicep') || name.includes('curl') || name.includes('tricep') || name.includes('arm') || name.includes('extension')) return 'Arms';
-    if (name.includes('core') || name.includes('ab') || name.includes('crunch') || name.includes('plank')) return 'Core';
-    if (name.includes('deadlift')) return 'Back';
-    if (name.includes('glute') || name.includes('hip thrust')) return 'Glutes';
-
-    return null;
+function getBodyPartForExercise(exercise, exerciseDatabase) {
+    if (!exercise) return null;
+    const equipment = typeof exercise === 'object' ? exercise.equipment || null : null;
+    return volumeGroup(canonicalBodyPart(exercise, { library: exerciseDatabase, equipment }));
 }
 
 /**
@@ -159,7 +144,7 @@ function analyzeWeeklyVolume(workouts, exerciseDatabase, {
         if (!workout.exercises) continue;
 
         for (const exercise of withResolvedNames(workout)) {
-            const bodyPart = exercise.bodyPart || getBodyPartForExercise(exercise.name, exerciseDatabase);
+            const bodyPart = getBodyPartForExercise(exercise, exerciseDatabase);
             if (!bodyPart) continue;
 
             const completedSets = (exercise.sets || []).filter(s =>

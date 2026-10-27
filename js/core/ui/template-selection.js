@@ -1308,9 +1308,15 @@ function renderTemplateExerciseRow(ex, idx, total, templateId, isExpanded) {
     const rotatedChip = ex.rotatedFrom && rotatedFresh
         ? ` <span class="chip chip--sm te-row__rotated" title="Swapped in for these weeks"><i class="fas fa-rotate" aria-hidden="true"></i> was ${escapeHtml(ex.rotatedFrom)}${rotatedOn ? ` · ${escapeHtml(new Date(`${rotatedOn}T12:00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }))}` : ''}</span>`
         : '';
+    // TP-8 — a slot with an alternate says so ("alternates with Rope Face
+    // Pulls"); × removes it. It replaces the "was X" chip on that row.
+    const alternates = (ex.alternates || []).filter(a => a?.name);
+    const altChip = alternates.length
+        ? ` <span class="chip chip--sm te-row__rotated"><i class="fas fa-rotate" aria-hidden="true"></i> alternates with ${escapeHtml(alternates.map(a => a.name).join(', '))}<button type="button" class="te-row__alt-remove" data-action="removeTemplateAlternate" data-template-id="${escapeAttr(templateId)}" data-index="${idx}" aria-label="${escapeAttr(`Stop alternating ${exName}`)}"><i class="fas fa-times" aria-hidden="true"></i></button></span>`
+        : '';
     const summary = (equipment
         ? `${sets} × ${reps} · ${escapeHtml(equipment)}`
-        : `${sets} × ${reps}${weight ? ` · ${weight} ${unit}` : ''}`) + rotatedChip;
+        : `${sets} × ${reps}${weight ? ` · ${weight} ${unit}` : ''}`) + (altChip || rotatedChip);
 
     // Real tap targets around each value (mockup: workout-editor-ergonomics).
     // Tap the value itself for keyboard entry; +/− for one-handed adjustment.
@@ -1674,6 +1680,22 @@ export async function removeTemplateExerciseInline(templateId, index) {
     refreshEditorOrList();
 }
 
+/** TP-8 — stop a slot alternating: the row stays, its alternates go. */
+export async function removeTemplateAlternateInline(templateId, index) {
+    const template = loadedTemplates.find(t => t._id === templateId);
+    if (!template) return;
+    const exercises = normalizeExercisesToArray(template.exercises);
+    const row = exercises[index];
+    if (!row?.alternates?.length) return;
+    const rest = { ...row };
+    delete rest.alternates;
+    exercises[index] = rest;
+    template.exercises = exercises;
+    await saveTemplateInline(template, exercises);
+    showNotification(`${getExerciseName(row)} stays every week`, 'success', 1500);
+    refreshEditorOrList();
+}
+
 /** Set up event delegation on the template list container */
 function setupSelectorDelegation(container) {
     if (!container || delegatedContainers.has(container)) return;
@@ -1698,6 +1720,8 @@ function setupSelectorDelegation(container) {
                 moveTemplateExerciseInline(templateId, index, 'down');
             } else if (action === 'removeTemplateExercise') {
                 removeTemplateExerciseInline(templateId, index);
+            } else if (action === 'removeTemplateAlternate') {
+                removeTemplateAlternateInline(templateId, index);
             } else if (action === 'addTemplateExercise') {
                 openAddExerciseSheetForTemplate(templateId);
             } else if (action === 'duplicateTemplate') {

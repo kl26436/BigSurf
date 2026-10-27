@@ -24,8 +24,10 @@ import { composeEquipmentName } from '../utils/equipment-name.js';
 import { suggestedBaseWeight } from '../data/equipment-create.js';
 import { resolveLocationId } from '../data/location-id-resolver.js';
 import { normalizeEquipName } from '../data/equipment-id-resolver.js';
-import { unmappedEquipment, lineGaps, branchScouting, PATTERN_LABELS } from '../features/equipment-discovery.js';
+import { unmappedEquipment, lineGaps, branchScouting } from '../features/equipment-discovery.js';
+import { BODY_PARTS, canonicalBodyPart, movementLabel, labelLine } from '../features/exercise-taxonomy.js';
 import { patternsForEquipment } from '../features/movement-patterns.js';
+import { once } from './busy.js';
 
 let workoutManager = null;
 let allEquipment = [];
@@ -127,26 +129,24 @@ const BODY_PART_CONFIG = {
     'Shoulders': { icon: 'fas fa-arrow-up',             color: 'var(--cat-push)' },
     'Arms':      { icon: 'fas fa-hand-rock',            color: 'var(--cat-pull)' },
     'Legs':      { icon: 'fas fa-shoe-prints',          color: 'var(--cat-legs)' },
+    'Glutes':    { icon: 'fas fa-person-running',       color: 'var(--cat-legs)' },
     'Core':      { icon: 'fas fa-bullseye',             color: 'var(--cat-core)' },
     'Cardio':    { icon: 'fas fa-heartbeat',            color: 'var(--danger)' },
     'Multi-Use': { icon: 'fas fa-th',                   color: 'var(--text-secondary)' },
 };
 
-const BODY_PART_ORDER = ['Chest', 'Back', 'Shoulders', 'Arms', 'Legs', 'Core', 'Cardio', 'Multi-Use'];
+// LB-3 — the eight body parts from the one taxonomy, plus the catalog's
+// catch-all for machines that train several.
+const BODY_PART_ORDER = [...BODY_PARTS, 'Multi-Use'];
 
 /**
- * Classify an exercise name into a body part group.
+ * Body-part group for an exercise NAME. LB-3: the one classifier
+ * (exercise-taxonomy.js) reading the library's stored label first — the old
+ * local regex filed leg curls and the glute kickback under Arms ("curl",
+ * "kickback"), the reverse pec deck under Chest and "cable" under Core.
  */
-function classifyExerciseBodyPart(exerciseName) {
-    const name = exerciseName.toLowerCase();
-    if (/chest press|bench press|pec deck|pec fly|fly.*chest|incline press|decline press|push.?up|dips.*press|chest/.test(name)) return 'Chest';
-    if (/row|lat pull|pull.?down|pull.?up|chin.?up|deadlift|back ext|reverse fly|shrug|face pull/.test(name)) return 'Back';
-    if (/shoulder press|overhead press|military press|lateral raise|front raise|rear delt|arnold|upright row/.test(name)) return 'Shoulders';
-    if (/curl|tricep|bicep|pushdown|skull crush|hammer curl|preacher|dip(?!.*press)|kickback|extension.*arm/.test(name)) return 'Arms';
-    if (/squat|leg press|leg curl|leg ext|lunge|calf|glute|hip|hamstring|quad|romanian|hack squat|step.?up/.test(name)) return 'Legs';
-    if (/ab|crunch|plank|sit.?up|core|oblique|wood.?chop|cable twist|russian twist|hanging leg/.test(name)) return 'Core';
-    if (/treadmill|bike|elliptical|rower|run|sprint|stair|jump rope|cardio/.test(name)) return 'Cardio';
-    return 'Multi-Use';
+function exerciseBodyPartGroup(exerciseName) {
+    return canonicalBodyPart(exerciseName, { library: AppState.exerciseDatabase || [] }) || 'Multi-Use';
 }
 
 /**
@@ -165,7 +165,7 @@ function buildEquipmentHierarchy(equipment) {
 
     const hierarchy = {};
     for (const [exName, equips] of Object.entries(exerciseToEquipment)) {
-        const bodyPart = classifyExerciseBodyPart(exName);
+        const bodyPart = exerciseBodyPartGroup(exName);
         if (!hierarchy[bodyPart]) hierarchy[bodyPart] = {};
         hierarchy[bodyPart][exName] = equips;
     }
@@ -755,7 +755,12 @@ export function exitScanReview() {
 }
 
 /** Create an equipment doc for a discovered name, then refresh + remove from list. */
-export async function addUnlinkedEquipment(name) {
+/** Single-flight (busy.js): a second tap while this runs is ignored. */
+export function addUnlinkedEquipment(...args) {
+    return once('equipment-add-unlinked', () => addUnlinkedEquipmentNow(...args));
+}
+
+async function addUnlinkedEquipmentNow(name) {
     try {
         const result = await getManager().getOrCreateEquipment(name);
         if (result) {
@@ -1110,11 +1115,11 @@ function gatherGymEquipment(gymName, locationId) {
 
 /**
  * Determine an equipment record's primary body part. Uses the first exercise
- * type as a hint (via classifyExerciseBodyPart) and falls back to Multi-Use.
+ * type as a hint (via exerciseBodyPartGroup) and falls back to Multi-Use.
  */
 function inferBodyPartFromEquipment(eq) {
     if (Array.isArray(eq.exerciseTypes) && eq.exerciseTypes.length > 0) {
-        return classifyExerciseBodyPart(eq.exerciseTypes[0]);
+        return exerciseBodyPartGroup(eq.exerciseTypes[0]);
     }
     return 'Multi-Use';
 }
@@ -1516,7 +1521,10 @@ function renderQuickAddBody() {
     const grouped = filterQuickAddCatalog();
     const totalResults = [...grouped.values()].reduce((s, list) => s + list.length, 0);
 
-    const bpChips = ['All', ...BODY_PART_ORDER];
+    // Only body parts the catalog has machines for (it files glute machines
+    // under Legs, so a Glutes chip here would always be empty).
+    const catalogParts = new Set((quickAddState.allMachines || []).map((m) => m.bodyPart));
+    const bpChips = ['All', ...BODY_PART_ORDER.filter((bp) => catalogParts.has(bp) || bp === bpFilter)];
     const chipsHTML = `
         <div class="chips qa-sheet__bp-chips" id="qa-bp-chips">
             ${bpChips.map((bp) => `
@@ -2161,7 +2169,12 @@ function renderMyGymsTab() {
  * one up to tag equipment to it before training there. Name-only; GPS gets
  * stamped naturally on the first workout at that gym.
  */
-export async function addGymPrompt() {
+/** Single-flight (busy.js): a second tap while this runs is ignored. */
+export function addGymPrompt(...args) {
+    return once('gym-add-prompt', () => addGymPromptNow(...args));
+}
+
+async function addGymPromptNow() {
     const name = await promptSheet({
         title: 'Add a gym',
         placeholder: "e.g. Gold's Gym Downtown",
@@ -2519,7 +2532,7 @@ function renderBranchScoutingCard() {
     const { homeGym, gaps } = branchScouting(allEquipment, null, { patternsFor: (doc) => patternsForEquipment(doc) });
     if (!gaps.length || !homeGym) return '';
     const g = gaps[0];
-    const label = PATTERN_LABELS[g.pattern] || g.pattern;
+    const label = movementLabel(g.pattern).toLowerCase() || g.pattern;
     const homeTxt = g.home === 0 ? `${escapeHtml(homeGym)} has none` : `${escapeHtml(homeGym)} has ${g.home}`;
     return `
         <div class="eq-discover eq-discover--scout" onclick="discoveryScoutGym('${escapeAttr(g.gym)}')" role="button" tabindex="0">
@@ -3053,6 +3066,9 @@ export async function openEquipmentDetail(equipmentId, { fromElsewhere = false }
     const typeInfo = EQUIPMENT_TYPE_ICONS[equipment.equipmentType] || EQUIPMENT_TYPE_ICONS.Other;
     const exercises = (equipment.exerciseTypes || []).map(name => ({
         name,
+        // LB-4 — "Glutes · Hinge": this machine decides the movement (a back
+        // extension on a 45° bench is a hinge).
+        labels: labelLine(name, { library: AppState.exerciseDatabase || [], equipment }),
         ...findEquipmentExerciseVideo(equipment, name),
     }));
     const locations = equipment.locations || [];
@@ -3177,7 +3193,7 @@ export async function openEquipmentDetail(equipmentId, { fromElsewhere = false }
                          onclick="openEquipmentExerciseSheet('${escapeAttr(equipmentId)}', '${escapeAttr(ex.name)}')" aria-haspopup="dialog">
                         <div class="row-card__content">
                             <div class="row-card__title">${escapeHtml(ex.name)}</div>
-                            <div class="row-card__subtitle">${ex.override ? 'Custom form video' : (ex.inherited ? 'Form video ready' : 'No form video')}</div>
+                            <div class="row-card__subtitle">${escapeHtml([ex.labels, ex.override ? 'Custom form video' : (ex.inherited ? 'Form video ready' : 'No form video')].filter(Boolean).join(' · '))}</div>
                         </div>
                         <div class="equip-rc-trail">
                             ${ex.effective ? `<button class="equip-rc-trail__play"
@@ -3637,7 +3653,12 @@ export async function saveEquipmentExerciseVideoFromLib(equipmentId, exerciseNam
     }
 }
 
-export async function deleteEquipmentFromLibrary(equipmentId) {
+/** Single-flight (busy.js): a second tap while this runs is ignored. */
+export function deleteEquipmentFromLibrary(...args) {
+    return once('equipment-delete', () => deleteEquipmentFromLibraryNow(...args));
+}
+
+async function deleteEquipmentFromLibraryNow(equipmentId) {
     const equipment = allEquipment.find(e => e.id === equipmentId);
     const confirmed = await confirmSheet({
         title: `Delete "${equipment?.name || 'this equipment'}"?`,
@@ -4291,7 +4312,12 @@ export function addFlowSetName(value) {
     if (hint) hint.hidden = addFlowState.name !== null;
 }
 
-export async function confirmAddEquipment(addAnother = false) {
+/** Single-flight (busy.js): a second tap while this runs is ignored. */
+export function confirmAddEquipment(...args) {
+    return once('equipment-add', () => confirmAddEquipmentNow(...args));
+}
+
+async function confirmAddEquipmentNow(addAnother = false) {
     const { brand, line, func, type } = addFlowState;
     const cleanFunc = (func || '').trim();
 

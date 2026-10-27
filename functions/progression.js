@@ -127,6 +127,9 @@ function buildExerciseSessions(allWorkouts, exName, displayUnit, { excludeRecove
             // AU-12 — one machine's series: a High Row at 320 and a
             // Convergent at 90 are not one lift's history.
             if (machine && !sameMachine(machine.name, machine.id, ex)) continue;
+            // TP-7 c — a session on a trip (hotel gym, someone else's machines)
+            // isn't this lift's history unless it was the same machine.
+            if (w.sessionIntent?.travel && !(machine && ex.equipment)) continue;
             if (ex.equipment) machinesSeen.add(machineKey(ex.equipment));
             const working = (ex.sets || []).filter(s =>
                 s && s.completed !== false && s.weight && (s.type || 'working') !== 'warmup');

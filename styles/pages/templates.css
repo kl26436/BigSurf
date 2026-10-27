@@ -464,6 +464,16 @@
     vertical-align: middle;
     margin-left: var(--space-4);
 }
+/* TP-8 — × on the "alternates with" chip */
+.te-row__alt-remove {
+    margin-left: var(--space-4);
+    padding: 0 var(--space-4);
+    background: none;
+    border: none;
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+}
 
 /* Phase 7 — async-hydrated last-session line under .te-row__meta. The element
    is rendered with [data-pending]; hydrateLastSession() fills it (or removes

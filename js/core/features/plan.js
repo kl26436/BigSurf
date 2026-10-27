@@ -194,3 +194,20 @@ export async function undoSwapInTemplate(templateId, done, program = null) {
     clearPlanCache();
     return true;
 }
+
+/**
+ * TP-8 — give one plan-workout row an alternate (the plan switches between
+ * them on its varietyCadence), or put the row back as it was (`restore`).
+ * Returns what undo needs, or null.
+ */
+export async function setAlternate(templateId, index, alternate, { restore = null } = {}) {
+    const t = (AppState.workoutPlans || []).find(x => x.id === templateId);
+    const row = t?.exercises?.[index];
+    if (!uid() || !row) return null;
+    const exercises = [...t.exercises];
+    exercises[index] = restore || { ...row, alternates: alternate ? [{ name: alternate.name, ...(alternate.equipment ? { equipment: alternate.equipment } : {}) }] : [] };
+    await setDoc(doc(db, 'users', uid(), 'workoutTemplates', templateId), { exercises, lastUpdated: new Date().toISOString() }, { merge: true });
+    t.exercises = exercises;
+    clearPlanCache();
+    return { prior: row, index };
+}

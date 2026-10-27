@@ -67,7 +67,7 @@ function cadenceKind(i, cadence) {
  * @returns {Array<{weekStart: string, kind: string, event: object|null}>}
  */
 function projectKinds(start, count, cadence, events = [], { offset = 0 } = {}) {
-    const windows = (events || []).filter(e => e?.date).map((e) => {
+    const windows = (events || []).filter(e => e?.date && e.kind !== 'travel').map((e) => {
         const eventMonday = mondayOf(e.date);
         const peakWeeks = Number.isInteger(e.peakWeeks) ? e.peakWeeks : 2;
         return {
@@ -202,7 +202,10 @@ function buildPlanTimeline({
     }
     for (const e of events || []) {
         const w = e?.date && weekOf(e.date);
-        if (w) w.markers.push({ type: 'event', label: `${e.name} · ${shortDate(e.date)}` });
+        if (!w) continue;
+        // TP-7 c — a trip shows its dates ("Bellagio · Nov 1–2").
+        const range = e.kind === 'travel' && e.endDate && e.endDate !== e.date ? `${shortDate(e.date)}–${shortDate(e.endDate)}` : shortDate(e.date);
+        w.markers.push({ type: e.kind === 'travel' ? 'travel' : 'event', label: `${e.name} · ${range}` });
     }
 
     const current = weeks.find(w => w.state === 'current') || null;

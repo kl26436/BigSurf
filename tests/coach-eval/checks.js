@@ -234,7 +234,22 @@ export function runChecks(scenario, run) {
             !c ? 'no create_program' : [lost.length ? `lost: ${lost.join(', ')}` : '', claimed.length ? `called done: ${claimed.join(', ')}` : ''].filter(Boolean).join('; ') || `${(rot.applied || []).length} applied`);
     }
 
-    if (expect.askOrBuild) {
+    // TP-7 c — a trip goes on the plan as a travel event (dates + the gym's size).
+    if (expect.travelEvent) {
+        const c = calls.find(x => x.name === 'add_event' && !x.isError);
+        check('travel-event', c?.input?.kind === 'travel', c ? `kind ${c.input?.kind}` : 'no add_event');
+    }
+
+    // TP-8 — variety is alternation inside the plan: create_program set up
+    // alternates (not a replacement list) and the main lifts kept their slots.
+    if (expect.alternates) {
+        const c = calls.find(x => x.name === 'create_program' && !x.isError);
+        const pairs = c?.output?.alternates || [];
+        check('alternates-set', !!c && c.input?.alternateAccessories === true && pairs.length > 0,
+            !c ? 'no create_program' : c.input?.alternateAccessories !== true ? 'alternateAccessories not set' : `${pairs.length} pairs`);
+    }
+
+        if (expect.askOrBuild) {
         const { tool, check: ok } = expect.askOrBuild;
         const c = calls.find(x => x.name === tool && !x.isError);
         check('asks-or-builds', c ? ok(c.input) : /\?/.test(text), c ? `${tool} input ${ok(c.input) ? 'ok' : 'incomplete'}` : 'asked a question');

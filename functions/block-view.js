@@ -16,6 +16,7 @@ const { deriveProgramWeek, describeWeekTarget, isDeloadTarget } = require('./wee
 const { weekKindLabel } = require('./plain-language');
 const { inferRole } = require('./movement-patterns');
 const { convertToUnit } = require('./coach-outcomes');
+const { resolveWeekExercises, nextSwitchWeek, DEFAULT_VARIETY_CADENCE } = require('./exercise-rotation');
 
 const DAY_KEYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
 const DAY_LABELS = { mon: 'Mon', tue: 'Tue', wed: 'Wed', thu: 'Thu', fri: 'Fri', sat: 'Sat', sun: 'Sun' };
@@ -204,14 +205,18 @@ function buildBlockModel({
  * One cell's session in full: every exercise of the workout with that
  * week's target, and — for a done cell — what was logged.
  */
-function buildBlockSession({ cell, template, workouts = [], program, override = null, unit = 'lbs', plates = null }) {
+function buildBlockSession({ cell, template, workouts = [], program, override = null, unit = 'lbs', plates = null, week = null, cadence = DEFAULT_VARIETY_CADENCE }) {
     const u = unit === 'kg' ? 'kg' : 'lbs';
     const inc = weightIncrement(u, plates);
     const done = (workouts || []).filter(w => w?.date && w.completedAt && !w.cancelledAt);
     const logged = cell?.workoutId ? done.find(w => w.id === cell.workoutId) : null;
     const date = cell?.doneOn || cell?.date;
     const primaryName = norm(primaryOf(template) ? nameOf(primaryOf(template)) : '');
-    return (template?.exercises || []).map((ex) => {
+    // TP-8 — the week's version of each accessory (an alternate takes the
+    // slot on the plan's cadence), and when it switches next.
+    const rows = template?.exercises || [];
+    const resolved = resolveWeekExercises(rows, week, cadence);
+    return resolved.map((ex, i) => {
         const name = nameOf(ex);
         return {
             name,
@@ -219,6 +224,8 @@ function buildBlockSession({ cell, template, workouts = [], program, override = 
             sets: Number(ex.sets) || 3,
             target: targetFor({ ex, date, workouts: done, program, override, unit: u, inc }),
             logged: logged ? topSetIn(logged, name, u) : null,
+            variantOf: ex.variantOf || null,
+            next: nextSwitchWeek(rows[i], week, cadence, i),
         };
     }).filter(r => r.name);
 }

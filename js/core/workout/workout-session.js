@@ -91,6 +91,15 @@ async function stampSessionIntent({ freestyle = false } = {}) {
             sessionLabel: AppState.savedData.sessionLabel || null,
             freestyle,
         });
+        // TP-7 c — on a trip: the session counts as showing up, but stays out
+        // of the main lifts' trends (progression.js) unless it's the same machine.
+        try {
+            const [{ loadPlanSummary }, { travelOn }] = await Promise.all([
+                import('../features/plan.js'), import('../features/gym-profile.js'),
+            ]);
+            const trip = travelOn(AppState.savedData.date, (await loadPlanSummary()).events || []);
+            if (trip) intent.travel = { name: trip.name, level: trip.level || 'hotel' };
+        } catch { /* no events — a plain session */ }
         AppState.savedData.sessionIntent = intent;
         if (intent.mode === 'deload') {
             if (!AppState.savedData.sessionLabel) AppState.savedData.sessionLabel = intent.label || 'Lighter week';
@@ -205,6 +214,11 @@ export async function startWorkout(workoutType) {
         showNotification(`Workout "${workoutType}" not found. It may have been deleted.`, 'error');
         return;
     }
+
+    // TP-8 — this plan week's version of each accessory (alternates switch on
+    // the plan's cadence; main lifts never). The saved workout is untouched;
+    // each version keeps its own history, so the set rows seed from it.
+    workout = await resolveForPlanWeek(workout);
 
     // F4: count equipment mapped (created / gym-tagged) during this session
     // for the completion payoff line. Reset before the substitution sheet —
@@ -1125,6 +1139,34 @@ export function showWorkoutSummary(workoutData, newPRs = [], templateChanges = n
     });
 }
 
+/**
+ * TP-8 — a workout started from the plan gets that week's alternates.
+ * Anything missing (no program, no plan, no alternates) → the workout as written.
+ */
+async function resolveForPlanWeek(workout) {
+    try {
+        const rows = workout?.exercises || [];
+        if (!rows.some(r => Array.isArray(r?.alternates) && r.alternates.length)) return workout;
+        if (AppState._activeProgram === undefined) {
+            const { loadActiveProgram } = await import('../features/program-session.js');
+            await loadActiveProgram();
+        }
+        const program = AppState._activeProgram;
+        if (!program?.startDate) return workout;
+        const { deriveProgramWeek } = await import('../features/week-targets.js');
+        const { week, finished } = deriveProgramWeek(program, AppState.getTodayDateString());
+        if (finished) return workout;
+        const [{ loadPlanSummary }, { resolveWeekExercises, DEFAULT_VARIETY_CADENCE }] = await Promise.all([
+            import('../features/plan.js'), import('../features/exercise-rotation.js'),
+        ]);
+        const { plan } = await loadPlanSummary();
+        return { ...workout, exercises: resolveWeekExercises(rows, week, plan?.varietyCadence || DEFAULT_VARIETY_CADENCE) };
+    } catch (e) {
+        console.error('❌ Plan-week variants skipped (workout as written):', e);
+        return workout;
+    }
+}
+
 async function updateExistingTemplate(workoutData) {
     if (!workoutData.templateId || !AppState.currentUser) return;
 
@@ -1132,11 +1174,19 @@ async function updateExistingTemplate(workoutData) {
         const { FirebaseWorkoutManager } = await import('../data/firebase-workout-manager.js');
         const workoutManager = new FirebaseWorkoutManager(AppState);
 
+        // The saved rows keep what this rebuild doesn't know about (main-lift
+        // role, movement, swap history, TP-8 alternates). A row done on this
+        // week's alternate goes back to its slot as written — only its sets
+        // and reps update — so "Update workout" never collapses an alternation.
+        const storedRows = (AppState.workoutPlans || []).find(t => t.id === workoutData.templateId)?.exercises || [];
+        const storedOf = (n) => storedRows.find(r => (r?.machine || r?.name) === n) || null;
+
         // Build updated template from actual workout performance
         const exercises = (workoutData.originalWorkout?.exercises || []).map((ex, i) => {
             const key = `exercise_${i}`;
             const actual = workoutData.exercises?.[key];
             const name = ex.machine || ex.name || workoutData.exerciseNames?.[key] || 'Unknown';
+            const stored = storedOf(ex.variantOf || name);
 
             let sets = ex.sets || 3;
             let reps = ex.reps || 10;
@@ -1150,10 +1200,12 @@ async function updateExistingTemplate(workoutData) {
                 if (lastSet?.weight) weight = lastSet.weight;
             }
 
-            return {
+            if (ex.variantOf && stored) return { ...stored, sets, reps };
+            const row = {
+                ...(stored || {}),
                 machine: name,
                 name: name,
-                bodyPart: ex.bodyPart || '',
+                bodyPart: ex.bodyPart || stored?.bodyPart || '',
                 equipment: actual?.equipment || ex.equipment || '',
                 equipmentLocation: ex.equipmentLocation || '',
                 sets,
@@ -1161,6 +1213,9 @@ async function updateExistingTemplate(workoutData) {
                 weight,
                 video: ex.video || '',
             };
+            // A different machine today: the stored machine's id isn't this one's.
+            if (stored && row.equipment !== (stored.equipment || '')) delete row.equipmentId;
+            return row;
         });
 
         await workoutManager.updateWorkoutTemplate(workoutData.templateId, {

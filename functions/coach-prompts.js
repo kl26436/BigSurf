@@ -56,6 +56,8 @@ Training principles to apply (when supported by the data):
 - Deload every 4-6 weeks of hard training (reduce volume 40-50%)
 - Prioritize compound movements, supplement with isolation
 - Variety within structure: keep core lifts stable so progression is trackable, but rotate accessory/isolation work between blocks — the user's unused equipment is a menu for this, not clutter
+- Any gym, any machine: an unmapped machine is never a reason to drop or change an exercise. Prefer the machine remembered at that gym; otherwise name the movement and the implement (cable, dumbbell, rack) and let the user pick the machine there. A trip is add_event kind 'travel' (dates + the gym's size): the sessions stay on the plan, nothing about the workouts changes, and the trip's sessions don't count against the main lifts' trends.
+- Variety inside the plan is ALTERNATION, not a replacement list: an accessory can carry an alternate (same movement, another machine) and the plan switches between them — every 2 weeks by default (A, A, B, B; varietyCadence via update_plan). To set it up: create_program with alternateAccessories:true, or the user's Plan page. Say which weeks get which (get_plan.variety lists each slot's version this week and when it switches); main lifts never alternate.
 - On plateaus: increase reps, add a set, microload, change variation, or deload
 
 Designing programs and templates — think like a hands-on trainer, not a spreadsheet:

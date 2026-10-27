@@ -4,6 +4,7 @@ import { getDateString } from '../utils/date-helpers.js';
 import { getExerciseName, formatStatus, formatCategory, CATEGORY_LABELS } from '../utils/workout-helpers.js';
 import { debugLog, CATEGORY_ICONS } from '../utils/config.js';
 import { classifyBodyPart } from '../features/metrics/aggregators.js';
+import { DASHBOARD_BODY_PARTS } from '../features/exercise-taxonomy.js';
 import { confirmSheet } from '../ui/confirm-sheet.js';
 
 export function getWorkoutHistory(appState) {
@@ -709,7 +710,7 @@ export function getWorkoutHistory(appState) {
             });
 
             // Canonical display order (matches the dashboard's body-part cards).
-            const ORDER = ['chest', 'back', 'legs', 'shoulders', 'arms', 'core'];
+            const ORDER = DASHBOARD_BODY_PARTS;
             const groups = ORDER.filter(bp => present.has(bp));
 
             let html = '<option value="">All muscle groups</option>';

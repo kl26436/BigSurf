@@ -72,6 +72,8 @@
         <link rel="modulepreload" href="js/core/features/session-intent.js">
         <link rel="modulepreload" href="js/core/features/coach-outcomes.js">
         <link rel="modulepreload" href="js/core/features/progression.js">
+        <link rel="modulepreload" href="js/core/features/movement-patterns.js">
+        <link rel="modulepreload" href="js/core/features/exercise-taxonomy.js">
         <link rel="modulepreload" href="js/core/features/training-rules.js">
         <link rel="modulepreload" href="js/core/utils/config.js">
         <link rel="modulepreload" href="js/core/utils/rest-display-manager.js">
@@ -97,9 +99,9 @@
         <link rel="modulepreload" href="js/core/data/equipment-create.js">
         <link rel="modulepreload" href="js/core/data/firebase-workout-manager.js">
         <link rel="modulepreload" href="js/core/ui/sheet.js">
-        <link rel="modulepreload" href="js/core/features/movement-patterns.js">
         <link rel="modulepreload" href="js/core/utils/template-helpers.js">
         <link rel="modulepreload" href="js/core/features/location-service.js">
+        <link rel="modulepreload" href="js/core/ui/busy.js">
         <link rel="modulepreload" href="js/core/features/equipment-planner.js">
         <link rel="modulepreload" href="js/core/workout/workout-management-ui.js">
         <link rel="modulepreload" href="js/core/app-initialization.js">
@@ -111,6 +113,7 @@
         <link rel="modulepreload" href="js/core/ui/settings-ui.js">
         <link rel="modulepreload" href="js/core/features/first-use-tips.js">
         <link rel="modulepreload" href="js/core/features/coach-markdown.js">
+        <link rel="modulepreload" href="js/core/features/gym-profile.js">
         <link rel="modulepreload" href="js/core/features/exercise-rotation.js">
         <link rel="modulepreload" href="js/core/features/superset-manager.js">
         <link rel="modulepreload" href="js/core/data/session-cache.js">
@@ -162,7 +165,6 @@
         <link rel="modulepreload" href="js/core/ui/error-log-ui.js">
         <link rel="modulepreload" href="js/core/features/streak-tracker.js">
         <link rel="modulepreload" href="js/core/features/stats-tracker.js">
-        <link rel="modulepreload" href="js/core/ui/busy.js">
         <link rel="modulepreload" href="js/core/features/metrics/range-filter.js">
         <link rel="modulepreload" href="js/core/features/charts/chart-sparkline.js">
         <link rel="modulepreload" href="js/core/features/charts/chart-line.js">
@@ -882,17 +884,17 @@
                         <i class="fas fa-person-walking category-icon"></i>
                         <span class="category-name">Legs</span>
                     </div>
+                    <div class="category-card" onclick="selectBodyPartCategory('Glutes')">
+                        <i class="fas fa-person-running category-icon"></i>
+                        <span class="category-name">Glutes</span>
+                    </div>
                     <div class="category-card" onclick="selectBodyPartCategory('Shoulders')">
                         <i class="fas fa-expand category-icon"></i>
                         <span class="category-name">Shoulders</span>
                     </div>
-                    <div class="category-card" onclick="selectBodyPartCategory('Biceps')">
+                    <div class="category-card" onclick="selectBodyPartCategory('Arms')">
                         <i class="fas fa-hand-fist category-icon"></i>
-                        <span class="category-name">Biceps</span>
-                    </div>
-                    <div class="category-card" onclick="selectBodyPartCategory('Triceps')">
-                        <i class="fas fa-hand-point-down category-icon"></i>
-                        <span class="category-name">Triceps</span>
+                        <span class="category-name">Arms</span>
                     </div>
                     <div class="category-card" onclick="selectBodyPartCategory('Core')">
                         <i class="fas fa-circle-dot category-icon"></i>
@@ -929,6 +931,9 @@
                         oninput="filterExerciseLibrary()"
                     />
                 </div>
+
+                <!-- LB-4: Movement filter (Hinge, Squat, Curl…) — rendered by exercise-manager-ui.js -->
+                <div id="exercise-movement-chips" class="chips exercise-movement-chips hidden" aria-label="Filter by movement"></div>
 
                 <!-- Equipment Filter Pills -->
                 <div class="equipment-filter-pills">

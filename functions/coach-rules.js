@@ -203,6 +203,7 @@ function computeVerdicts({
         scoreboard: buildScoreboard({
             workouts: done, templates, unit: u, today,
             config: { patternTarget: t.PATTERN_TARGET_SETS, mrv: t.VOLUME_MRV, increment },
+            library: exerciseDatabase,
         }),
     };
 }

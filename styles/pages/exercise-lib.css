@@ -201,6 +201,13 @@
 }
 /* .filter-pill canonical definition lives in styles/utilities.css */
 
+/* LB-4 — Movement filter strip above the equipment pills (chips from chips.css) */
+.exercise-movement-chips {
+    flex-shrink: 0;
+    padding: var(--space-4) var(--pad-page) 0;
+    scrollbar-width: none;
+}
+
 /* ===========================================
    WORKOUT LIBRARY (Category Grid + List View)
    =========================================== */

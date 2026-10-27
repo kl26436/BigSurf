@@ -214,7 +214,7 @@ export function programShapeIssues({ weeks, weekTargets = [], split = null, temp
             const freq = Object.fromEntries(MAJOR_PARTS.map(p => [p, 0]));
             for (const id of days) {
                 const parts = new Set((byId.get(id).exercises || [])
-                    .map(e => e?.bodyPart || getBodyPartForExercise(e?.machine || e?.name, exerciseDatabase))
+                    .map(e => getBodyPartForExercise(e, exerciseDatabase))
                     .filter(Boolean));
                 for (const p of parts) if (p in freq) freq[p] += 1;
             }
