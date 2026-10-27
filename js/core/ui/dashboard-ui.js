@@ -4,7 +4,6 @@
 import { StatsTracker } from '../features/stats-tracker.js';
 import { showNotification, setHeaderMode, escapeHtml, escapeAttr, convertWeight } from './ui-helpers.js';
 import { once } from './busy.js';
-import { confirmSheet } from './confirm-sheet.js';
 import { openSheet, closeSheet } from './sheet.js';
 import { setBottomNavVisible, updateBottomNavActive } from './navigation.js';
 import { PRTracker } from '../features/pr-tracker.js';
@@ -146,9 +145,6 @@ async function renderDashboard() {
         const weekPace = computeWeekPace(allWorkouts);
         const weeklyGoal = AppState.settings?.weeklyGoal || 5;
         const streakDays = streaks?.currentStreak || 0;
-
-        const resumeBanner = document.getElementById('resume-workout-banner');
-        if (resumeBanner) resumeBanner.classList.add('hidden');
 
         const hasWorkouts = streaks && streaks.totalWorkouts > 0;
 
@@ -1775,19 +1771,11 @@ export function resumeActiveWorkout() {
 }
 
 export async function confirmCancelActiveWorkout() {
-    const confirmed = await confirmSheet({
-        title: 'Cancel this workout?',
-        message: 'Logged sets are saved as an incomplete entry.',
-        confirmLabel: 'Cancel workout',
-        cancelLabel: 'Keep going',
-        destructive: true,
-    });
-    if (!confirmed) return;
+    // cancelWorkout() owns the confirm and its one sentence (UD-2).
+    const cancelled = await window.cancelWorkout?.();
+    if (!cancelled) return;
     stopPillTimer();
     document.getElementById('active-workout-pill')?.remove();
-    // Pass true so cancelWorkout() doesn't show a second confirm dialog —
-    // the pill button already confirmed once.
-    window.cancelWorkout?.(true);
 }
 
 export async function startWorkoutFromHistory(workoutId) {

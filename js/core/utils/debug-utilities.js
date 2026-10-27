@@ -461,11 +461,6 @@ export function setupErrorLogging() {
 export function cleanupTempData() {
     console.log('🧹 Cleaning up temporary data...');
 
-    // Clear any temporary global variables
-    if (window.showingProgressPrompt) {
-        window.showingProgressPrompt = false;
-    }
-
     // Clear any debug intervals or timeouts
     // (This would clear any debug timers that might be running)
 
@@ -479,7 +474,6 @@ export function resetAppState() {
 
     // Clear any global state
     window.inProgressWorkout = null;
-    window.showingProgressPrompt = false;
 
     // Reset UI to initial state
     const sections = ['workout-selector', 'active-workout', 'workout-management', 'workout-history-section'];

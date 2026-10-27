@@ -16,10 +16,11 @@ const TIPS = {
         text: 'Equipment library, Plate calculator, and more are here',
         position: 'above',
     },
+    // UD-2 — the one-time hint for swipe-to-remove (there's no Remove button).
     'exercise-sets': {
-        target: '.set-row .set-complete-btn',
-        text: 'Tap the checkbox after completing each set',
-        position: 'above',
+        target: '.aw-set-row .aw-set-row__check',
+        text: 'Tap ✓ after each set. Swipe a set left to remove it.',
+        position: 'below',
     },
     'coach-programs': {
         target: '.coach-hero__icon',

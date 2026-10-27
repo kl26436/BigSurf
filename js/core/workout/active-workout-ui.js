@@ -16,6 +16,7 @@ import { scheduleRestNotification, cancelRestNotification, isFCMAvailable } from
 import { convertYouTubeUrl } from './exercise-ui.js';
 import { confirmSheet } from '../ui/confirm-sheet.js';
 import { openSheet as openSheetPrimitive, closeSheet } from '../ui/sheet.js';
+import { once } from '../ui/busy.js';
 import { EQUIPMENT_CATALOG } from '../data/equipment-catalog.js';
 import { augmentStaticCatalog } from '../data/equipment-catalog-helpers.js';
 import { ownedEquipmentKeys, searchCatalogMachines, matchesAllTokens } from '../data/catalog-search.js';
@@ -198,12 +199,16 @@ export function renderAll() {
         </div>
         ${renderFooter()}
     `;
+    bindSetSwipe(container);
 
     // Scroll current pill into view + auto-size any notes textareas to their content
     requestAnimationFrame(() => {
         const pill = container.querySelector('.aw-pill.current');
         pill?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
         container.querySelectorAll('.aw-notes__textarea').forEach(awAutoGrowNotes);
+        if (!AppState.settings?.seenTips?.includes('exercise-sets') && container.querySelector('.aw-set-row')) {
+            import('../features/first-use-tips.js').then((m) => m.showFirstUseTip('exercise-sets')).catch(() => {});
+        }
     });
 }
 
@@ -315,11 +320,9 @@ function renderProgressPills() {
         return `<button class="${classes.join(' ')}" onclick="awJumpTo(${i})">${label} ${escapeHtml(name)}${check}</button>`;
     }).join('');
 
-    // Phase 7 — always-present "+" so mid-workout add-exercise isn't buried in
-    // the kebab menu. Additive; the menu item stays.
-    const addPill = `<button class="aw-pill aw-pill--add" onclick="awAddExercise()" aria-label="Add exercise" title="Add exercise"><i class="fas fa-plus"></i></button>`;
-
-    return `<div class="aw-pills">${pills}${addPill}</div>`;
+    // UD-2 — one door per action: add-exercise lives in the ⋮ menu (and the
+    // empty state); the dashed "+" pill was a third door.
+    return `<div class="aw-pills">${pills}</div>`;
 }
 
 function shortName(name) {
@@ -615,9 +618,12 @@ function renderExerciseView(exercise, idx, savedEx) {
     }
 
     // Weight column label
-    let weightLabel = unit;
-    if (isBW) weightLabel = `Added ${unit}`;
-    else if (hasBaseWeight) weightLabel = `Plates ${unit}`;
+    // The unit is the segmented control beside it; the label names the column.
+    let weightLabel = 'Weight';
+    if (isBW) weightLabel = 'Added';
+    else if (hasBaseWeight) weightLabel = 'Plates';
+    const unitShort = unit === 'kg' ? 'kg' : 'lb';
+    const otherUnit = unit === 'kg' ? 'lb' : 'kg';
 
     // Form video lives in the exercise cog menu (renderExerciseMenu) — an
     // occasional-use action doesn't earn a standing hero icon.
@@ -654,15 +660,14 @@ function renderExerciseView(exercise, idx, savedEx) {
             <span class="aw-sets-header__label"></span>
             <span class="aw-sets-header__label">Reps</span>
             <span class="aw-sets-header__label">${weightLabel}</span>
-            <button class="aw-sets-header__unit" onclick="awToggleUnit(${idx})" title="Tap to switch unit" aria-label="Switch weight unit (currently ${unit})">${unit}</button>
+            <button class="aw-unit-seg" onclick="awToggleUnit(${idx})" aria-label="Weight in ${unitShort} — switch to ${otherUnit}">
+                <span class="${unitShort === 'lb' ? 'on' : ''}">lb</span><span class="${unitShort === 'kg' ? 'on' : ''}">kg</span>
+            </button>
         </div>
         ${showAutofillHint ? '<div class="aw-autofill-hint"><i class="fas fa-magic"></i> Pre-filled from last session · tap ✓ to confirm or edit values</div>' : ''}
         <div class="aw-sets">
             ${sets.html}
-            <div class="aw-set-actions">
-                <button class="aw-remove-set" onclick="awRemoveSet(${idx})"><i class="fas fa-minus"></i> Remove</button>
-                <button class="aw-add-set" onclick="awAddSet(${idx})"><i class="fas fa-plus"></i> Add set</button>
-            </div>
+            <button class="aw-add-set" onclick="awAddSet(${idx})"><i class="fas fa-plus"></i> Add set</button>
         </div>
         <div class="aw-notes">
             <textarea class="aw-notes__textarea" placeholder="Exercise notes…" rows="1"
@@ -1227,7 +1232,7 @@ function buildSetRows(exercise, idx, savedEx, unit, baseWeight = 0) {
                 : '';
 
         return `
-            <div class="${classes.join(' ')}" data-set-idx="${si}">
+            <div class="${classes.join(' ')}" data-ex-idx="${idx}" data-set-idx="${si}">
                 <div class="aw-set-row__num">${si + 1}</div>
                 <input class="aw-set-row__input ${isAutofill ? 'autofill' : ''} ${set.completed ? 'done-val' : ''}"
                        type="number" inputmode="numeric"
@@ -1662,22 +1667,85 @@ export function awAddSet(exerciseIdx) {
 }
 
 
-export function awRemoveSet(exerciseIdx) {
+/**
+ * Remove one set (default: the last). UD-2 — reached by swiping a set row
+ * left, so it removes THAT row, and the toast carries Undo instead of a
+ * confirm. An exercise always keeps one set.
+ */
+export function awRemoveSet(exerciseIdx, setIdx = null) {
     const key = `exercise_${exerciseIdx}`;
     const savedEx = AppState.savedData.exercises?.[key];
     if (!savedEx?.sets?.length) return;
+    if (savedEx.sets.length <= 1) {
+        showNotification('An exercise keeps at least one set', 'info');
+        return;
+    }
 
-    // Don't remove the last set
-    if (savedEx.sets.length <= 1) return;
-
-    savedEx.sets.pop();
+    const at = setIdx == null || setIdx >= savedEx.sets.length ? savedEx.sets.length - 1 : setIdx;
+    const [removed] = savedEx.sets.splice(at, 1);
 
     // Update template exercise target
     const exercise = AppState.currentWorkout.exercises[exerciseIdx];
-    if (exercise && exercise.sets > 1) exercise.sets--;
+    const targetDropped = !!(exercise && exercise.sets > 1);
+    if (targetDropped) exercise.sets--;
 
     debouncedSaveWorkoutData(AppState);
     renderAll();
+    showNotification(`Set ${at + 1} removed`, 'info', null, {
+        label: 'Undo',
+        onClick: () => {
+            const ex = AppState.savedData?.exercises?.[key];
+            if (!ex?.sets) return;
+            ex.sets.splice(Math.min(at, ex.sets.length), 0, removed);
+            if (targetDropped && exercise) exercise.sets++;
+            debouncedSaveWorkoutData(AppState);
+            renderAll();
+        },
+    });
+}
+
+// UD-2 — swipe a set row left to remove it (the standing "Remove" button is
+// gone). Bound once on the persistent #active-workout container; rows are
+// re-rendered freely. touch-action: pan-y on the row keeps vertical scroll
+// native, so nothing here calls preventDefault.
+const SWIPE_REMOVE_PX = 72;
+let swipeBoundTo = null;
+function bindSetSwipe(container) {
+    if (!container || swipeBoundTo === container) return;
+    swipeBoundTo = container;
+    let drag = null;
+    const reset = (row) => {
+        row?.classList.remove('aw-set-row--swiping');
+        row?.style.removeProperty('--swipe-x');
+    };
+    container.addEventListener('touchstart', (e) => {
+        const row = e.target.closest('.aw-set-row');
+        if (!row || e.touches.length !== 1 || document.activeElement?.closest?.('.aw-set-row') === row) { drag = null; return; }
+        drag = { row, x: e.touches[0].clientX, y: e.touches[0].clientY, dx: 0, horizontal: null };
+    }, { passive: true });
+    container.addEventListener('touchmove', (e) => {
+        if (!drag) return;
+        const dx = e.touches[0].clientX - drag.x;
+        const dy = e.touches[0].clientY - drag.y;
+        if (drag.horizontal == null && (Math.abs(dx) > 8 || Math.abs(dy) > 8)) drag.horizontal = Math.abs(dx) > Math.abs(dy);
+        if (!drag.horizontal) return;
+        drag.dx = Math.min(0, dx);
+        drag.row.classList.add('aw-set-row--swiping');
+        drag.row.style.setProperty('--swipe-x', `${drag.dx}px`);
+        drag.row.classList.toggle('aw-set-row--armed', drag.dx <= -SWIPE_REMOVE_PX);
+    }, { passive: true });
+    const end = () => {
+        if (!drag) return;
+        const { row, dx } = drag;
+        drag = null;
+        row.classList.remove('aw-set-row--armed');
+        reset(row);
+        if (dx <= -SWIPE_REMOVE_PX) {
+            awRemoveSet(Number(row.dataset.exIdx), Number(row.dataset.setIdx));
+        }
+    };
+    container.addEventListener('touchend', end, { passive: true });
+    container.addEventListener('touchcancel', () => { if (drag) reset(drag.row); drag = null; }, { passive: true });
 }
 
 export function awSaveNotes(exerciseIdx, value) {
@@ -1903,22 +1971,21 @@ export async function awConfirmExit() {
 }
 
 export async function awCancelWorkout() {
-    const ok = await confirmSheet({
-        title: 'Cancel this workout?',
-        message: 'Logged sets will be saved as a cancelled session.',
-        confirmLabel: 'Cancel workout',
-        cancelLabel: 'Keep lifting',
-        destructive: true,
-    });
-    if (!ok) return;
-    // Delegate to the canonical cancelWorkout() so AppState.reset() runs and
-    // the dashboard doesn't still think a workout is active. Skip its inner
-    // confirm since we just showed one.
-    cleanup();
-    window.cancelWorkout?.(true);
+    // The canonical cancelWorkout() owns the confirm and the copy (UD-2), and
+    // runs AppState.reset() so the dashboard doesn't think a workout is active.
+    workoutMenuOpen = false;
+    const cancelled = await window.cancelWorkout?.();
+    if (cancelled) cleanup();
+    else renderAll();
 }
 
-export async function awFinishWorkout() {
+export function awFinishWorkout() {
+    // B1 — one finish per tap: the incomplete-sets confirm and the save are
+    // both awaits a second tap could land in.
+    return once('aw-finish', finishWorkoutNow);
+}
+
+async function finishWorkoutNow() {
     // Check for incomplete sets
     const exercises = AppState.currentWorkout.exercises;
     let incompleteSets = 0;
@@ -1941,9 +2008,7 @@ export async function awFinishWorkout() {
     cleanup();
 
     // Delegate to existing completeWorkout which handles PRs, saving, summary
-    if (window.completeWorkout) {
-        window.completeWorkout();
-    }
+    await window.completeWorkout?.();
 }
 
 // ===================================================================
@@ -2746,9 +2811,6 @@ function buildEquipListHTML(exerciseIdx) {
                     <div class="js-row__meta">${eq.equipmentType || 'Equipment'}${baseWeight}${locStr ? ` · <i class="fas fa-map-marker-alt js-row__loc-icon"></i> ${escapeHtml(locStr)}` : ''}</div>
                     ${settingsStr ? `<div class="js-row__meta js-row__meta--settings">${escapeHtml(settingsStr)}</div>` : ''}
                 </div>
-                <button class="js-row__more" onclick="event.stopPropagation(); awQuickEditEquipment(${exerciseIdx}, '${escapeAttr(eq.name)}')" aria-label="Edit ${escapeAttr(eq.name)}">
-                    <i class="fas fa-ellipsis-h"></i>
-                </button>
             </div>
         `;
     };
@@ -3882,19 +3944,20 @@ export function awToggleUnit(exerciseIdx) {
     // column label + every weight input in place. Any other exercise stays stale
     // until its view is opened (same as today).
     if (exerciseIdx === currentExerciseIdx) {
-        const unitBtn = document.querySelector('.aw-sets-header__unit');
-        if (unitBtn) unitBtn.textContent = newUnit;
+        // The segmented lb | kg control; the column label ("Weight" / "Added" /
+        // "Plates") doesn't carry the unit, so it stays as it is.
+        const unitBtn = document.querySelector('.aw-unit-seg');
+        if (unitBtn) {
+            const [lbSpan, kgSpan] = unitBtn.querySelectorAll('span');
+            lbSpan?.classList.toggle('on', newUnit !== 'kg');
+            kgSpan?.classList.toggle('on', newUnit === 'kg');
+            unitBtn.setAttribute('aria-label', newUnit === 'kg' ? 'Weight in kg — switch to lb' : 'Weight in lb — switch to kg');
+        }
 
-        // Update the weight column label (lbs / kg / Added lbs / Plates lbs)
         const exercise = AppState.currentWorkout.exercises[exerciseIdx];
         const isBW = isBodyweightExercise(exercise);
         const equipDoc = getEquipmentDoc(savedEx?.equipment || exercise?.equipment || null, savedEx?.equipmentId || exercise?.equipmentId || null);
         const hasBaseWeight = !isBW && equipDoc && equipDoc.baseWeight > 0;
-        let weightLabel = newUnit;
-        if (isBW) weightLabel = `Added ${newUnit}`;
-        else if (hasBaseWeight) weightLabel = `Plates ${newUnit}`;
-        const labels = document.querySelectorAll('.aw-sets-header .aw-sets-header__label');
-        if (labels.length >= 3) labels[2].textContent = weightLabel;
 
         // Update weight inputs to the new unit. Only a typed or logged row
         // has a VALUE; an autofilled row keeps its number in the placeholder
@@ -4035,8 +4098,9 @@ function renderJumpSheetContent() {
         title: AppState.savedData?.workoutType || 'Workout',
         subtitle: `${done} done · ${toGo} to go`,
         body,
+        // UD-2 — the list's own actions only. Add and Finish have their doors
+        // (⋮ menu; the footer flips to Finish when every set is done).
         actions: [
-            { label: '<i class="fas fa-plus"></i> Add', onClick: 'awAddExercise()' },
             {
                 label: reorderMode
                     ? '<i class="fas fa-check"></i> Done reordering'
@@ -4046,7 +4110,6 @@ function renderJumpSheetContent() {
             },
             ...(!reorderMode ? [
                 { label: '<i class="fas fa-link"></i> Superset', onClick: 'awOpenSupersetSheet()', warm: true },
-                { label: '<i class="fas fa-flag-checkered"></i> Finish', onClick: 'awCloseSheet(); awFinishWorkout();' },
             ] : []),
             { label: 'Close', onClick: 'awCloseSheet(); awEndReorder();', primary: !reorderMode },
         ],

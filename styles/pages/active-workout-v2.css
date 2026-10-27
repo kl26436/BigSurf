@@ -127,16 +127,6 @@
 }
 /* Phase 7 — persistent "+" add-exercise pill at the end of the row (mid-workout
    add is no longer buried in the kebab menu). Dashed accent = action, not step. */
-.aw-pill--add {
-    border-style: dashed;
-    border-color: var(--primary-border);
-    color: var(--primary);
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-width: var(--tap-sm);
-}
-
 /* === FREESTYLE / EMPTY ACTIVE WORKOUT === */
 /* Shown when the workout has zero exercises (freestyle start, or all removed) —
    the add-exercise sheet is usually already open on top. */
@@ -226,7 +216,8 @@
     background: var(--rest-timer-overlay);
     border: none;
     color: var(--bg-app);
-    padding: 5px 10px;
+    min-height: var(--tap-sm); /* was ~24 px — hit between sets, sweaty hands */
+    padding: 5px 12px;
     border-radius: var(--radius-pill);
     font-size: var(--font-2xs);
     font-weight: 700;
@@ -509,20 +500,34 @@
     font-weight: 700;
     text-align: center;
 }
-.aw-sets-header__unit {
-    background: var(--primary-bg);
-    border: 1px solid var(--primary-border);
+/* UD-2 — lb | kg segmented: always visible, 36 px tall (was a 24 px pill).
+   One button — a tap flips the unit; the lit half says which it is. Wider
+   than its 44 px column, so it overhangs to the left into the label gap. */
+.aw-unit-seg {
+    justify-self: end;
+    display: inline-flex;
+    align-items: stretch;
+    min-height: var(--tap-sm);
+    padding: 0;
+    border: 1px solid var(--border-light);
     border-radius: var(--radius-pill);
-    color: var(--primary);
-    font-size: var(--font-2xs);
-    font-weight: 700;
-    padding: 4px 10px;
-    min-height: 24px;
+    background: transparent;
+    overflow: hidden;
     cursor: pointer;
-    text-transform: uppercase;
-    white-space: nowrap;
 }
-.aw-sets-header__unit:active { opacity: 0.7; }
+.aw-unit-seg span {
+    display: grid;
+    place-items: center;
+    padding: 0 10px;
+    font-size: var(--font-xs);
+    font-weight: 700;
+    color: var(--text-muted);
+}
+.aw-unit-seg span.on {
+    background: var(--primary-bg);
+    color: var(--primary);
+}
+.aw-unit-seg:active { opacity: 0.7; }
 
 /* === SET ROWS === */
 .aw-sets { padding: 0 14px 14px; }
@@ -689,6 +694,7 @@
     justify-content: center;
     gap: 6px;
     width: 100%;
+    min-height: var(--tap);
     padding: 8px;
     border: 1px dashed var(--border-light);
     border-radius: var(--radius-md);
@@ -701,36 +707,22 @@
 }
 .aw-add-set:active { background: var(--bg-card-hi); }
 
-.aw-set-actions {
-    display: flex;
-    gap: 8px;
+/* UD-2 — swipe a set row left to remove it (bindSetSwipe). The row follows
+   the finger; past the threshold it tints red to say "let go removes it". */
+.aw-set-row { touch-action: pan-y; }
+.aw-set-row--swiping {
+    transform: translateX(var(--swipe-x, 0));
+    transition: none;
 }
-.aw-set-actions .aw-add-set,
-.aw-set-actions .aw-remove-set {
-    flex: 1;
-}
-.aw-remove-set {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-    padding: 10px;
-    border: 1px dashed var(--border-light);
-    border-radius: var(--radius-md);
-    background: transparent;
-    color: var(--text-muted);
-    font-size: var(--font-sm);
-    cursor: pointer;
-}
-.aw-remove-set:active {
-    background: var(--danger-bg);
-    color: var(--danger);
+.aw-set-row--armed {
     border-color: var(--danger);
+    background: var(--danger-bg);
 }
 
 /* === FOOTER === */
 .aw-footer {
-    padding: 12px 14px;
+    /* UD-2 — clear the home indicator like .bottom-nav and .sheet__footer do. */
+    padding: 12px 14px calc(12px + env(safe-area-inset-bottom, 0px));
     border-top: 1px solid var(--border-subtle);
     background: var(--bg-app);
     display: flex;

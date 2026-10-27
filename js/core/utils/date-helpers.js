@@ -120,3 +120,17 @@ export function formatRelativeDate(dateLike, { daysAgo = false, weeksAgo = false
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
+
+/**
+ * UD-4 — a duration as display copy: "42 min", "1 h 5 min". The one place a
+ * workout length is spelled (C-8: spell units out in display copy).
+ * @param {number} seconds
+ * @returns {string}
+ */
+export function formatDuration(seconds) {
+    const mins = Math.max(0, Math.round((Number(seconds) || 0) / 60));
+    if (mins < 60) return `${mins} min`;
+    const h = Math.floor(mins / 60);
+    const m = mins % 60;
+    return m ? `${h} h ${m} min` : `${h} h`;
+}

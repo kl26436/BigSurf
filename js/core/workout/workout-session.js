@@ -19,9 +19,11 @@ import { renderActiveWorkout, renderAll, loadAutofillForAllExercises, openShared
 import { getEquipmentAtLocation, getExercisesAtLocation, checkTemplateCompatibility } from '../features/equipment-planner.js';
 import { haptic } from '../utils/haptics.js';
 import { Config } from '../utils/config.js';
+import { formatDuration } from '../utils/date-helpers.js';
 import { cancelRestNotification } from '../utils/push-notification-manager.js';
 import { confirmSheet, promptSheet } from '../ui/confirm-sheet.js';
-import { openSheet, closeSheet } from '../ui/sheet.js';
+import { once } from '../ui/busy.js';
+import { openSheet, closeSheet, closeAllSheets } from '../ui/sheet.js';
 import { getSessionIntent, weekOverrideOf } from '../features/session-intent.js';
 
 // ===================================================================
@@ -143,7 +145,7 @@ export async function startWorkout(workoutType) {
             const workoutName = todaysWorkout.workoutType || 'Unknown';
             const confirmed = await confirmSheet({
                 title: `Cancel "${workoutName}" and start a new workout?`,
-                message: "Your in-progress workout will be cancelled and you'll lose any unsaved progress.",
+                message: CANCEL_WORKOUT_MESSAGE,
                 confirmLabel: 'Start new workout',
                 cancelLabel: 'Keep current workout',
                 destructive: true,
@@ -181,12 +183,6 @@ export async function startWorkout(workoutType) {
 
             // Clear in-progress workout reference
             window.inProgressWorkout = null;
-
-            // Hide the resume banner since we're starting a new workout
-            const resumeBanner = document.getElementById('resume-workout-banner');
-            if (resumeBanner) {
-                resumeBanner.classList.add('hidden');
-            }
         }
         // If cancelled workout exists, proceed without warning
     }
@@ -291,10 +287,6 @@ export async function startWorkout(workoutType) {
     setBottomNavVisible(false);
     setWorkoutActiveState(true);
 
-    // Hide resume banner when starting a workout
-    const resumeBanner = document.getElementById('resume-workout-banner');
-    if (resumeBanner) resumeBanner.classList.add('hidden');
-
     // Start duration timer (v1 — v2 has its own)
     startWorkoutTimer();
 
@@ -384,7 +376,7 @@ export async function startFreestyleWorkout(focus = null, seedExercises = null) 
         } else {
             const ok = await confirmSheet({
                 title: `Cancel "${name}" and start a new workout?`,
-                message: "Your in-progress workout will be cancelled and you'll lose any unsaved progress.",
+                message: CANCEL_WORKOUT_MESSAGE,
                 confirmLabel: 'Start new workout',
                 cancelLabel: 'Keep current workout',
                 destructive: true,
@@ -434,7 +426,6 @@ export async function startFreestyleWorkout(focus = null, seedExercises = null) 
     setHeaderMode(false);
     setBottomNavVisible(false); // single bottom bar during workouts (aw-footer)
     setWorkoutActiveState(true);
-    document.getElementById('resume-workout-banner')?.classList.add('hidden');
 
     startWorkoutTimer();
     await loadAutofillForAllExercises();
@@ -539,15 +530,18 @@ function refreshWorkoutForGym() {
         .catch(err => console.error('❌ Autofill after gym change failed:', err));
 }
 
-export async function completeWorkout() {
-    if (!AppState.currentWorkout) return;
+/**
+ * Finish the running workout: save, PRs, summary. Single-flight (B1) — a
+ * second tap while the PR check or the save is still awaiting used to run
+ * the whole thing twice (the old guard looked for a `.btn-finish` button
+ * that no longer exists).
+ */
+export function completeWorkout() {
+    return once('finish-workout', completeWorkoutNow);
+}
 
-    // Prevent double-tap
-    const finishBtn = document.querySelector('.btn-finish');
-    if (finishBtn) {
-        if (finishBtn.disabled) return;
-        finishBtn.disabled = true;
-    }
+async function completeWorkoutNow() {
+    if (!AppState.currentWorkout) return;
 
     // Stop duration timer and rest timer display
     AppState.clearTimers();
@@ -937,6 +931,7 @@ export function showWorkoutSummary(workoutData, newPRs = [], templateChanges = n
     `;
 
     // Open modal
+    modal?.setAttribute('aria-label', 'Workout complete');
     openModal('workout-completion-modal');
 
     // Any close path (X button, backdrop tap, Escape) must return the user
@@ -1390,12 +1385,12 @@ export function showMidWorkoutSummary() {
         }
     });
 
-    // Format elapsed duration
-    const elapsed = AppState.currentWorkout.startedAt
-        ? Math.floor((Date.now() - new Date(AppState.currentWorkout.startedAt).getTime()) / 1000)
-        : 0;
-    const dMin = Math.floor(elapsed / 60);
-    const durationStr = dMin >= 60 ? `${Math.floor(dMin / 60)}h ${dMin % 60}m` : `${dMin}m`;
+    // B2 — the start time and the name live on the saved session (savedData)
+    // and the clock (workoutStartTime), not on currentWorkout (the plan).
+    const startedAt = AppState.workoutStartTime || AppState.savedData?.startedAt;
+    const elapsed = startedAt ? Math.floor((Date.now() - new Date(startedAt).getTime()) / 1000) : 0;
+    const durationStr = formatDuration(elapsed);
+    const workoutName = AppState.savedData?.workoutType || AppState.currentWorkout?.name || 'Workout';
 
     const volumeStr = totalVolume >= 1000 ? `${(totalVolume / 1000).toFixed(1)}k` : `${totalVolume}`;
 
@@ -1408,7 +1403,7 @@ export function showMidWorkoutSummary() {
             <div class="completion-header">
                 <i class="fas fa-chart-bar completion-hero__chart"></i>
                 <h2>Session so far</h2>
-                <p class="completion-workout-name">${escapeHtml(AppState.currentWorkout.workoutType || 'Workout')}</p>
+                <p class="completion-workout-name">${escapeHtml(workoutName)}</p>
             </div>
 
             <div class="completion-stats-grid">
@@ -1432,12 +1427,14 @@ export function showMidWorkoutSummary() {
 
             <div class="completion-actions">
                 <button class="btn btn-primary" onclick="closeModal('workout-completion-modal')">
-                    <i class="fas fa-arrow-left"></i> Back to Workout
+                    <i class="fas fa-arrow-left"></i> Back to workout
                 </button>
             </div>
         </div>
     `;
 
+    // The dialog is shared with the completion summary — name it for this use.
+    modal.setAttribute('aria-label', 'Session so far');
     openModal('workout-completion-modal');
 }
 
@@ -1480,6 +1477,15 @@ export async function saveActiveWorkoutAsTemplate() {
     }
 }
 
+// UD-2 — one sentence for what cancelling does, wherever it's asked (the ⋮
+// menu, the Home hero, starting another workout). It's true: cancelWorkout
+// stamps cancelledAt and saves; nothing logged is thrown away.
+export const CANCEL_WORKOUT_MESSAGE = "Sets you've logged are kept as a cancelled session.";
+
+/**
+ * Cancel the running workout — THE confirm for it (callers don't show their
+ * own). Resolves true when the workout was cancelled.
+ */
 export async function cancelWorkout(skipConfirmation = false) {
     // The dashboard pill can be shown from window.inProgressWorkout alone
     // (a resumable workout from a previous session) without AppState.currentWorkout
@@ -1490,27 +1496,17 @@ export async function cancelWorkout(skipConfirmation = false) {
     if (!AppState.currentWorkout && window.inProgressWorkout) {
         AppState.savedData = { ...window.inProgressWorkout };
     }
-    if (!AppState.currentWorkout && !AppState.savedData?.workoutId) return;
+    if (!AppState.currentWorkout && !AppState.savedData?.workoutId) return false;
 
-    // Confirm cancellation unless explicitly skipped
     if (!skipConfirmation) {
-        const exercises = AppState.savedData?.exercises || {};
-        const completedSets = Object.values(exercises)
-            .flatMap(ex => ex.sets || [])
-            .filter(s => s.completed).length;
-
         const confirmed = await confirmSheet({
             title: 'Cancel this workout?',
-            message: completedSets > 0
-                ? `You've completed ${completedSets} set${completedSets !== 1 ? 's' : ''} — they'll be saved as a cancelled session.`
-                : '',
+            message: CANCEL_WORKOUT_MESSAGE,
             confirmLabel: 'Cancel workout',
-            cancelLabel: 'Keep going',
+            cancelLabel: 'Keep lifting',
             destructive: true,
         });
-        if (!confirmed) {
-            return; // User chose not to cancel
-        }
+        if (!confirmed) return false;
     }
 
     AppState.savedData.cancelledAt = new Date().toISOString();
@@ -1542,6 +1538,7 @@ export async function cancelWorkout(skipConfirmation = false) {
     updateWorkoutButtonsForEditMode(false);
 
     navigateTo('dashboard');
+    return true;
 }
 
 export function cancelCurrentWorkout() {
@@ -1553,10 +1550,11 @@ export function cancelCurrentWorkout() {
 // ===================================================================
 
 export function continueInProgressWorkout() {
-    // Hide the resume banner
-    const banner = document.getElementById('resume-workout-banner');
-    if (banner) banner.classList.add('hidden');
-    window.showingProgressPrompt = false;
+    // Still live in memory (the user backed out to Home): just go back to it.
+    if (AppState.currentWorkout && !window.inProgressWorkout) {
+        navigateTo('active-workout');
+        return;
+    }
     if (!window.inProgressWorkout) {
         return;
     }
@@ -1573,27 +1571,12 @@ export function continueInProgressWorkout() {
         AppState.workoutStartTime = new Date();
     }
 
-    // Hide all other sections and show active workout
-    const sections = [
-        'workout-selector',
-        'dashboard',
-        'workout-history-section',
-        'muscle-group-detail-section',
-        'exercise-detail-section',
-        'composition-detail-section',
-        'exercise-manager-section',
-        'location-management-section',
-    ];
-    sections.forEach((sectionId) => {
-        const section = document.getElementById(sectionId);
-        if (section) section.classList.add('hidden');
-    });
-
-    const activeWorkout = document.getElementById('active-workout');
-    if (activeWorkout) activeWorkout.classList.remove('hidden');
-
-    // Hide main header and bottom nav (single bottom bar during workouts)
-    setHeaderMode(false);
+    // B4 — one page system: enterSection hides every other section (the old
+    // hand-written list missed Plan, Goals, Settings, Coach, the editor and
+    // Equipment, which stayed visible under a resumed workout), records the
+    // back stack and syncs the system-back guard. It also hides the logo bar.
+    closeAllSheets();
+    enterSection('active-workout');
     setBottomNavVisible(false);
     setWorkoutActiveState(true);
 
@@ -1879,10 +1862,6 @@ export async function discardEditedWorkout() {
 }
 
 export async function discardInProgressWorkout() {
-    // Hide the resume banner
-    const banner = document.getElementById('resume-workout-banner');
-    if (banner) banner.classList.add('hidden');
-    window.showingProgressPrompt = false;
     if (!window.inProgressWorkout) {
         return;
     }

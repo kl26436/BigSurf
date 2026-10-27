@@ -16,7 +16,6 @@ import { GoogleAuthProvider } from 'https://www.gstatic.com/firebasejs/10.7.1/fi
 import { AppState } from './utils/app-state.js';
 import { debugLog, perfMark } from './utils/config.js';
 import { showNotification, setTodayDisplay, initModalScrollLock, openModal, closeModal, escapeHtml } from './ui/ui-helpers.js';
-import { confirmSheet } from './ui/confirm-sheet.js';
 import { loadWorkoutPlans } from './data/data-manager.js'; // ADD loadWorkoutData here
 import { getExerciseLibrary } from './data/exercise-library.js';
 import { getWorkoutHistory } from './workout/workout-history.js';
@@ -470,10 +469,6 @@ export async function signOutUser() {
             const section = document.getElementById(sectionId);
             if (section) section.classList.add('hidden');
         });
-
-        // Hide resume workout banner if showing
-        const resumeBanner = document.getElementById('resume-workout-banner');
-        if (resumeBanner) resumeBanner.classList.add('hidden');
 
         // Hide the header auth section and show proper loading screen
         const authSection = document.getElementById('auth-section');
@@ -1096,104 +1091,11 @@ async function checkForInProgressWorkoutEnhanced(preloaded) {
             const { setWorkoutActiveState } = await import('./ui/navigation.js');
             setWorkoutActiveState(true);
 
-            // Show in-progress workout prompt
-            showInProgressWorkoutPrompt(todaysData);
+            // The Home hero and the workout pill offer Resume (UD-2 — the
+            // separate resume banner was a third, dead surface).
         }
     } catch (error) {
         console.error('Error checking for in-progress workout:', error);
-    }
-}
-
-function showInProgressWorkoutPrompt(workoutData) {
-    if (window.showingProgressPrompt) return;
-    window.showingProgressPrompt = true;
-
-    // Update card elements
-    const card = document.getElementById('resume-workout-banner');
-    const nameElement = document.getElementById('resume-workout-name');
-    const setsElement = document.getElementById('resume-sets-completed');
-    const timeElement = document.getElementById('resume-time-ago');
-
-    if (card && nameElement) {
-        // Set workout name. Fallback is required — assigning
-        // `textContent = undefined` renders the literal string "undefined"
-        // in the DOM (unlike escapeHtml which returns ''). Legacy workout
-        // docs (pre-schema-v3) can lack workoutType entirely and used to
-        // surface as "This page has a workout name 'undefined'" on the
-        // dashboard resume banner.
-        nameElement.textContent = workoutData.workoutType
-            || workoutData.day
-            || workoutData.name
-            || 'Workout in progress';
-
-        // Calculate sets completed
-        let completedSets = 0;
-        let totalSets = 0;
-        if (workoutData.exercises) {
-            Object.keys(workoutData.exercises).forEach((key) => {
-                const exercise = workoutData.exercises[key];
-                if (exercise && exercise.sets) {
-                    exercise.sets.forEach((set) => {
-                        totalSets++;
-                        if (set.reps && set.weight) completedSets++;
-                    });
-                }
-            });
-        }
-        if (setsElement) {
-            setsElement.textContent = `${completedSets}/${totalSets} sets`;
-        }
-
-        // Update progress bar
-        const progressFill = document.getElementById('resume-progress-fill');
-        if (progressFill && totalSets > 0) {
-            const progressPercent = Math.min((completedSets / totalSets) * 100, 100);
-            progressFill.style.width = `${progressPercent}%`;
-        }
-
-        // Calculate time ago
-        if (timeElement && workoutData.startedAt) {
-            const startTime = new Date(workoutData.startedAt);
-            const now = new Date();
-            const diffMs = now - startTime;
-            const diffMins = Math.floor(diffMs / 60000);
-
-            let timeAgo;
-            if (diffMins < 1) timeAgo = 'just now';
-            else if (diffMins < 60) timeAgo = `${diffMins} min ago`;
-            else if (diffMins < 1440) timeAgo = `${Math.floor(diffMins / 60)}h ago`;
-            else timeAgo = `${Math.floor(diffMins / 1440)}d ago`;
-
-            timeElement.textContent = timeAgo;
-        }
-
-        // Show the card
-        card.classList.remove('hidden');
-
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-    } else {
-        // Fallback to old confirm dialog if card elements not found
-        console.warn('Resume card elements not found, using fallback confirm dialog');
-        const workoutDate = new Date(workoutData.date).toLocaleDateString();
-
-        setTimeout(async () => {
-            const resume = await confirmSheet({
-                title: `Continue "${workoutData.workoutType}" from ${workoutDate}?`,
-                message: 'Pick up where you left off, or discard it.',
-                confirmLabel: 'Continue workout',
-                cancelLabel: 'Discard workout',
-            });
-            if (resume) {
-                import('./workout/workout-core.js').then((module) => {
-                    module.continueInProgressWorkout();
-                });
-            } else {
-                import('./workout/workout-core.js').then((module) => {
-                    module.discardInProgressWorkout();
-                });
-            }
-            window.showingProgressPrompt = false;
-        }, 1000);
     }
 }
 
@@ -1322,7 +1224,6 @@ export function setupKeyboardShortcuts() {
 // ===================================================================
 
 export function setupGlobalVariables() {
-    window.showingProgressPrompt = false;
     window.historyListenersSetup = false;
 }
 
