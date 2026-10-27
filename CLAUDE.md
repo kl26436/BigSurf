@@ -20,7 +20,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Backend**: Firebase (Firestore for data, Firebase Auth for authentication)
 - **Testing**: Vitest (`npm test` to run, `npm run test:watch` for watch mode)
 - **No build process**: Direct ES6 module imports in browser
-- **CDN**: Firebase SDK 10.7.1, Font Awesome 6.0.0, Chart.js 4.4.1 (loaded but no live chart uses it — every chart is hand-rolled inline SVG in `js/core/features/charts/`; the old body-weight Chart.js chart had no canvas left), Leaflet 1.9.4
+- **CDN**: Firebase SDK 10.7.1, Font Awesome 6.0.0, Leaflet 1.9.4. No chart library — every chart is hand-rolled inline SVG in `js/core/features/charts/` (Chart.js was removed in UD-6)
 
 ## Application Architecture
 
@@ -75,7 +75,6 @@ js/
     │   │   └── chart-area-stacked.js   # Stacked area, body-part volume over time
     │   ├── metrics/                # Aggregation layer for dashboard/drill-downs
     │   │   ├── aggregators.js          # Pure functions: volume, 1RM, body-part stats, hero lift
-    │   │   ├── metric-card-base.js     # Shared render template for tappable metric cards
     │   │   └── range-filter.js         # Shared time-range state (W/M/3M/Y/All)
     │   ├── dexa-scan.js            # DEXA scan data import/analysis
     │   ├── dexa-scan-ui.js         # DEXA upload page, history, detail views
@@ -123,12 +122,12 @@ js/
     │   ├── dashboard-ui.js         # Dashboard render + renderProgressPage (#progress-section)
     │   ├── muscle-group-detail-ui.js # Level-2 drill-down from dashboard body-part cards
     │   ├── exercise-detail-ui.js   # Level-3 drill-down from muscle-group exercise list
-    │   ├── metric-detail-ui.js     # Drill-down for tappable metric cards (body weight, volume, strength)
+    │   ├── metric-detail-ui.js     # Body-weight drill-down (the only metric renderer with a door)
     │   ├── composition-detail-ui.js # Drill-down from composition card
     │   ├── equipment-library-ui.js # Equipment library (My gyms / Library / Catalog tabs) + equipment detail
     │   ├── equipment-quick-edit.js # Quick-edit bottom sheet (name/brand/line/function, exercise + gym chips)
     │   ├── exercise-manager-ui.js  # Exercise library modal
-    │   ├── error-log-ui.js         # Error log page (More menu)
+    │   ├── error-log-ui.js         # Error log page (Settings → Data)
     │   ├── navigation.js           # Bottom nav, routing, navStack (10 deep), enterSection, system-back guard wiring, the logo-bar rule (LOGO_VIEWS)
     │   ├── more-menu.js            # UD-1: the More tab — openSheet() rendered from moreMenuGroups() (the app's map)
     │   ├── back-guard.js           # SH-6: one history entry so Android back / iOS edge swipe does an in-app back
@@ -158,10 +157,9 @@ js/
     │   ├── workout-helpers.js      # Exercise/workout name helpers
     │   └── notification-helper.js  # UI notifications
     └── workout/                # Workout logic
-        ├── exercise-ui.js          # Legacy v1 exercise cards (still used by some flows)
+        ├── form-video.js           # convertYouTubeUrl + resolveFormVideo (the live remains of the deleted v1 exercise cards)
         ├── active-workout-ui.js    # V2 wizard-style active workout + bottom sheets (awAddExercise, awOpenEquipmentSheet, openSharedAddExerciseSheet, openSharedEquipmentSheet)
         ├── edit-history-inline.js  # Inline editing of historical workouts
-        ├── rest-timer.js           # Rest timer (modal + header)
         ├── set-seeding.js          # Pure prefill rules: mergeSeededSets, seedSetsFromLastSession (bump/back-off/deload), same-machine check
         ├── workout-core.js         # Top-level lifecycle re-exports
         ├── workout-history.js      # Calendar, history data
@@ -189,17 +187,16 @@ styles/
 ├── tokens.css             # :root design tokens (colors, fonts, radius, z-index, animations)
 ├── reset.css              # Reset & base styles
 ├── components/            # See styles/components/README.md for "when you need X, use Y"
-│   ├── cards.css          # .hero-card, .row-card base patterns
+│   ├── cards.css          # .hero-card, .row-card (+ --flat inside a container, --static without a handler)
 │   ├── buttons.css        # .btn-* system
 │   ├── chips.css          # .chip / .chip--sm / category variants
 │   ├── fields.css         # .field-search, .field-label, form fields
 │   ├── forms.css          # Inputs, selects, toggles
 │   ├── modals.css         # Modal overlay, content, animations
 │   ├── nav.css            # Bottom nav (5-tab); the More menu is an openSheet (more-menu.js) with .srow rows
-│   ├── page-header.css    # .section-header-row, .page-header__*, .sec-head
+│   ├── page-header.css    # .page-header__*, .sec-head (THE titled section head)
 │   ├── empty-states.css   # Empty state patterns
 │   ├── charts.css         # Chart container/legend chrome for the SVG chart primitives
-│   ├── metric-card.css    # Tappable dashboard metric cards
 │   ├── range-filter.css   # W/M/3M/Y/All range pills
 │   ├── segmented-control.css # Segmented toggles
 │   ├── grouped-rows.css   # Settings-style grouped row lists
@@ -409,7 +406,7 @@ On app load, checks for incomplete workouts:
 
 1. Update exercise objects in `AppState.exerciseDatabase`
 2. Modify save logic in [data-manager.js](js/core/data/data-manager.js) (look at `saveWorkoutData`'s normalizedData mapping)
-3. Update UI in [active-workout-ui.js](js/core/workout/active-workout-ui.js) (V2 wizard) and/or [exercise-ui.js](js/core/workout/exercise-ui.js) (legacy cards)
+3. Update UI in [active-workout-ui.js](js/core/workout/active-workout-ui.js) (V2 wizard — the only lift screen; the v1 cards were deleted in UD-6)
 4. Update template-editor row in [template-selection.js](js/core/ui/template-selection.js) (`renderTemplateExerciseRow`)
 5. Update manual workout form in [manual-workout.js](js/core/features/manual-workout.js)
 
@@ -522,7 +519,7 @@ These rules are canonical for all new CSS and JS that renders markup. When in do
 ### Pattern rules (what to reach for)
 
 1. **One row pattern, one card pattern.** Every list item with `[icon][title/subtitle][trailing]` uses `.row-card` (or a modifier like `.row-card--pr`). Every "section hero" card uses `.hero-card`. Don't create new `*-row` / `*-item` / `*-card-list` classes for the same shape. Canonical patterns live in [styles/components/cards.css](styles/components/cards.css).
-2. **One page header.** `.page-header` (in [components/page-header.css](styles/components/page-header.css)) is the pinned page header (back + title + optional actions + safe-area-inset). `.section-header-row` is legacy (one use) — don't add more.
+2. **One page header.** `.page-header` (in [components/page-header.css](styles/components/page-header.css)) is the pinned page header (back + title + optional actions + safe-area-inset); a tab root omits the back. **One section head:** `.sec-head` (`h3` + `__meta` / link / `__action`; `--compact` on Home and Plan, `--inset` on edge-to-edge drill-downs) and `.group-label` for grouped settings (`--band` for a sticky list group). Uppercase labels use `--tracking-eyebrow`.
 3. **One chip/pill pattern.** An interactive chip is `.chip` (+ `.chip--sm`, `.active`, category `cat-*`, `chip--add` / `chip--used` / `chip--favorite`, `.chip-remove`) from [components/chips.css](styles/components/chips.css); chip variants live there. A non-interactive status label is a *badge* — name it `*-badge` (`vol-badge`). A selectable card is not a chip (`.onb-option`). `chipClassesOutsideChipsCss` in design-audit counts the remaining local chip shapes (the workout pill, day circles, set chips…) and only goes down.
 3b. **One button vocabulary (DS-3).** `.btn` + `.btn-primary` | `.btn-secondary` | `.btn-ghost` | `.btn-success` | `.btn-danger`; `.btn-text` / `.btn-text-small`; `.btn-icon` (+ `.btn-icon--filled`, always with `aria-label`); sizes `.btn-sm` / `.btn-lg`, width `.btn-block`. All defined in [components/buttons.css](styles/components/buttons.css) and nowhere else (`buttonRulesOutsideButtonsCss: 0`; [button-vocab.test.js](tests/unit/button-vocab.test.js) checks markup). A component's own button shape gets a component name (`.tpl-start`, `.exlib-add-btn`), never `.btn-*`. Dismiss buttons are `.btn-secondary` / `.btn-ghost`, never red — see the color semantics at the top of [tokens.css](styles/tokens.css).
 4. **One search field.** Every search input is a `.field-search` (icon + input, `--sticky` when pinned, `.field-search__clear` + `--with-clear` for a clear button) from [components/fields.css](styles/components/fields.css); `openSheet({ search })` renders it for sheets. `searchInputsOutsideFieldSearch: 0`.
@@ -721,7 +718,7 @@ After meaningful changes, run the relevant subset before saying a task is comple
 | Sheets, overlays, headers, back/close buttons | `npm run audit:shell:strict` (budgets in scripts/shell-audit.js only go down) |
 | Coach prompt, tool, context or loop change | `npm run eval:coach` (needs `ANTHROPIC_API_KEY`; `EVAL_ONLY=id1,id2` to iterate) — no new regressions vs tests/coach-eval/baseline.json; then `EVAL_UPDATE_BASELINE=1` and commit the baseline. `npm run eval:coach:check` (also the pre-push hook — `npm run hooks:install`) fails while the coach is newer than the baseline |
 
-**One command:** `npm run check` = lint + `audit:design:strict` (tokens, copy, buttons, chips, jargon, shell) + the modulepreload check + the test suite. `npm run audit:design --strict` is the must-pass variant. Lint baseline: 17 warnings, 0 errors — `npm run lint` enforces this with `--max-warnings 17` (ratchet: if you fix warnings, lower the number in package.json; never raise it). Pre-existing failures on `main` are noted but not fixed as part of unrelated work.
+**One command:** `npm run check` = lint + `audit:design:strict` (tokens, copy, buttons, chips, jargon, shell, UX budgets from `scripts/ux-audit.js`) + the modulepreload check + the test suite. `npm run audit:design --strict` is the must-pass variant. Lint baseline: 11 warnings, 0 errors — `npm run lint` enforces this with `--max-warnings 11` (ratchet: if you fix warnings, lower the number in package.json; never raise it). Pre-existing failures on `main` are noted but not fixed as part of unrelated work.
 
 ## Important Notes
 
@@ -731,7 +728,7 @@ After meaningful changes, run the relevant subset before saying a task is comple
 - **Authentication required**: Most features require signed-in user
 - **Local storage not used**: All state in memory or Firebase (Firestore's own IndexedDB cache is the SDK's, not app state)
 - **Mobile-first**: UI designed for phone use at the gym
-- **Modal-based UI**: Features use integrated modals, not separate pages
+- **Pages, sheets, confirm sheets**: features are routed pages (`navigateTo` / `enterSection`), bottom sheets (`openSheet`) and `confirmSheet`; `dialog.modal` remains only for a few legacy overlays
 - **Offline-first Firestore (11a)**: `firebase-config.js` turns on the persistent IndexedDB cache (memory fallback) and exports LOCAL-FIRST `setDoc`/`updateDoc`/`deleteDoc`/`writeBatch().commit` — they resolve once the write is on the device (`'synced'`, or `'queued'` offline / after 5 s with no ack; see [offline.js](js/core/data/offline.js) `commitWrite`) and still reject real refusals. Don't wrap writes in retry loops (the SDK retries queued writes itself) and don't import write functions from the SDK directly. Reads that must survive no signal use `readWithCacheFallback` (data-manager / firebase-workout-manager `readDocs`); `getDocsFromServer` throws offline, so never call it bare. Network-only features (coach, AI tools) check `isOnline()` / `isOfflineError()` and show `NEEDS_CONNECTION_COPY`
 - **Exercise history cached**: `getLastSessionDefaults()` uses session-level Map cache; cleared on workout start/complete
 
@@ -742,7 +739,7 @@ After meaningful changes, run the relevant subset before saying a task is comple
 3. **Query by Date Field**: Use `date` not `completedAt` for workout queries (edited workouts update `completedAt`)
 4. **Unique Day Counting**: Use Set to count workout days, not total workouts
 5. **SVG Progress Rings**: stroke-dasharray/offset for circular progress indicators
-6. **Form Video Resolution**: 3-tier priority: equipment-specific video > equipment general > exercise default > null (see `resolveFormVideo()` in exercise-ui.js)
+6. **Form Video Resolution**: 3-tier priority: equipment-specific video > equipment general > exercise default > null (see `resolveFormVideo()` in form-video.js)
 7. **Equipment Reassignment**: Batch updates across workouts + templates when moving equipment to a different exercise (see `reassignEquipment()` in data-manager.js)
 8. **Streak Delegation**: `stats-tracker.js` delegates to `streak-tracker.js` as canonical implementation — don't reimplement streak logic
 
@@ -782,7 +779,7 @@ All shipped:
 
 ### Ongoing tech-debt notes
 
-- ESLint config has browser globals enabled now (Phase 9 cleanup); `npm run lint` reports 0 errors, 17 warnings (2026-07 sweeps cut it from 131, 10/26 to 17; the rest are load-bearing destructuring omissions, unused function params, and no-useless-assignment cases needing per-site judgment). The `--max-warnings 17` ratchet in package.json blocks regressions.
+- ESLint config has browser globals enabled now (Phase 9 cleanup); `npm run lint` reports 0 errors, 11 warnings (2026-07 sweeps cut it from 131, 10/26 to 17, UD-6 dead-code removal to 11; the rest are load-bearing destructuring omissions, unused function params, and no-useless-assignment cases needing per-site judgment). The `--max-warnings 11` ratchet in package.json blocks regressions.
 - workout-history.js's calendar uses in-memory month iteration over currentHistory (~1ms for 1000 workouts; not a real bottleneck).
 - Recent workouts list in history is paginated but not virtual-scrolled. Becomes DOM-stress past ~500 visible items.
 - `firebase-workout-manager.js#getUserWorkouts` uses `getDocsFromServer` deliberately (delete consistency); has its own un-shared cost.

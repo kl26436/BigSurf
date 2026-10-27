@@ -250,12 +250,15 @@ CLAUDE.md: add **DS-1b (what a row promises)** and the **formatter rule** ("neve
 
 ## 7. As built (2026-10-27, branch `ux-deep-dive`, on dev)
 
-| Phase | State | What landed | Still open |
-|---|---|---|---|
-| UD-6 | partly | `scripts/ux-audit.js` budgets in `audit:design:strict` (rows 53→50, heads 10→9, hidden-by-hand 7→2, no-route 1→0, "… ago" 13→4, words 93→3); CLAUDE.md DS-1b, §8c formatter table, word table; checklist 9–10; B16, B17; toggles labelled; dead weight-history page, metric-card-base + 3 metric renderers, resume banner deleted | `exercise-ui.js` / `rest-timer.js` (exports still have callers — needs a careful pass), Chart.js script tag + `renderBodyWeightChart`, `.set-chip__rpe`, B20 |
-| UD-2 | ✅ | "+" pill, "All"-sheet Add/Finish, picker-row ⋯, Remove button gone; swipe-left removes a set with Undo + one-time tip; lb\|kg segmented 36 px; footer inset; rest buttons 36 px; one cancel sentence (`CANCEL_WORKOUT_MESSAGE`); B1–B4 | phone check of the swipe |
-| UD-1 | ✅ (A) | `more-menu.js`; Plan / Goals / Report card / Log weight / Body & scans / Gyms doors; error log under Settings; B8, B10, B11, B15 | option B (Plan tab) is a product call |
-| UD-4 | ✅ (A + formatters) | routed `workout-detail`; Edit · Repeat footer, ⋯ Save as workout / Delete; `formatSet` / `unitLabel` / `formatDateShort` / `formatRelative` / `formatDuration` at ~90 sites; B5, B6, B9, B19 | option B (edit a set in place) |
-| UD-3 | partly | DS-1b written; B18 (dead rows deleted, weigh-in rows static, report-card chevrons, Goals event row, Profile presses); one `.field-input`; duplicate header Saves removed; B7 | the row/head migration list in §2 UD-3 |
-| UD-5 | partly (B) | Gyms page: rows open the gym's page (B12), "Add a gym" row, "Pin it here"; read-only catalog + explicit Add (B14); one header restore (B13); word table | option A (gym-first Equipment, search-to-add, function-picker dialog, name-only add-gym prompt) |
+All six phases landed; what's left is the phone pass.
 
+| Phase | Picked | What landed |
+|---|---|---|
+| UD-6 | budgets + dead code | `scripts/ux-audit.js` in `audit:design:strict`: rows 53 → 0, section heads 10 → 2, eyebrow spacings 7 → 1, hidden-by-hand 7 → 2, no-route 1 → 0, "… ago" 13 → 4 (mirrored modules), words 93 → 3 (selectors). CLAUDE.md DS-1b, §8c formatter table, word table, one-head rule; checklist 9–10; B16, B17, B20; toggles labelled. Deleted: `exercise-ui.js` (2,821 lines), `rest-timer.js`, `#rest-timer`, Chart.js, the resume banner, the weight-history page, `metric-card-base.js` + 3 unreachable metric renderers. Lint 17 → 11. |
+| UD-2 | A + cancel table | One door per action; swipe-left removes a set (Undo, one-time tip); lb \| kg segmented 36 px; footer inset; rest buttons 36 px; `CANCEL_WORKOUT_MESSAGE`; B1–B4. |
+| UD-1 | A | `more-menu.js` (openSheet from a model); Plan / Goals / Report card / Log weight / Body & scans / Gyms; error log under Settings; B8, B10, B11, B15. Option B (a Plan tab) stays a product call. |
+| UD-4 | A + formatters | Routed `workout-detail`; Edit · Repeat footer, ⋯ Save as workout / Delete; `formatSet` / `unitLabel` / `formatDateShort` / `formatRelative` / `formatDuration` at ~90 sites; B5, B6, B9, B19. Option B (edit a set in place) is the follow-up. |
+| UD-3 | A + C | Every list item is a `.row-card` (`--flat` inside a container, `--static` without a handler); layout / menu rows named in the audit's allow-list. One titled head `.sec-head` (`--compact` Home/Plan, `--inset` drill-downs) + `.group-label` (`--band`); Workouts header is a `.page-header`; one `.field-input`; duplicate Saves and the editor's 28 px "+" gone; B7, B18. |
+| UD-5 | A + B | Equipment: gym context row, tabs Gyms / All machines / Catalog, search is the add (`planInlineEquipment`), read-only catalog with explicit Add (B14), one header restore (B13), the field picker is a sheet (`#function-picker-modal` gone). Gyms: rows open the gym's page (B12), "Add a gym" row, "Pin it here", one add-gym flow (the name-only prompt is gone). The word table. Option C (one merged page) stays later. |
+
+**Open:** the Marcus + Sam phone pass with the §2 acceptance lines and `docs/ux-shell-checklist.md` 1–10 — especially swipe-to-remove on a real phone, the More sheet over a toast, and the row density after the `.row-card` move (rows that had no gap now get the row's 16 px).
