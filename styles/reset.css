@@ -17,6 +17,19 @@ html {
     /* Use overflow-clip instead of overflow-hidden — hidden breaks position:sticky */
     overflow-x: clip;
 }
+/* iOS home-screen web app (10/27): when the document can't scroll (every
+   .pinned-header page, a short page like the empty report card) iOS ends the
+   visible area ~one status-bar height above the glass — `bottom: 0` floats
+   the nav up and anything below that line is clipped. A document that CAN
+   scroll gets the full screen (Home was always fine, even at scroll 0), so
+   keep the document just taller than the screen. Safari itself is fine. */
+@media (display-mode: standalone) {
+    @supports (-webkit-touch-callout: none) {
+        html {
+            min-height: calc(100% + var(--safe-top));
+        }
+    }
+}
 body {
     background: var(--bg-app);
     color: var(--text-strong);
