@@ -8,7 +8,7 @@
 // duration chip uses a ± stepper.
 
 import { AppState } from '../utils/app-state.js';
-import { showNotification, escapeHtml, escapeAttr } from '../ui/ui-helpers.js';
+import { showNotification, escapeHtml, escapeJsArg } from '../ui/ui-helpers.js';
 import { confirmSheet, promptSheet } from '../ui/confirm-sheet.js';
 import { navigateTo, navigateBack } from '../ui/navigation.js';
 import { once } from '../ui/busy.js';
@@ -357,7 +357,7 @@ function renderManualExercises() {
                 <div class="sec-head"><h4>Recent exercises <span class="count">tap to add</span></h4></div>
                 <div class="manual-recent-chips">
                     ${remaining.map(name => `
-                        <button class="chip manual-recent-chip" onclick="quickAddRecentExercise('${escapeAttr(name)}')">
+                        <button class="chip manual-recent-chip" onclick="quickAddRecentExercise('${escapeJsArg(name)}')">
                             <i class="fas fa-plus"></i> ${escapeHtml(name)}
                         </button>
                     `).join('')}

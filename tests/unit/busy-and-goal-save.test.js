@@ -18,6 +18,7 @@ vi.mock('../../js/core/utils/app-state.js', () => ({ AppState: h.AppState }));
 vi.mock('../../js/core/ui/ui-helpers.js', () => ({
     escapeHtml: (s) => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])),
     escapeAttr: (s) => String(s ?? '').replace(/"/g, '&quot;'),
+    escapeJsArg: (s) => (s == null ? '' : String(s)).replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '\\"').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'),
     showNotification: vi.fn(),
 }));
 vi.mock('../../js/core/ui/navigation.js', () => ({ navigateTo: vi.fn() }));

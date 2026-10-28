@@ -1,7 +1,7 @@
 // Location UI Module - core/location-ui.js
 // Handles location management UI - uses Firebase locations
 
-import { showNotification, escapeHtml, escapeAttr, openModal, closeModal } from '../ui/ui-helpers.js';
+import { showNotification, escapeHtml, escapeAttr, openModal, closeModal, escapeJsArg } from '../ui/ui-helpers.js';
 import { confirmSheet, promptSheet } from '../ui/confirm-sheet.js';
 import { AppState } from '../utils/app-state.js';
 import { FirebaseWorkoutManager } from '../data/firebase-workout-manager.js';
@@ -973,7 +973,7 @@ export function showLocationDetail(locationId) {
                     <div class="loc-map-card__address">${escapeHtml(address)}</div>
                     ${hasGPS ? `<div class="loc-map-card__coords">${location.latitude.toFixed(4)}° N, ${location.longitude.toFixed(4)}° W</div>` : ''}
                 </div>
-                <button class="loc-map-card__use-current" onclick="repinGymHere('${escapeAttr(locationId)}')">
+                <button class="loc-map-card__use-current" onclick="repinGymHere('${escapeJsArg(locationId)}')">
                     <i class="fas fa-crosshairs"></i> Pin it here
                 </button>
             </div>
@@ -983,9 +983,9 @@ export function showLocationDetail(locationId) {
         <div class="field">
             <div class="field-label">Match radius</div>
             <div class="loc-radius-chips">
-                <div class="chip ${radius <= 200 ? 'active' : ''}" onclick="updateLocationRadius('${escapeAttr(locationId)}', 100)">100m</div>
-                <div class="chip ${radius > 200 && radius <= 700 ? 'active' : ''}" onclick="updateLocationRadius('${escapeAttr(locationId)}', 500)">500m</div>
-                <div class="chip ${radius > 700 ? 'active' : ''}" onclick="updateLocationRadius('${escapeAttr(locationId)}', 1000)">1 km</div>
+                <div class="chip ${radius <= 200 ? 'active' : ''}" onclick="updateLocationRadius('${escapeJsArg(locationId)}', 100)">100m</div>
+                <div class="chip ${radius > 200 && radius <= 700 ? 'active' : ''}" onclick="updateLocationRadius('${escapeJsArg(locationId)}', 500)">500m</div>
+                <div class="chip ${radius > 700 ? 'active' : ''}" onclick="updateLocationRadius('${escapeJsArg(locationId)}', 1000)">1 km</div>
             </div>
         </div>
 
@@ -993,7 +993,7 @@ export function showLocationDetail(locationId) {
         <div class="field">
             <div class="field-label">Size of this gym</div>
             <div class="loc-radius-chips">
-                ${EQUIPMENT_LEVELS.map(lv => `<div class="chip ${gymLevel(location, locationEquip.length) === lv ? 'active' : ''}" onclick="updateLocationLevel('${escapeAttr(locationId)}', '${lv}')">${escapeHtml(LEVEL_LABELS[lv])}</div>`).join('')}
+                ${EQUIPMENT_LEVELS.map(lv => `<div class="chip ${gymLevel(location, locationEquip.length) === lv ? 'active' : ''}" onclick="updateLocationLevel('${escapeJsArg(locationId)}', '${lv}')">${escapeHtml(LEVEL_LABELS[lv])}</div>`).join('')}
             </div>
             <p class="loc-level-hint">Dumbbells, cables and the usual machines count as here without adding them. Your plan suggests exercises on them and you pick the machine when you get there.</p>
         </div>
@@ -1008,14 +1008,14 @@ export function showLocationDetail(locationId) {
             <div class="row-card row-card--static link-row">
                 <div class="srow-icon ic-muted"><i class="fas fa-dumbbell"></i></div>
                 <div class="link-row-info">${escapeHtml(eq.name)}</div>
-                <button class="link-row-action" onclick="openEquipmentDetail('${escapeAttr(eq.id)}')">View</button>
+                <button class="link-row-action" onclick="openEquipmentDetail('${escapeJsArg(eq.id)}')">View</button>
             </div>
         `).join('')}
         ${locationEquip.length === 0 ? '<div class="loc-equip-empty">No machines saved here yet — they\'re added as you log sets at this gym.</div>' : ''}
 
         <!-- Delete -->
         <div class="danger-action-row">
-            <button class="danger-action-btn" onclick="deleteLocation('${escapeAttr(locationId)}')">
+            <button class="danger-action-btn" onclick="deleteLocation('${escapeJsArg(locationId)}')">
                 <i class="fas fa-trash"></i> Delete gym
             </button>
         </div>

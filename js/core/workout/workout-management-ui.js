@@ -1,7 +1,7 @@
 // Workout Management UI Functions
 import { AppState } from '../utils/app-state.js';
 import { FirebaseWorkoutManager } from '../data/firebase-workout-manager.js';
-import { showNotification, escapeHtml, escapeAttr, openModal, closeModal } from '../ui/ui-helpers.js';
+import { showNotification, escapeHtml, escapeAttr, openModal, closeModal, escapeJsArg } from '../ui/ui-helpers.js';
 import { confirmSheet, promptSheet } from '../ui/confirm-sheet.js';
 import { openSheet, closeSheet } from '../ui/sheet.js';
 import { saveWorkoutData } from '../data/data-manager.js';
@@ -148,7 +148,7 @@ function askTemplateKind(bestMatch) {
                     <div class="js-row__txt">Regular workout</div>
                 </div>
                 ${bestMatch ? `
-                <div class="js-row" onclick="_pickTemplateKind('variation', '${escapeAttr(bestMatch.id || bestMatch._id || '')}')">
+                <div class="js-row" onclick="_pickTemplateKind('variation', '${escapeJsArg(bestMatch.id || bestMatch._id || '')}')">
                     <i class="fas fa-code-branch"></i>
                     <div class="js-row__txt">Variation of ${escapeHtml(bestMatch.name || '')}</div>
                 </div>` : ''}

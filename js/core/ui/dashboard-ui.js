@@ -2,7 +2,7 @@
 // Sections: Greeting → Active Pill → Hero Chips → Insight → For Today → Training → Composition → Recent PRs
 
 import { StatsTracker } from '../features/stats-tracker.js';
-import { showNotification, setHeaderMode, escapeHtml, escapeAttr, convertWeight, formatSet, unitLabel } from './ui-helpers.js';
+import { showNotification, setHeaderMode, escapeHtml, escapeAttr, convertWeight, formatSet, unitLabel, escapeJsArg } from './ui-helpers.js';
 import { once } from './busy.js';
 import { openSheet, closeSheet } from './sheet.js';
 import { setBottomNavVisible, updateBottomNavActive } from './navigation.js';
@@ -571,7 +571,7 @@ function renderProgramCompleteBanner(allWorkouts = []) {
                     <div class="dash-program-done__title">These weeks are done</div>
                     <div class="dash-program-done__meta">${escapeHtml(done.name)} · ${done.weeks} weeks in the books</div>
                 </div>
-                <button class="dash-program-done__dismiss" onclick="dismissProgramComplete('${escapeAttr(done.id)}')" aria-label="Dismiss">
+                <button class="dash-program-done__dismiss" onclick="dismissProgramComplete('${escapeJsArg(done.id)}')" aria-label="Dismiss">
                     <i class="fas fa-times"></i>
                 </button>
             </div>
@@ -745,7 +745,7 @@ function renderForToday(allWorkouts, week) {
     return `
         ${hero}
         ${renderTodayTiles(next, lastDoneByType)}
-        <div class="row-card dash-all-workouts dash-rise" onclick="openWorkoutSelectorForDay('${escapeAttr(dayName)}')" role="button" tabindex="0">
+        <div class="row-card dash-all-workouts dash-rise" onclick="openWorkoutSelectorForDay('${escapeJsArg(dayName)}')" role="button" tabindex="0">
             <div class="row-card__icon"><i class="fas fa-list-ul" aria-hidden="true"></i></div>
             <div class="row-card__content"><div class="row-card__title">All workouts</div></div>
             <i class="fas fa-chevron-right row-card__action" aria-hidden="true"></i>
@@ -854,7 +854,8 @@ function buildProximityCandidates(template, allWorkouts) {
 function renderTodayHero({ template, scheduled }, week, dayName, lastDoneByType, allWorkouts, planCard, wp) {
     const exList = Array.isArray(template.exercises) ? template.exercises : Object.values(template.exercises || {});
     const name = template.name || template.day;
-    const startArg = escapeAttr(template.day || template.name || template.id);
+    // Only ever a JS string argument (startWorkout / startProgramSession…).
+    const startArg = escapeJsArg(template.day || template.name || template.id);
     const { title, sub } = splitWorkoutTitle(name);
     const rec = lastDoneByType[name];
 
@@ -951,7 +952,7 @@ function renderTodayTiles(next, lastDoneByType) {
         const rec = lastDoneByType[name];
         const meta = [next.day, rec?.date ? `last done ${formatRelative(rec.date)}` : null].filter(Boolean).join(' · ');
         tiles.push(`
-            <div class="dash-tile" onclick="editTemplate('${escapeAttr(t.id)}')" role="button" tabindex="0"
+            <div class="dash-tile" onclick="editTemplate('${escapeJsArg(t.id)}')" role="button" tabindex="0"
                  aria-label="${escapeAttr(`Next up: ${name}${meta ? `. ${meta}` : ''}`)}">
                 <div class="dash-tile__eyebrow">Next up</div>
                 <div class="dash-tile__title"><i class="${getCategoryIcon(category)} cat-txt-${category}" aria-hidden="true"></i>${escapeHtml(name)}</div>
@@ -1012,7 +1013,7 @@ function renderThisWeekCard(allWorkouts, recentPRs, excludeKeys, topInsight) {
             volume > 0 ? `${formatVolume(volume)} ${unitLabel(unit)}` : null,
         ].filter(Boolean).join(' · ');
         rows.push(`
-            <div class="row-card row-card--flat dash-week-row" onclick="viewWorkout('${escapeAttr(last.id)}')" role="button" tabindex="0">
+            <div class="row-card row-card--flat dash-week-row" onclick="viewWorkout('${escapeJsArg(last.id)}')" role="button" tabindex="0">
                 <i class="fas fa-check dash-week-row__icon dash-week-row__icon--done"></i>
                 <div class="dash-week-row__txt">${parts}</div>
                 <i class="fas fa-chevron-right dash-chev"></i>
@@ -1024,7 +1025,7 @@ function renderThisWeekCard(allWorkouts, recentPRs, excludeKeys, topInsight) {
     const pr = (recentPRs || []).filter(p => !excludeKeys || !excludeKeys.has(prKey(p)))[0];
     if (pr) {
         rows.push(`
-            <div class="row-card row-card--flat dash-week-row" onclick="showExerciseDetail('${escapeAttr(pr.exercise)}')" role="button" tabindex="0">
+            <div class="row-card row-card--flat dash-week-row" onclick="showExerciseDetail('${escapeJsArg(pr.exercise)}')" role="button" tabindex="0">
                 <i class="fas fa-trophy dash-week-row__icon dash-week-row__icon--gold"></i>
                 <div class="dash-week-row__txt"><b>${escapeHtml(pr.exercise)} PR</b> · ${convertWeight(pr.weight, pr.unit || 'lbs', unit)} ${unitLabel(unit)} · ${prMetaLine(pr)}</div>
                 <i class="fas fa-chevron-right dash-chev"></i>
@@ -1060,10 +1061,10 @@ function renderThisWeekCard(allWorkouts, recentPRs, excludeKeys, topInsight) {
             if (!(AppState.settings?.dismissedCoachChips || []).includes(sig)) {
                 const n = topInsight.message.match(/(\d+) sessions/)?.[1];
                 coachChip = `
-                    <div class="coach-chip" role="button" tabindex="0" onclick="coachChipAsk('${escapeAttr(topInsight.exerciseName)}')">
+                    <div class="coach-chip" role="button" tabindex="0" onclick="coachChipAsk('${escapeJsArg(topInsight.exerciseName)}')">
                         <i class="fas fa-equals coach-chip__icon"></i>
                         <span class="coach-chip__txt">${escapeHtml(topInsight.exerciseName)} stalled${n ? ` ${n} sessions` : ''} · Ask the coach</span>
-                        <button class="coach-chip__dismiss" onclick="coachChipDismiss(event, '${escapeAttr(sig)}')" aria-label="Dismiss">
+                        <button class="coach-chip__dismiss" onclick="coachChipDismiss(event, '${escapeJsArg(sig)}')" aria-label="Dismiss">
                             <i class="fas fa-times"></i>
                         </button>
                     </div>
@@ -1192,7 +1193,7 @@ function renderScoreboardCard(allWorkouts) {
             ? `<span data-count-to="${value}" data-count-dec="${value % 1 ? 1 : 0}">${value}</span><span class="dash-lift__unit">${unitLabel(unit)}</span>`
             : '—';
         return `
-            <div class="dash-lift${wide ? ' dash-lift--wide' : ''}${p.rung > 0 ? ' dash-lift--stuck' : ''}" onclick="showExerciseDetail('${escapeAttr(p.name)}')" role="button" tabindex="0"
+            <div class="dash-lift${wide ? ' dash-lift--wide' : ''}${p.rung > 0 ? ' dash-lift--stuck' : ''}" onclick="showExerciseDetail('${escapeJsArg(p.name)}')" role="button" tabindex="0"
                  aria-label="${escapeAttr(`${p.name}: ${p.rung > 0 ? 'Stuck' : SB_TREND_LABEL[trend]}, estimated max ${valueStr}`)}">
                 <div class="dash-lift__top">
                     <span class="dash-lift__name">${escapeHtml(p.name)}</span>
@@ -1442,7 +1443,7 @@ function renderTodayPRBanner(recentPRs) {
     // single-exercise drill-down that hides the other winners (the 7/2
     // report: "shows 2 PRs today but tapping only shows one exercise").
     const onclick = todays.length === 1
-        ? `showExerciseDetail('${escapeAttr(first.exercise)}')`
+        ? `showExerciseDetail('${escapeJsArg(first.exercise)}')`
         : `showTodaysPRs()`;
 
     return `
@@ -1636,7 +1637,7 @@ function renderPRTable(prs) {
     return `
         <div class="sec-head sec-head--compact sec-head--tight"><h3>Personal records</h3></div>
         ${prs.map(pr => `
-            <div class="row-card pr-row" onclick="showExerciseDetail('${escapeAttr(pr.exercise)}')">
+            <div class="row-card pr-row" onclick="showExerciseDetail('${escapeJsArg(pr.exercise)}')">
                 <div class="pr-badge"><i class="fas fa-trophy"></i></div>
                 <div class="pr-info">
                     <div class="pr-name">${escapeHtml(pr.exercise)}</div>

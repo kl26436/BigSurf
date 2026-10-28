@@ -1,7 +1,7 @@
 // Exercise Detail — Level 3 drill-down from muscle group exercise list
 
 import { AppState } from '../utils/app-state.js';
-import { escapeHtml, escapeAttr, formatSet, unitLabel } from './ui-helpers.js';
+import { escapeHtml, formatSet, unitLabel, escapeJsArg } from './ui-helpers.js';
 import { formatDateShort } from '../utils/date-helpers.js';
 import {
     aggregateExerciseStats, exerciseEquipmentCounts, classifyBodyPart, capitalize, formatVolume,
@@ -92,10 +92,10 @@ export function renderExerciseDetail(exerciseName) {
             const sig = `plateau:${plateau.exercise.toLowerCase()}`;
             if (!(AppState.settings?.dismissedCoachChips || []).includes(sig)) {
                 stallChip = `
-                    <div class="coach-chip" role="button" tabindex="0" onclick="coachChipAsk('${escapeAttr(plateau.exercise)}')">
+                    <div class="coach-chip" role="button" tabindex="0" onclick="coachChipAsk('${escapeJsArg(plateau.exercise)}')">
                         <i class="fas fa-equals coach-chip__icon"></i>
                         <span class="coach-chip__txt">Stalled ${plateau.sessions} sessions · Ask the coach</span>
-                        <button class="coach-chip__dismiss" onclick="coachChipDismiss(event, '${escapeAttr(sig)}')" aria-label="Dismiss">
+                        <button class="coach-chip__dismiss" onclick="coachChipDismiss(event, '${escapeJsArg(sig)}')" aria-label="Dismiss">
                             <i class="fas fa-times"></i>
                         </button>
                     </div>
@@ -168,7 +168,7 @@ export function renderExerciseDetail(exerciseName) {
                 const expanded = _expandedSessionsFor === exerciseName;
                 const shown = expanded ? s.sessions : s.sessions.slice(0, SESSIONS_COLLAPSED_LIMIT);
                 const overflowBtn = s.sessions.length > SESSIONS_COLLAPSED_LIMIT
-                    ? `<button class="d-see-all" onclick="toggleAllSessions('${escapeAttr(exerciseName)}')">${
+                    ? `<button class="d-see-all" onclick="toggleAllSessions('${escapeJsArg(exerciseName)}')">${
                         expanded
                             ? `Show recent only`
                             : `See all ${s.sessions.length} sessions`
@@ -227,7 +227,7 @@ async function hydratePlaces(exerciseName) {
         const sub = [eq.brand && eq.brand !== 'Unknown' ? eq.brand : null, eq.line, eq.equipmentType].filter(Boolean).join(' · ');
         const atHere = here && (eq.locations || []).includes(here);
         return `
-        <div class="row-card exd-place" onclick="openMachineFromExercise('${escapeAttr(eq.id)}')" role="button" tabindex="0">
+        <div class="row-card exd-place" onclick="openMachineFromExercise('${escapeJsArg(eq.id)}')" role="button" tabindex="0">
             <div class="row-card__icon"><i class="fas fa-cog" aria-hidden="true"></i></div>
             <div class="row-card__content">
                 <div class="row-card__title">${escapeHtml(eq.function || eq.name || 'Machine')}${atHere ? ' <span class="exd-here-badge">Here</span>' : ''}</div>
@@ -285,7 +285,7 @@ function renderMachinePills(equipCounts) {
     const pill = (key, label, count) => {
         const on = _equipmentFilter === key;
         return `<button class="m-pill ${on ? 'on' : ''}" aria-pressed="${on}"
-                    onclick="setExerciseEquipment(${key === null ? 'null' : `'${escapeAttr(key)}'`})">
+                    onclick="setExerciseEquipment(${key === null ? 'null' : `'${escapeJsArg(key)}'`})">
                 ${escapeHtml(label)} <span class="m-pill__n">${count}</span>
             </button>`;
     };

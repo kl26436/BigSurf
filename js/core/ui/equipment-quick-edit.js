@@ -13,7 +13,7 @@
 // refreshing AppState._cachedEquipment.
 
 import { AppState } from '../utils/app-state.js';
-import { showNotification, escapeHtml, escapeAttr } from './ui-helpers.js';
+import { showNotification, escapeHtml, escapeAttr, escapeJsArg } from './ui-helpers.js';
 import { openSheet, closeSheet } from './sheet.js';
 import { FirebaseWorkoutManager } from '../data/firebase-workout-manager.js';
 import { composeEquipmentName } from '../utils/equipment-name.js';
@@ -105,7 +105,7 @@ function renderBody() {
         </span>
     `).join('');
     const suggestChip = (state.contextExercise && !state.exerciseTypes.includes(state.contextExercise))
-        ? `<button type="button" class="chip chip--sm chip--add" onclick="qeAddExercise('${escapeAttr(state.contextExercise)}')">
+        ? `<button type="button" class="chip chip--sm chip--add" onclick="qeAddExercise('${escapeJsArg(state.contextExercise)}')">
                <i class="fas fa-plus"></i> ${escapeHtml(state.contextExercise)}
            </button>`
         : '';
@@ -149,7 +149,7 @@ function renderBody() {
         .sort()
         .slice(0, 6)
         .map(g => `
-            <button type="button" class="chip chip--sm chip--add" onclick="qeAddGym('${escapeAttr(g)}')">
+            <button type="button" class="chip chip--sm chip--add" onclick="qeAddGym('${escapeJsArg(g)}')">
                 <i class="fas fa-plus"></i> ${escapeHtml(g)}
             </button>
         `).join('');

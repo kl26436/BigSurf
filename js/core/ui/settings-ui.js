@@ -3,7 +3,7 @@
 
 import { AppState } from '../utils/app-state.js';
 import { Config, APP_VERSION } from '../utils/config.js';
-import { showNotification, escapeHtml, escapeAttr, formatHeight, parseHeightToCm } from './ui-helpers.js';
+import { showNotification, escapeHtml, escapeAttr, formatHeight, parseHeightToCm, escapeJsArg } from './ui-helpers.js';
 import { confirmSheet, promptSheet } from './confirm-sheet.js';
 import { openSheet, closeSheet } from './sheet.js';
 import { navigateTo, navigateBack } from './navigation.js';
@@ -1069,7 +1069,7 @@ function renderCoachMemoryBody(facts) {
                 <div class="srow-name">${escapeHtml(f.text)}</div>
                 <div class="srow-desc">${escapeHtml((f.createdAt || '').slice(0, 10))}</div>
             </div>
-            <button class="btn-text" onclick="deleteCoachFact('${escapeAttr(f.id)}')" aria-label="Forget this">
+            <button class="btn-text" onclick="deleteCoachFact('${escapeJsArg(f.id)}')" aria-label="Forget this">
                 <i class="fas fa-trash"></i>
             </button>
         </div>

@@ -2,7 +2,7 @@
 // defect rules (under the status bar, under 44 px, covered).
 
 import { describe, it, expect } from 'vitest';
-import { formatHudLine, controlDefects } from '../../js/core/utils/shell-hud.js';
+import { formatHudLine, formatNavPart, controlDefects } from '../../js/core/utils/shell-hud.js';
 
 describe('shell HUD', () => {
     it('formats one line with every number the shell bugs depend on', () => {
@@ -13,6 +13,17 @@ describe('shell HUD', () => {
         expect(line).toBe('ih 844 · vv 500 @0 · kb 344 · sat 59 sab 34 · y 420* · lock 1 · active-workout · #aw-sheet · INPUT#aw-equip-search');
         expect(formatHudLine({ ih: 1, vvH: 1, vvTop: 0, kb: 0, sat: 0, sab: 0, scrollY: 0, lock: 0, section: '', open: [], focus: '' }))
             .toContain('lock 0 · — · — · —');
+    });
+
+    it('reports the bottom nav: height@top, bottom padding, a gap only when there is one, doc↕ when the page scrolls', () => {
+        expect(formatNavPart({ nav: { h: 94, top: 750, pb: 34, gap: 0 }, docScrolls: true }))
+            .toBe(' · nav 94@750 pb 34 · doc↕');
+        expect(formatNavPart({ nav: { h: 60, top: 700, pb: 0, gap: 24 }, docScrolls: false }))
+            .toBe(' · nav 60@700 pb 0 gap 24');
+        expect(formatNavPart({ nav: null })).toBe('');
+        // The HUD line carries it at the end, so the existing fields don't move.
+        expect(formatHudLine({ ih: 844, vvH: 844, vvTop: 0, kb: 0, sat: 59, sab: 34, scrollY: 0, lock: 0, section: 'dashboard', open: [], focus: '', nav: { h: 94, top: 750, pb: 34, gap: 0 }, docScrolls: false }))
+            .toMatch(/· dashboard · — · — · nav 94@750 pb 34$/);
     });
 
     it('flags a back button under the status bar, under 44 px, or covered', () => {

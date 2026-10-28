@@ -1,7 +1,7 @@
 // Muscle Group Detail — Level 2 drill-down from dashboard body-part cards
 
 import { AppState } from '../utils/app-state.js';
-import { escapeHtml, escapeAttr, formatSet, unitLabel } from './ui-helpers.js';
+import { escapeHtml, formatSet, unitLabel, escapeJsArg } from './ui-helpers.js';
 import { formatDateShort } from '../utils/date-helpers.js';
 import {
     aggregateBodyPartStats, getExercisesForBodyPart, getPRsForBodyPart,
@@ -135,7 +135,7 @@ function renderEmptyRange(range) {
 function renderExerciseRow(ex, bodyPart) {
     const color = bodyPartColor(bodyPart);
     return `
-        <div class="row-card d-exercise-row" onclick="showExerciseDetail('${escapeAttr(ex.name)}')">
+        <div class="row-card d-exercise-row" onclick="showExerciseDetail('${escapeJsArg(ex.name)}')">
             <div class="d-ex-spark">${chartSparkline({ points: ex.trend, color, width: 54, height: 24 })}</div>
             <div class="d-ex-info">
                 <div class="d-ex-name">${escapeHtml(ex.name)}</div>
@@ -151,7 +151,7 @@ function renderExerciseRow(ex, bodyPart) {
 
 function renderPRRow(pr) {
     return `
-        <div class="row-card d-pr-row" onclick="showExerciseDetail('${escapeAttr(pr.exercise)}')" role="button" tabindex="0">
+        <div class="row-card d-pr-row" onclick="showExerciseDetail('${escapeJsArg(pr.exercise)}')" role="button" tabindex="0">
             <div class="pr-badge"><i class="fas fa-trophy"></i></div>
             <div class="pr-info">
                 <div class="pr-name">${escapeHtml(pr.exercise)}</div>

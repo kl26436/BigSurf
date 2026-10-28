@@ -17,6 +17,7 @@ vi.mock('../../js/core/ui/ui-helpers.js', () => ({
     showNotification: vi.fn(),
     escapeHtml: (s) => String(s ?? ''),
     escapeAttr: (s) => String(s ?? ''),
+    escapeJsArg: (s) => (s == null ? '' : String(s)).replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '\\"').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'),
 }));
 
 import { buildLiveWorkoutContext, buildLiveSessionLine, applyNextTarget } from '../../js/core/features/coach-live.js';

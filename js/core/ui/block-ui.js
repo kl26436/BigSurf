@@ -9,7 +9,7 @@
 // shows the notice, the waiting accessory swaps, and undo.
 
 import { AppState } from '../utils/app-state.js';
-import { escapeHtml, escapeAttr, showNotification, formatSet, unitLabel } from './ui-helpers.js';
+import { escapeHtml, escapeAttr, showNotification, formatSet, unitLabel, escapeJsArg } from './ui-helpers.js';
 import { navigateTo } from './navigation.js';
 import { debugLog } from '../utils/config.js';
 import { buildBlockSession } from '../features/block-view.js';
@@ -298,7 +298,7 @@ function weekHTML(w, idx) {
                             ${tripOf(c.date) ? `<div class="row-card__detail"><i class="fas fa-plane" aria-hidden="true"></i> ${escapeHtml(tripOf(c.date).name)} · ${escapeHtml(LEVEL_LABELS[tripOf(c.date).level || 'hotel'].toLowerCase())}</div>` : ''}
                         </div>
                         ${c.status === 'today'
-        ? `<button class="btn btn-primary btn-sm block-cell__start" onclick="event.stopPropagation(); blockStartSession('${escapeAttr(c.name)}')">Start</button>`
+        ? `<button class="btn btn-primary btn-sm block-cell__start" onclick="event.stopPropagation(); blockStartSession('${escapeJsArg(c.name)}')">Start</button>`
         : '<i class="fas fa-chevron-right row-card__action" aria-hidden="true"></i>'}
                     </div>`).join('')}
             </div>
@@ -346,8 +346,8 @@ export function openBlockSession(weekIdx, cellIdx) {
     const status = { done: `Done ${cell.doneOn ? fmtDate(cell.doneOn) : ''}`, missed: 'Missed', today: 'Today', upcoming: fmtDate(cell.date), projected: `${fmtDate(cell.date)} · projected` }[cell.status];
     const startable = ['today', 'upcoming', 'missed', 'projected'].includes(cell.status);
     const primaryAction = startable
-        ? { label: `Start ${escapeHtml(cell.name)}`, onClick: `blockStartSession('${escapeAttr(cell.name)}')`, primary: true }
-        : (cell.workoutId ? { label: 'Open workout', onClick: `closeBlockSession(); viewWorkout('${escapeAttr(cell.workoutId)}')`, primary: true } : null);
+        ? { label: `Start ${escapeHtml(cell.name)}`, onClick: `blockStartSession('${escapeJsArg(cell.name)}')`, primary: true }
+        : (cell.workoutId ? { label: 'Open workout', onClick: `closeBlockSession(); viewWorkout('${escapeJsArg(cell.workoutId)}')`, primary: true } : null);
 
     openSheet({
         id: BLOCK_SESSION_SHEET_ID,
@@ -359,7 +359,7 @@ export function openBlockSession(weekIdx, cellIdx) {
                         <div class="js-row__name">${escapeHtml(r.name)}${r.primary ? ' <span class="block-session__main">Main lift</span>' : ''}</div>
                         <div class="js-row__meta">${r.sets} sets${w.projected ? ' · targets fill in when these weeks are set' : ` · target ${escapeHtml(fmt(r.target))}`}${r.logged ? ` · logged ${escapeHtml(fmt(r.logged))}` : ''}${r.variantOf ? ` · in place of ${escapeHtml(r.variantOf)}` : ''}${escapeHtml(switchText(r))}${escapeHtml(tripText(r))}</div>
                     </div>
-                    ${swapIndex(r.name) >= 0 ? `<button class="btn btn-secondary btn-sm" onclick="closeBlockSession({ immediate: true }); openRotateSheet('${escapeAttr(template.id)}', ${swapIndex(r.name)})" aria-label="${escapeAttr(`Swap ${r.name}`)}"><i class="fas fa-arrow-right-arrow-left" aria-hidden="true"></i></button>` : ''}
+                    ${swapIndex(r.name) >= 0 ? `<button class="btn btn-secondary btn-sm" onclick="closeBlockSession({ immediate: true }); openRotateSheet('${escapeJsArg(template.id)}', ${swapIndex(r.name)})" aria-label="${escapeAttr(`Swap ${r.name}`)}"><i class="fas fa-arrow-right-arrow-left" aria-hidden="true"></i></button>` : ''}
                 </div>`).join('') : `
                 <div class="empty-state-compact">
                     <p>This workout has no exercises yet</p>
@@ -368,7 +368,7 @@ export function openBlockSession(weekIdx, cellIdx) {
         actions: [
             { label: 'Close', onClick: 'closeBlockSession()' },
             // TP-4 — a session built for the plan can be kept in the user's own list.
-            ...(template?.planOwned ? [{ label: 'Save to my workouts', onClick: `closeBlockSession(); saveSessionToMyWorkouts('${escapeAttr(template.id)}')` }] : []),
+            ...(template?.planOwned ? [{ label: 'Save to my workouts', onClick: `closeBlockSession(); saveSessionToMyWorkouts('${escapeJsArg(template.id)}')` }] : []),
             ...(primaryAction ? [primaryAction] : []),
         ],
     });
@@ -594,7 +594,7 @@ function rotateListBody() {
             if (inferRole(ex, i) === 'primary') {
                 return `<div class="js-row js-row--locked"><div class="js-row__info"><div class="js-row__name"><i class="fas fa-lock" aria-hidden="true"></i> ${escapeHtml(name)}</div><div class="js-row__meta">Stays — your strength numbers depend on it</div></div></div>`;
             }
-            return `<button class="js-row" onclick="rotatePick('${escapeAttr(t.id)}', ${i})"><div class="js-row__info"><div class="js-row__name">${escapeHtml(name)}</div><div class="js-row__meta">${escapeHtml(tenure(ex))}</div></div><i class="fas fa-chevron-right" aria-hidden="true"></i></button>`;
+            return `<button class="js-row" onclick="rotatePick('${escapeJsArg(t.id)}', ${i})"><div class="js-row__info"><div class="js-row__name">${escapeHtml(name)}</div><div class="js-row__meta">${escapeHtml(tenure(ex))}</div></div><i class="fas fa-chevron-right" aria-hidden="true"></i></button>`;
         }).join('');
         return `<div class="field-label">${escapeHtml(x.dayLabel)} · ${escapeHtml(t.name || t.id)}</div>${rows}`;
     }).join('');
@@ -681,7 +681,7 @@ export async function rotatePick(templateId, index) {
         bodyHTML: body,
         actions: [
             { label: 'Close', onClick: 'closeRotateSheet()' },
-            { label: 'Ask the coach instead', onClick: `closeRotateSheet(); blockSwapAccessory('${escapeAttr(name)}')` },
+            { label: 'Ask the coach instead', onClick: `closeRotateSheet(); blockSwapAccessory('${escapeJsArg(name)}')` },
         ],
     });
 }

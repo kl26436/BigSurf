@@ -3,7 +3,7 @@
 
 import { AppState } from '../utils/app-state.js';
 import { getCategoryIcon, CATEGORY_COLORS } from '../utils/config.js';
-import { showNotification, escapeHtml, escapeAttr, formatSet, unitLabel } from './ui-helpers.js';
+import { showNotification, escapeHtml, escapeAttr, formatSet, unitLabel, escapeJsArg } from './ui-helpers.js';
 import { formatRelative, formatDuration } from '../utils/date-helpers.js';
 import { confirmSheet } from './confirm-sheet.js';
 import { openSheet, closeSheet } from './sheet.js';
@@ -777,7 +777,7 @@ function renderArchivedGroup(archived) {
                     <div class="row-card__subtitle">${normalizeExercisesToArray(t.exercises).length} exercises</div>
                 </div>
                 <button class="archived-row__restore" data-stop-propagation
-                        onclick="unarchiveTemplate('${escapeAttr(t._id)}')">Restore</button>
+                        onclick="unarchiveTemplate('${escapeJsArg(t._id)}')">Restore</button>
             </div>`).join('')
         : '';
     return `

@@ -30,6 +30,7 @@ vi.mock('../../js/core/ui/ui-helpers.js', () => ({
     displayWeight: vi.fn(),
     escapeHtml: (s) => s,
     escapeAttr: (s) => s,
+    escapeJsArg: (s) => (s == null ? '' : String(s)).replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '\\"').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'),
 }));
 
 vi.mock('../../js/core/workout/active-workout-ui.js', () => ({

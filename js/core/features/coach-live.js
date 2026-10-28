@@ -13,7 +13,7 @@
 
 import { AppState } from '../utils/app-state.js';
 import { Config, debugLog } from '../utils/config.js';
-import { showNotification, escapeHtml, escapeAttr } from '../ui/ui-helpers.js';
+import { showNotification, escapeHtml, escapeJsArg } from '../ui/ui-helpers.js';
 import { formatCoachResponse } from './coach-markdown.js';
 import { findBestMatch } from './fuzzy-match.js';
 import { debouncedSaveWorkoutData } from '../data/data-manager.js';
@@ -86,7 +86,7 @@ export function openLiveCoach() {
         bodyHTML: _liveThread.length === 0 ? '<div class="live-coach__hint">Ask about your next set, a swap, or anything mid-workout.</div>' : '',
         footerHTML: `
             <div class="live-coach__chips">
-                ${quickChips().map(c => `<button class="chip chip--sm" onclick="liveCoachChip('${escapeAttr(c)}')">${escapeHtml(c)}</button>`).join('')}
+                ${quickChips().map(c => `<button class="chip chip--sm" onclick="liveCoachChip('${escapeJsArg(c)}')">${escapeHtml(c)}</button>`).join('')}
             </div>
             <div class="live-coach__inputbar">
                 <input type="text" id="live-coach-input" class="field-input" placeholder="Ask your coach…" aria-label="Ask your coach"

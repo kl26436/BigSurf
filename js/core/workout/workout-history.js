@@ -1,5 +1,5 @@
 // Clean Workout History Module with Calendar View - core/workout-history.js
-import { showNotification, escapeHtml, escapeAttr, displayWeight, formatSet, unitLabel } from '../ui/ui-helpers.js';
+import { showNotification, escapeHtml, escapeAttr, displayWeight, formatSet, unitLabel, escapeJsArg } from '../ui/ui-helpers.js';
 import { getDateString, formatDateShort, formatDuration, formatRelativeDate } from '../utils/date-helpers.js';
 import { enterSection, navigateBack } from '../ui/navigation.js';
 import { getExerciseName, formatStatus, formatCategory, CATEGORY_LABELS } from '../utils/workout-helpers.js';
@@ -942,7 +942,7 @@ export function getWorkoutHistory(appState) {
                         workout.exerciseNames?.[exerciseKey] || getExerciseName(originalExercise);
                     exerciseHTML += `
                 <div class="exercise-detail-item">
-                    <button type="button" class="exercise-summary__name" onclick="showExerciseDetail('${escapeAttr(exerciseName)}')">
+                    <button type="button" class="exercise-summary__name" onclick="showExerciseDetail('${escapeJsArg(exerciseName)}')">
                         <span>${escapeHtml(exerciseName)}</span><i class="fas fa-chevron-right" aria-hidden="true"></i>
                     </button>
                     ${this.generateSetsHTML(exerciseData?.sets || [], unit)}

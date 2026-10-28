@@ -1,7 +1,7 @@
 // Metric Detail UI — drill-down detail views for tappable metric cards
 
 import { AppState } from '../utils/app-state.js';
-import { escapeHtml } from './ui-helpers.js';
+import { escapeHtml, escapeJsArg } from './ui-helpers.js';
 import { navigateTo, navigateBack } from './navigation.js';
 import { confirmSheet } from './confirm-sheet.js';
 import { formatRelativeDate as formatRelativeDateShared } from '../utils/date-helpers.js';
@@ -219,7 +219,7 @@ async function renderBodyWeightDetail(container, range) {
         // Recent entries list — each row has a delete action for typo fixes.
         const recentEntries = series.slice(-5).reverse().map(e => {
             const dateLabel = formatRelativeDate(e.date);
-            const entryId = escapeHtml(e.id || '');
+            const entryId = escapeJsArg(e.id || '');
             return `
                 <div class="row-card row-card--static detail-row">
                     <div class="detail-weight-icon"><i class="fas fa-weight"></i></div>

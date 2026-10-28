@@ -2,7 +2,7 @@
 // Upload modal, AI review form, dashboard card, history, detail views
 
 import { AppState } from '../utils/app-state.js';
-import { escapeHtml, escapeAttr, showNotification, convertWeight } from '../ui/ui-helpers.js';
+import { escapeHtml, escapeAttr, showNotification, convertWeight, escapeJsArg } from '../ui/ui-helpers.js';
 import { confirmSheet } from '../ui/confirm-sheet.js';
 import { enterSection, navigateBack } from '../ui/navigation.js';
 import { formatRelativeDate } from '../utils/date-helpers.js';
@@ -92,7 +92,7 @@ export async function renderDexaCard() {
                     <h3><i class="fas fa-x-ray"></i> DEXA Scan</h3>
                     <span class="dexa-card-date">${escapeHtml(dateStr)}</span>
                 </div>
-                <div class="dexa-card-stats" onclick="showDexaDetail('${escapeAttr(latest.id)}')">
+                <div class="dexa-card-stats" onclick="showDexaDetail('${escapeJsArg(latest.id)}')">
                     ${summaryItems}
                 </div>
                 ${imbalanceHint}
@@ -724,7 +724,7 @@ async function paintDexaHistory() {
             }
 
             return `
-                <div class="row-card dexa-history-item" onclick="showDexaDetail('${escapeAttr(scan.id)}')">
+                <div class="row-card dexa-history-item" onclick="showDexaDetail('${escapeJsArg(scan.id)}')">
                     <div class="dexa-history-info">
                         <span class="dexa-history-date">${escapeHtml(dateStr)}</span>
                         <span class="dexa-history-bf">${scan.totalBodyFat != null ? scan.totalBodyFat + '% body fat' : 'No body fat data'}</span>

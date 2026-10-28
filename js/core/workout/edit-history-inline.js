@@ -12,7 +12,7 @@
 
 import { AppState } from '../utils/app-state.js';
 import { loadWorkoutById, updateHistoricalWorkout } from '../data/data-manager.js';
-import { displayWeight, escapeHtml, escapeAttr, showNotification } from '../ui/ui-helpers.js';
+import { displayWeight, escapeHtml, escapeAttr, showNotification, escapeJsArg } from '../ui/ui-helpers.js';
 import { formatDateShort } from '../utils/date-helpers.js';
 import { getCategoryIcon } from '../utils/config.js';
 import { openSharedAddExerciseSheet, openSharedEquipmentSheet } from './active-workout-ui.js';
@@ -798,25 +798,25 @@ function renderExerciseCard(key, exercise) {
                     <i class="${iconClass}"></i>
                 </div>
                 <div class="weh-ex__name">${escapeHtml(exercise.name)}</div>
-                <button class="weh-ex__trash" aria-label="Remove exercise" onclick="wehRemoveExercise('${escapeAttr(key)}')">
+                <button class="weh-ex__trash" aria-label="Remove exercise" onclick="wehRemoveExercise('${escapeJsArg(key)}')">
                     <i class="fas fa-trash"></i>
                 </button>
             </div>
 
             <div class="weh-ex__sub">
-                <button class="weh-equip-chip" onclick="wehChangeEquipment('${escapeAttr(key)}')">
+                <button class="weh-equip-chip" onclick="wehChangeEquipment('${escapeJsArg(key)}')">
                     <i class="fas fa-cog"></i>
                     <span>${escapeHtml(equipText)}</span>
                 </button>
                 <div class="weh-unit" role="group" aria-label="Weight unit">
-                    <button class="weh-unit__opt ${unit === 'lbs' ? 'weh-unit__opt--on' : ''}" onclick="wehToggleUnit('${escapeAttr(key)}')">lb</button>
-                    <button class="weh-unit__opt ${unit === 'kg' ? 'weh-unit__opt--on' : ''}" onclick="wehToggleUnit('${escapeAttr(key)}')">kg</button>
+                    <button class="weh-unit__opt ${unit === 'lbs' ? 'weh-unit__opt--on' : ''}" onclick="wehToggleUnit('${escapeJsArg(key)}')">lb</button>
+                    <button class="weh-unit__opt ${unit === 'kg' ? 'weh-unit__opt--on' : ''}" onclick="wehToggleUnit('${escapeJsArg(key)}')">kg</button>
                 </div>
             </div>
 
             <div class="weh-set-list">
                 ${setsHTML || '<div class="weh-set-empty">No sets yet</div>'}
-                <button class="weh-add-set" onclick="wehAddSet('${escapeAttr(key)}')">
+                <button class="weh-add-set" onclick="wehAddSet('${escapeJsArg(key)}')">
                     <i class="fas fa-plus"></i> Add set
                 </button>
             </div>
@@ -826,7 +826,7 @@ function renderExerciseCard(key, exercise) {
                 <textarea
                     class="weh-notes__input"
                     placeholder="How did this exercise feel?"
-                    onblur="wehSaveNotes('${escapeAttr(key)}', this.value)"
+                    onblur="wehSaveNotes('${escapeJsArg(key)}', this.value)"
                 >${escapeHtml(exercise.notes || '')}</textarea>
             </details>
         </div>
@@ -850,7 +850,7 @@ function renderSetRow(key, idx, set, displayUnitForExercise) {
         return `
             <div class="weh-set weh-set--editing">
                 <div class="weh-set__num">#${idx + 1}</div>
-                <button class="${typeClass}" onclick="wehCycleSetType('${escapeAttr(key)}', ${idx})">${typeLabel}</button>
+                <button class="${typeClass}" onclick="wehCycleSetType('${escapeJsArg(key)}', ${idx})">${typeLabel}</button>
                 <input
                     type="number"
                     class="weh-set__input"
@@ -871,7 +871,7 @@ function renderSetRow(key, idx, set, displayUnitForExercise) {
                     value="${escapeAttr(draftWeight)}"
                     oninput="wehUpdateSetDraft('weight', this.value)"
                 />
-                <button class="weh-set__commit" aria-label="Save set" onclick="wehCommitSet('${escapeAttr(key)}', ${idx})">
+                <button class="weh-set__commit" aria-label="Save set" onclick="wehCommitSet('${escapeJsArg(key)}', ${idx})">
                     <i class="fas fa-check"></i>
                 </button>
                 <button class="weh-set__cancel" aria-label="Discard set changes" onclick="wehCancelSetEdit()">
@@ -884,16 +884,16 @@ function renderSetRow(key, idx, set, displayUnitForExercise) {
     return `
         <div class="weh-set">
             <div class="weh-set__num">#${idx + 1}</div>
-            <button class="${typeClass}" onclick="wehCycleSetType('${escapeAttr(key)}', ${idx})">${typeLabel}</button>
-            <button class="weh-set__val" onclick="wehTapSetField('${escapeAttr(key)}', ${idx})">
+            <button class="${typeClass}" onclick="wehCycleSetType('${escapeJsArg(key)}', ${idx})">${typeLabel}</button>
+            <button class="weh-set__val" onclick="wehTapSetField('${escapeJsArg(key)}', ${idx})">
                 <span class="weh-set__val-num">${escapeHtml(repsDisplay)}</span>
                 <span class="weh-set__val-unit">reps</span>
             </button>
-            <button class="weh-set__val" onclick="wehTapSetField('${escapeAttr(key)}', ${idx})">
+            <button class="weh-set__val" onclick="wehTapSetField('${escapeJsArg(key)}', ${idx})">
                 <span class="weh-set__val-num">${escapeHtml(weightDisplay)}</span>
                 <span class="weh-set__val-unit">${escapeHtml(displayUnitForExercise === 'kg' ? 'kg' : 'lb')}</span>
             </button>
-            <button class="weh-set__remove" aria-label="Remove set" onclick="wehRemoveSet('${escapeAttr(key)}', ${idx})">
+            <button class="weh-set__remove" aria-label="Remove set" onclick="wehRemoveSet('${escapeJsArg(key)}', ${idx})">
                 <i class="fas fa-times"></i>
             </button>
         </div>

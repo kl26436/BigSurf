@@ -6,7 +6,7 @@
 // at. Baselines are measured at creation, never asked for.
 
 import { AppState } from '../utils/app-state.js';
-import { escapeHtml, escapeAttr, showNotification } from './ui-helpers.js';
+import { escapeHtml, escapeAttr, showNotification, escapeJsArg } from './ui-helpers.js';
 import { navigateTo } from './navigation.js';
 import { openSheet, closeSheet } from './sheet.js';
 import { confirmSheet } from './confirm-sheet.js';
@@ -107,7 +107,7 @@ function goalRowHTML(r, events) {
     const by = g.by ? ` · by ${shortDate(g.by)}` : '';
     const ev = g.eventId ? events.find(e => e.id === g.eventId) : null;
     return `
-        <div class="row-card goal-row" onclick="openGoalActions('${escapeAttr(g.id)}')">
+        <div class="row-card goal-row" onclick="openGoalActions('${escapeJsArg(g.id)}')">
             <div class="row-card__content">
                 <div class="goal-row__head">
                     <div class="row-card__title">${escapeHtml(goalName(g, { events }))}</div>
@@ -129,7 +129,7 @@ function eventRowHTML(e, today) {
                 <div class="row-card__title">${escapeHtml(e.name)}</div>
                 <div class="row-card__subtitle">${escapeHtml(shortDate(e.date))} · ${weeks === 0 ? 'this week' : `in ${weeks} week${weeks === 1 ? '' : 's'}`}</div>
             </div>
-            <button class="btn-icon" onclick="openEventActions('${escapeAttr(e.id)}')" aria-label="Remove ${escapeAttr(e.name)}"><i class="fas fa-trash"></i></button>
+            <button class="btn-icon" onclick="openEventActions('${escapeJsArg(e.id)}')" aria-label="Remove ${escapeAttr(e.name)}"><i class="fas fa-trash"></i></button>
         </div>`;
 }
 
@@ -200,7 +200,7 @@ function goalFormHTML(draft) {
     const lifts = _state ? mainLiftNames(_state.data) : [];
     const events = (_state?.events || []).filter(e => e.date > (_state?.data?.today || ''));
     const field = (label, inner, hint = '') => `<div class="field"><div class="field-label">${escapeHtml(label)}${hint ? `<span class="field-label__hint">${escapeHtml(hint)}</span>` : ''}</div>${inner}</div>`;
-    const chips = (name, options, current) => `<div class="chips">${options.map(o => `<button class="chip chip--sm${o.value === current ? ' active' : ''}" onclick="goalDraftSet('${name}', '${escapeAttr(o.value)}')">${escapeHtml(o.label)}</button>`).join('')}</div>`;
+    const chips = (name, options, current) => `<div class="chips">${options.map(o => `<button class="chip chip--sm${o.value === current ? ' active' : ''}" onclick="goalDraftSet('${name}', '${escapeJsArg(o.value)}')">${escapeHtml(o.label)}</button>`).join('')}</div>`;
     const parts = [];
     if (draft.type === 'lift') {
         parts.push(field('Lift', lifts.length ? chips('exercise', lifts.map(n => ({ value: n, label: n })), draft.key?.exercise) : '<div class="field-helper">Pick your main lifts in Settings first — goals track those.</div>'));
@@ -296,9 +296,9 @@ export function openGoalActions(id) {
         title: goalName(g, { events: _state.events }),
         subtitle: r.sentence,
         bodyHTML: [
-            g.status === 'paused' ? row('fa-play', 'Resume', `goalSetStatus('${escapeAttr(id)}', 'active')`) : g.status === 'active' ? row('fa-pause', 'Pause', `goalSetStatus('${escapeAttr(id)}', 'paused')`) : '',
-            g.status !== 'met' ? row('fa-check', 'Mark as met', `goalSetStatus('${escapeAttr(id)}', 'met')`) : row('fa-rotate-left', 'Track it again', `goalSetStatus('${escapeAttr(id)}', 'active')`),
-            row('fa-trash', 'Delete goal', `goalDelete('${escapeAttr(id)}')`, ' goal-action--danger'),
+            g.status === 'paused' ? row('fa-play', 'Resume', `goalSetStatus('${escapeJsArg(id)}', 'active')`) : g.status === 'active' ? row('fa-pause', 'Pause', `goalSetStatus('${escapeJsArg(id)}', 'paused')`) : '',
+            g.status !== 'met' ? row('fa-check', 'Mark as met', `goalSetStatus('${escapeJsArg(id)}', 'met')`) : row('fa-rotate-left', 'Track it again', `goalSetStatus('${escapeJsArg(id)}', 'active')`),
+            row('fa-trash', 'Delete goal', `goalDelete('${escapeJsArg(id)}')`, ' goal-action--danger'),
         ].join(''),
     });
 }

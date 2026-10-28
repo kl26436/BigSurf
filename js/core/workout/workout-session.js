@@ -2,7 +2,7 @@
 // Handles workout session lifecycle: start, pause, complete, cancel, resume, edit
 
 import { AppState } from '../utils/app-state.js';
-import { showNotification, setHeaderMode, stopActiveWorkoutRestTimer, escapeAttr, escapeHtml, openModal, closeModal, formatSet, unitLabel } from '../ui/ui-helpers.js';
+import { showNotification, setHeaderMode, stopActiveWorkoutRestTimer, escapeAttr, escapeHtml, openModal, closeModal, formatSet, unitLabel, escapeJsArg } from '../ui/ui-helpers.js';
 import { setBottomNavVisible, navigateTo, setWorkoutActiveState, enterSection } from '../ui/navigation.js';
 import { saveWorkoutData, clearLastSessionCache, clearAllWorkoutsCache, loadAllWorkouts } from '../data/data-manager.js';
 import {
@@ -915,7 +915,7 @@ export function showWorkoutSummary(workoutData, newPRs = [], templateChanges = n
             </div>
 
             <div class="completion-coach-review">
-                <button class="btn-text" onclick="reviewSessionWithCoach('${escapeAttr(workoutData.workoutType || 'Workout')}')">
+                <button class="btn-text" onclick="reviewSessionWithCoach('${escapeJsArg(workoutData.workoutType || 'Workout')}')">
                     <i class="fas fa-comment-dots"></i> Review this session with the coach
                 </button>
             </div>

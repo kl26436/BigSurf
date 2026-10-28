@@ -2,7 +2,7 @@
 // Main controller: header, pills, hero, equipment, last session, set rows, footer
 
 import { AppState } from '../utils/app-state.js';
-import { escapeHtml, escapeAttr, showNotification, convertWeight, unitLabel, formatSet } from '../ui/ui-helpers.js';
+import { escapeHtml, escapeAttr, showNotification, convertWeight, unitLabel, formatSet, escapeJsArg } from '../ui/ui-helpers.js';
 import { formatRelative } from '../utils/date-helpers.js';
 import { getExerciseName, exerciseNameMatches } from '../utils/workout-helpers.js';
 import { getCategoryIcon, Config, debugLog } from '../utils/config.js';
@@ -1034,7 +1034,7 @@ function renderLastSessionCard(exerciseName, idx) {
         : '';
 
     return `
-        <button type="button" class="aw-last" onclick="showExerciseDetail('${escapeAttr(exerciseName)}')"
+        <button type="button" class="aw-last" onclick="showExerciseDetail('${escapeJsArg(exerciseName)}')"
                 aria-label="View ${escapeAttr(exerciseName)} progress">
             <i class="fas fa-history" aria-hidden="true"></i>
             <div class="aw-last__info">
@@ -1288,7 +1288,7 @@ function renderExerciseMenu(idx) {
     return `
         <div class="aw-ex-menu">
             ${videoUrl ? `
-            <button class="aw-ex-menu__item" onclick="awShowFormVideo('${escapeAttr(videoUrl)}', '${escapeAttr(exName)}'); awCloseMenus();">
+            <button class="aw-ex-menu__item" onclick="awShowFormVideo('${escapeJsArg(videoUrl)}', '${escapeJsArg(exName)}'); awCloseMenus();">
                 <i class="fas fa-play-circle"></i> Form video
             </button>` : ''}
             ${eq?.id ? `
@@ -1296,7 +1296,7 @@ function renderExerciseMenu(idx) {
                 <i class="fas fa-sliders-h"></i> Machine settings
             </button>` : ''}
             ${equipName ? `
-            <button class="aw-ex-menu__item" onclick="awCloseMenus(); awQuickEditEquipment(${idx}, '${escapeAttr(equipName)}');">
+            <button class="aw-ex-menu__item" onclick="awCloseMenus(); awQuickEditEquipment(${idx}, '${escapeJsArg(equipName)}');">
                 <i class="fas fa-ellipsis-h"></i> Edit equipment
             </button>` : ''}
             ${videoUrl || equipName || eq?.id ? '<div class="aw-ex-menu__divider"></div>' : ''}
@@ -1360,7 +1360,7 @@ function renderSupersetMode(pairedExercises, groupId) {
         <div class="aw-superset-banner">
             <i class="fas fa-link"></i>
             Superset ${groupId} · alternate between these
-            <button class="aw-superset-banner__unlink" onclick="awUnlinkSupersetGroup('${escapeAttr(groupId)}')">Unlink</button>
+            <button class="aw-superset-banner__unlink" onclick="awUnlinkSupersetGroup('${escapeJsArg(groupId)}')">Unlink</button>
         </div>
         ${stacked}
     `;
@@ -1713,6 +1713,24 @@ export function awRemoveSet(exerciseIdx, setIdx = null) {
 // re-rendered freely. touch-action: pan-y on the row keeps vertical scroll
 // native, so nothing here calls preventDefault.
 const SWIPE_REMOVE_PX = 72;
+// A slide that starts on the reps / weight field or the ✓ has to travel
+// further — still easy on purpose, never from a sideways nudge while tapping.
+const SWIPE_REMOVE_FROM_CONTROL_PX = 110;
+
+/**
+ * Where a set-row swipe may start, and how far it must travel to remove.
+ * Pure. The 10/27 guard refused every swipe that STARTED on an input or the ✓
+ * — on a phone that's almost the whole row, leaving only the narrow set-number
+ * column ("can't delete / remove a set from active workout", reported the
+ * same evening). A tap never travels 72 px, so starting on a control is safe;
+ * the only refusal kept is a row whose field is being typed in.
+ * @returns {number|null} px to remove, or null when no swipe may start
+ */
+export function setSwipeThreshold({ onControl = false, typingInRow = false } = {}) {
+    if (typingInRow) return null;
+    return onControl ? SWIPE_REMOVE_FROM_CONTROL_PX : SWIPE_REMOVE_PX;
+}
+
 let swipeBoundTo = null;
 function bindSetSwipe(container) {
     if (!container || swipeBoundTo === container) return;
@@ -1724,14 +1742,16 @@ function bindSetSwipe(container) {
     };
     container.addEventListener('touchstart', (e) => {
         const row = e.target.closest('.aw-set-row');
-        // Only the row's own surface starts a swipe: a sideways tap on the
-        // reps / weight field or the ✓ must never remove a set. An exercise
-        // with one set has nothing to remove, so its row doesn't follow.
-        const savedSets = row ? AppState.savedData?.exercises?.[`exercise_${row.dataset.exIdx}`]?.sets : null;
-        if (!row || e.touches.length !== 1 || e.target.closest('input, button')
-            || (savedSets?.length || 0) <= 1
-            || document.activeElement?.closest?.('.aw-set-row') === row) { drag = null; return; }
-        drag = { row, x: e.touches[0].clientX, y: e.touches[0].clientY, dx: 0, horizontal: null };
+        if (!row || e.touches.length !== 1) { drag = null; return; }
+        // A swipe may start anywhere on the row (see setSwipeThreshold). A
+        // one-set exercise still follows the finger; awRemoveSet then says it
+        // keeps one set, instead of the row silently ignoring the swipe.
+        const threshold = setSwipeThreshold({
+            onControl: !!e.target.closest('input, button'),
+            typingInRow: document.activeElement?.closest?.('.aw-set-row') === row,
+        });
+        if (threshold == null) { drag = null; return; }
+        drag = { row, x: e.touches[0].clientX, y: e.touches[0].clientY, dx: 0, horizontal: null, threshold };
     }, { passive: true });
     container.addEventListener('touchmove', (e) => {
         if (!drag) return;
@@ -1742,15 +1762,15 @@ function bindSetSwipe(container) {
         drag.dx = Math.min(0, dx);
         drag.row.classList.add('aw-set-row--swiping');
         drag.row.style.setProperty('--swipe-x', `${drag.dx}px`);
-        drag.row.classList.toggle('aw-set-row--armed', drag.dx <= -SWIPE_REMOVE_PX);
+        drag.row.classList.toggle('aw-set-row--armed', drag.dx <= -drag.threshold);
     }, { passive: true });
     const end = () => {
         if (!drag) return;
-        const { row, dx } = drag;
+        const { row, dx, threshold } = drag;
         drag = null;
         row.classList.remove('aw-set-row--armed');
         reset(row);
-        if (dx <= -SWIPE_REMOVE_PX) {
+        if (dx <= -threshold) {
             awRemoveSet(Number(row.dataset.exIdx), Number(row.dataset.setIdx));
         }
     };
@@ -2814,7 +2834,7 @@ function buildEquipListHTML(exerciseIdx) {
         const settingsStr = (eq.exerciseSettings?.[exName] || [])
             .map(p => `${p.label} ${p.value}`).join(' · ');
         return `
-            <div class="js-row ${isCurrent ? 'current' : ''}" onclick="awSelectEquipment(${exerciseIdx}, '${escapeAttr(eq.name)}', '${escapeAttr(eq.id || '')}' || null)">
+            <div class="js-row ${isCurrent ? 'current' : ''}" onclick="awSelectEquipment(${exerciseIdx}, '${escapeJsArg(eq.name)}', '${escapeJsArg(eq.id || '')}' || null)">
                 <div class="js-row__icon js-row__icon--equip"><i class="fas fa-cog"></i></div>
                 <div class="js-row__info">
                     <div class="js-row__name">${escapeHtml(eq.name)}${isCurrent ? ' ✓' : ''}</div>
@@ -3124,7 +3144,7 @@ function buildSharedEquipListHTML() {
         const baseWeight = eq.baseWeight ? ` · ${eq.baseWeight} ${eq.baseWeightUnit || 'lb'}` : '';
         const locStr = equipLocationCue(eq, locName);
         return `
-            <div class="js-row ${isCurrent ? 'current' : ''}" onclick="awSharedSelectEquipment('${escapeAttr(eq.name)}')">
+            <div class="js-row ${isCurrent ? 'current' : ''}" onclick="awSharedSelectEquipment('${escapeJsArg(eq.name)}')">
                 <div class="js-row__icon js-row__icon--equip"><i class="fas fa-cog"></i></div>
                 <div class="js-row__info">
                     <div class="js-row__name">${escapeHtml(eq.name)}${isCurrent ? ' ✓' : ''}</div>
@@ -3548,7 +3568,7 @@ function buildAddExerciseListHTML() {
         (ex.name || ex.machine || '').toLowerCase() === trimmed.toLowerCase()
     );
     const createRowHTML = trimmed && !exactMatch
-        ? `<div class="aw-add-ex-row aw-add-ex-row--create" onclick="awCreateAndInsertExercise('${escapeAttr(trimmed)}')">
+        ? `<div class="aw-add-ex-row aw-add-ex-row--create" onclick="awCreateAndInsertExercise('${escapeJsArg(trimmed)}')">
                 <i class="fas fa-plus-circle"></i>
                 <span class="aw-add-ex-row__name">Create "${escapeHtml(trimmed)}"</span>
                 <span class="aw-add-ex-row__cat">New</span>
@@ -3565,7 +3585,7 @@ function buildAddExerciseListHTML() {
             .slice(0, 5);
         if (recent.length) {
             recentHTML = `<div class="aw-add-ex-group">Recent</div>`
-                + recent.map(r => `<div class="aw-add-ex-row" onclick="awInsertExercise('${escapeAttr(r.name)}')">
+                + recent.map(r => `<div class="aw-add-ex-row" onclick="awInsertExercise('${escapeJsArg(r.name)}')">
                     <span class="aw-add-ex-row__name">${escapeHtml(r.name)}</span>
                     <span class="aw-add-ex-row__cat">${escapeHtml(r.bodyPart || '')}</span>
                 </div>`).join('')
@@ -3576,7 +3596,7 @@ function buildAddExerciseListHTML() {
     const rowsHTML = filtered.slice(0, 50).map(ex => {
         const name = ex.name || ex.machine || 'Unknown';
         const cat = ex.bodyPart || '';
-        return `<div class="aw-add-ex-row" onclick="awInsertExercise('${escapeAttr(name)}')">
+        return `<div class="aw-add-ex-row" onclick="awInsertExercise('${escapeJsArg(name)}')">
             <span class="aw-add-ex-row__name">${escapeHtml(name)}</span>
             <span class="aw-add-ex-row__cat">${escapeHtml(cat)}</span>
         </div>`;
@@ -3805,7 +3825,7 @@ function renderSharedAddListBody() {
                 <span class="aw-add-ex-row__cat">Added</span>
             </div>`;
         }
-        return `<div class="aw-add-ex-row" onclick="awSharedAddInsert('${escapeAttr(name)}')">
+        return `<div class="aw-add-ex-row" onclick="awSharedAddInsert('${escapeJsArg(name)}')">
             <span class="aw-add-ex-row__name">${escapeHtml(name)}</span>
             <span class="aw-add-ex-row__cat">${escapeHtml(cat)}</span>
         </div>`;
@@ -3835,7 +3855,7 @@ function renderSharedAddListBody() {
     // (8/20 swap-menu reports).
     let createRow = '';
     if (_sharedAddSearch && ctx.onCreateRequested) {
-        createRow = `<div class="aw-add-ex-row aw-add-ex-row--create" onclick="awSharedAddCreate('${escapeAttr(_sharedAddSearch)}')">
+        createRow = `<div class="aw-add-ex-row aw-add-ex-row--create" onclick="awSharedAddCreate('${escapeJsArg(_sharedAddSearch)}')">
             <span class="aw-add-ex-row__name"><i class="fas fa-plus"></i> Create &quot;${escapeHtml(_sharedAddSearch)}&quot;</span>
         </div>`;
     }

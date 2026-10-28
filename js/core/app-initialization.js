@@ -356,7 +356,7 @@ export function initializeWorkoutApp() {
     const params = new URLSearchParams(window.location.search);
     if (params.has('debug')) {
         import('./utils/shell-hud.js')
-            .then(m => m.installShellHud({ autoSnap: params.has('snap') }))
+            .then(m => m.installShellHud({ autoSnap: params.has('snap'), persist: params.has('persist') }))
             .catch(() => { /* debug aid only */ });
     }
 

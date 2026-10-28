@@ -10,7 +10,7 @@
 // cards use (settings.weekOverride, the workout's exercise list).
 
 import { AppState } from '../utils/app-state.js';
-import { escapeHtml, escapeAttr, showNotification } from './ui-helpers.js';
+import { escapeHtml, escapeAttr, showNotification, escapeJsArg } from './ui-helpers.js';
 import { navigateTo } from './navigation.js';
 import { debugLog } from '../utils/config.js';
 import {
@@ -171,7 +171,7 @@ function pageHTML(d, past) {
     const days = c.showedUp.days.length
         ? `<div class="rc-days">${c.showedUp.days.map(x => `<span class="chip chip--sm">${escapeHtml(`${x.day} ${x.name}`)} ✓</span>`).join('')}</div>` : '';
     const strengthRows = c.strength.length
-        ? c.strength.map(r => `<button type="button" class="rc-line rc-line--link" onclick="openExerciseDetailFromReport('${escapeAttr(r.name)}')"><span>${escapeHtml(r.sentence)}</span><i class="fas fa-chevron-right" aria-hidden="true"></i></button>`).join('')
+        ? c.strength.map(r => `<button type="button" class="rc-line rc-line--link" onclick="openExerciseDetailFromReport('${escapeJsArg(r.name)}')"><span>${escapeHtml(r.sentence)}</span><i class="fas fa-chevron-right" aria-hidden="true"></i></button>`).join('')
         : '<div class="rc-line rc-line--muted">Pick your main lifts in Settings and their strength shows up here.</div>';
     const goalRows = c.goals.length
         ? c.goals.map(g => `<div class="rc-line">${escapeHtml(g.sentence)}</div>`).join('')
@@ -228,7 +228,7 @@ function pastHTML(past, currentKey) {
     return `
         <div class="sec-head"><h3>Past report cards</h3></div>
         ${rows.slice(0, 8).map(p => `
-            <div class="row-card" onclick="openReportCard('${escapeAttr(p.weekKey)}')">
+            <div class="row-card" onclick="openReportCard('${escapeJsArg(p.weekKey)}')">
                 <div class="row-card__content">
                     <div class="row-card__title">${escapeHtml(shortDate(p.weekKey))} · ${escapeHtml(GRADE_LABELS[p.card?.grade] || '')}</div>
                     <div class="row-card__detail">${escapeHtml(p.narrative || p.card?.headline || '')}</div>
@@ -387,7 +387,7 @@ export async function reportCardEntryHTML() {
         const d = await _entryCache.get(week.weekKey, AppState.currentUser?.uid || '', () => loadDoc(week.weekKey));
         if (!d) return reportCardNudgeHTML();
         return `
-            <div class="row-card rc-entry" onclick="openReportCard('${escapeAttr(week.weekKey)}')">
+            <div class="row-card rc-entry" onclick="openReportCard('${escapeJsArg(week.weekKey)}')">
                 <div class="row-card__icon"><i class="fas fa-clipboard-check"></i></div>
                 <div class="row-card__content">
                     <div class="row-card__title">Report card · ${escapeHtml(GRADE_LABELS[d.card?.grade] || '')}</div>

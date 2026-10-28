@@ -2,7 +2,7 @@
 // Gym-centric equipment management page
 
 import { AppState } from '../utils/app-state.js';
-import { showNotification, escapeHtml, escapeAttr, displayWeight, formatSet, unitLabel } from './ui-helpers.js';
+import { showNotification, escapeHtml, escapeAttr, displayWeight, formatSet, unitLabel, escapeJsArg } from './ui-helpers.js';
 import { formatRelative } from '../utils/date-helpers.js';
 import { confirmSheet } from './confirm-sheet.js';
 import { openSheet, closeSheet, sheetById } from './sheet.js';
@@ -443,17 +443,17 @@ function renderScanReview() {
         // which opens the manual picker. Add and Skip are always available.
         const hasSuggestion = !!item.suggestion;
         const primaryAction = hasSuggestion
-            ? `<button class="btn btn-primary btn-small" onclick="linkOrphanToSuggestion('${escapeAttr(item.name)}', '${escapeAttr(item.suggestion.id)}')">
+            ? `<button class="btn btn-primary btn-small" onclick="linkOrphanToSuggestion('${escapeJsArg(item.name)}', '${escapeJsArg(item.suggestion.id)}')">
                    <i class="fas fa-link"></i> Link
                </button>`
-            : `<button class="btn btn-primary btn-small" onclick="openManualLinkPicker('${escapeAttr(item.name)}')">
+            : `<button class="btn btn-primary btn-small" onclick="openManualLinkPicker('${escapeJsArg(item.name)}')">
                    <i class="fas fa-link"></i> Link…
                </button>`;
 
         // Secondary "Other…" only meaningful when a suggestion exists (lets
         // user override the auto-match with a manually-picked target).
         const otherAction = hasSuggestion ? `
-            <button class="btn btn-text btn-small" onclick="openManualLinkPicker('${escapeAttr(item.name)}')">Other…</button>
+            <button class="btn btn-text btn-small" onclick="openManualLinkPicker('${escapeJsArg(item.name)}')">Other…</button>
         ` : '';
 
         const suggestionPreview = hasSuggestion ? `
@@ -476,9 +476,9 @@ function renderScanReview() {
                 <div class="scan-review-row__actions">
                     ${primaryAction}
                     ${otherAction}
-                    <button class="btn btn-text btn-small" onclick="addUnlinkedEquipment('${escapeAttr(item.name)}')">Add new</button>
-                    <button class="btn btn-text btn-small" onclick="dismissUnlinkedEquipment('${escapeAttr(item.name)}')">Skip</button>
-                    <button class="btn btn-text btn-small scan-review-row__delete" onclick="deleteOrphanFromHistory('${escapeAttr(item.name)}')" aria-label="Delete from history"><i class="fas fa-trash"></i></button>
+                    <button class="btn btn-text btn-small" onclick="addUnlinkedEquipment('${escapeJsArg(item.name)}')">Add new</button>
+                    <button class="btn btn-text btn-small" onclick="dismissUnlinkedEquipment('${escapeJsArg(item.name)}')">Skip</button>
+                    <button class="btn btn-text btn-small scan-review-row__delete" onclick="deleteOrphanFromHistory('${escapeJsArg(item.name)}')" aria-label="Delete from history"><i class="fas fa-trash"></i></button>
                 </div>
             </div>
         `;
@@ -664,7 +664,7 @@ function renderManualLinkBody() {
         const score = findBestMatch(orphan, [{ name: displayName }], 0)?.score || 0;
         const scoreBadge = score >= 0.5 ? `<span class="mlp-row__score">${Math.round(score * 100)}%</span>` : '';
         return `
-            <div class="qa-row" onclick="selectManualLinkTarget('${escapeAttr(eq.id)}')"
+            <div class="qa-row" onclick="selectManualLinkTarget('${escapeJsArg(eq.id)}')"
                  role="button">
                 <span></span>
                 <span class="qa-row__icon ${typeColorClass}"><i class="fas ${typeInfo.icon}"></i></span>
@@ -991,7 +991,7 @@ function renderGymDetail(container) {
                     <div class="page-header__subtitle">${escapeHtml(subtitle)}</div>
                 </div>
             </div>
-            <button class="page-header__save" onclick="openQuickAddSheet('${escapeAttr(name)}')" aria-label="Add equipment from catalog">
+            <button class="page-header__save" onclick="openQuickAddSheet('${escapeJsArg(name)}')" aria-label="Add equipment from catalog">
                 <i class="fas fa-plus"></i> Add from catalog
             </button>
         `;
@@ -1008,7 +1008,7 @@ function renderGymDetail(container) {
                 const count = bp === 'All' ? items.length : (bpCounts[bp] || 0);
                 return `
                     <button class="chip${isActive ? ' active' : ''}"
-                            onclick="setGymBpFilter('${escapeAttr(bp)}')"
+                            onclick="setGymBpFilter('${escapeJsArg(bp)}')"
                             aria-pressed="${isActive}">
                         ${escapeHtml(bp)}
                         <span class="chip__count">${count}</span>
@@ -1036,11 +1036,11 @@ function renderGymDetail(container) {
                 <p class="empty-state-hint">${isAllEmpty ? 'Add machines as you use them, or start from another gym.' : 'Try another body part or add more equipment'}</p>
                 ${isAllEmpty ? `
                     <div class="empty-state-actions">
-                        <button class="btn btn-primary btn-small" onclick="openQuickAddSheet('${escapeAttr(name)}')">
+                        <button class="btn btn-primary btn-small" onclick="openQuickAddSheet('${escapeJsArg(name)}')">
                             <i class="fas fa-plus"></i> Add from catalog
                         </button>
                         ${sourceGyms.length > 0 ? `
-                            <button class="btn btn-secondary btn-small" onclick="openCopyFromGymSheet('${escapeAttr(name)}')">
+                            <button class="btn btn-secondary btn-small" onclick="openCopyFromGymSheet('${escapeJsArg(name)}')">
                                 <i class="fas fa-copy"></i> Copy from another gym
                             </button>
                         ` : ''}
@@ -1085,8 +1085,8 @@ function renderGymDetailRow(item) {
     const typeColorClass = `equip-row__icon--${slugType(item.type)}`;
     const metaParts = [item.brand, item.line].filter(Boolean).join(' · ');
     const onclickRef = item.source === 'legacy'
-        ? `openEquipmentDetail('${escapeAttr(item.id)}')`
-        : `openCatalogMachine('${escapeAttr(item.id)}')`;
+        ? `openEquipmentDetail('${escapeJsArg(item.id)}')`
+        : `openCatalogMachine('${escapeJsArg(item.id)}')`;
     return `
         <div class="row-card row-card--flat equip-row equip-row--compact" onclick="${onclickRef}">
             <div class="equip-row__icon ${typeColorClass}">
@@ -1372,8 +1372,8 @@ export async function openCatalogMachine(catalogRef) {
     }
     const { brand, line, machine } = resolved;
     const gym = getSessionGym();
-    const ref = escapeAttr(catalogRef);
-    const gymArg = gym ? `'${escapeAttr(gym)}'` : 'null';
+    const ref = escapeJsArg(catalogRef);
+    const gymArg = gym ? `'${escapeJsArg(gym)}'` : 'null';
     openSheet({
         id: 'catalog-machine',
         title: machine.name,
@@ -1608,7 +1608,7 @@ function renderQuickAddBody() {
         <div class="chips qa-sheet__bp-chips" id="qa-bp-chips">
             ${bpChips.map((bp) => `
                 <button class="chip${bpFilter === bp ? ' active' : ''}"
-                        onclick="setQuickAddBp('${escapeAttr(bp)}')"
+                        onclick="setQuickAddBp('${escapeJsArg(bp)}')"
                         aria-pressed="${bpFilter === bp}">
                     ${escapeHtml(bp)}
                 </button>
@@ -1653,7 +1653,7 @@ function renderQuickAddBody() {
                 <div class="chips qa-custom__types">
                     ${EQUIPMENT_TYPES_LIST.map((t) => `
                         <button type="button" class="chip chip--sm${customType === t ? ' active' : ''}"
-                                onclick="setQuickAddCustomType('${escapeAttr(t)}')"
+                                onclick="setQuickAddCustomType('${escapeJsArg(t)}')"
                                 aria-pressed="${customType === t}">${escapeHtml(t)}</button>
                     `).join('')}
                 </div>
@@ -1680,7 +1680,7 @@ function renderQuickAddRow(machine, isChecked, isDisabled) {
 
     const clickHandler = isDisabled
         ? ''
-        : `onclick="toggleQuickAddRow('${escapeAttr(machine.catalogRef)}')"`;
+        : `onclick="toggleQuickAddRow('${escapeJsArg(machine.catalogRef)}')"`;
 
     const meta = isDisabled
         ? 'Already at this gym'
@@ -1958,8 +1958,8 @@ function renderBrandCatalog(container) {
             // (edit identity, add exercises, tag gyms optionally) — no more
             // dead-ending at a gym picker.
             const onClick = owned
-                ? `openEquipmentDetail('${escapeAttr(owned.id)}')`
-                : `openCatalogMachine('${escapeAttr(m.id)}')`;
+                ? `openEquipmentDetail('${escapeJsArg(owned.id)}')`
+                : `openCatalogMachine('${escapeJsArg(m.id)}')`;
             return `
                 <div class="row-card row-card--flat equip-row equip-row--compact" onclick="${onClick}">
                     <div class="equip-row__icon ${typeColorClass}">
@@ -2116,7 +2116,7 @@ export function openGymPickerSheet({ title, subtitle, gyms, currentGym, onSelect
     const rowsHTML = sorted.map((g) => {
         const isHere = g === currentGym;
         return `
-            <div class="qa-row${isHere ? ' is-checked' : ''}" onclick="commitGymPick('${escapeAttr(g)}')" role="button">
+            <div class="qa-row${isHere ? ' is-checked' : ''}" onclick="commitGymPick('${escapeJsArg(g)}')" role="button">
                 <span></span>
                 <span class="qa-row__icon equip-row__icon--machine"><i class="fas fa-map-marker-alt"></i></span>
                 <div class="qa-row__info">
@@ -2311,7 +2311,7 @@ function gymMixBarHTML(gym, modifier) {
  * (quick-add bound to this gym — it doesn't also open the gym).
  */
 function renderGymHero(gym) {
-    const openArg = gym.id ? `'${escapeAttr(gym.id)}'` : `null, '${escapeAttr(gym.name)}'`;
+    const openArg = gym.id ? `'${escapeJsArg(gym.id)}'` : `null, '${escapeJsArg(gym.name)}'`;
     const legend = gym.typeMix.slice(0, 4).map((m) => `
         <span class="gym-card__legend-item">
             <span class="gym-card__legend-dot gym-card__legend-dot--${slugType(m.type)}"></span>
@@ -2335,7 +2335,7 @@ function renderGymHero(gym) {
             <div class="gym-card__legend gym-hero__legend">${legend}</div>
             <div class="gym-hero__actions">
                 <button class="gym-hero__action" onclick="event.stopPropagation(); openGymDetail(${openArg})">View machines</button>
-                <button class="gym-hero__action gym-hero__action--add" onclick="event.stopPropagation(); openQuickAddSheet('${escapeAttr(gym.name)}')">
+                <button class="gym-hero__action gym-hero__action--add" onclick="event.stopPropagation(); openQuickAddSheet('${escapeJsArg(gym.name)}')">
                     <i class="fas fa-plus" aria-hidden="true"></i> Add machine
                 </button>
             </div>
@@ -2490,7 +2490,7 @@ function renderGymCard(gym) {
         gym.lastVisit ? `Last visit ${formatRelative(gym.lastVisit)}` : null,
     ].filter(Boolean).join(' · ');
 
-    const onclickArg = gym.id ? `'${escapeAttr(gym.id)}'` : `null, '${escapeAttr(gym.name)}'`;
+    const onclickArg = gym.id ? `'${escapeJsArg(gym.id)}'` : `null, '${escapeJsArg(gym.name)}'`;
 
     return `
         <button class="gym-card${gym.isCurrent ? ' is-here' : ''} eq-rise" data-gym-card
@@ -2554,7 +2554,7 @@ function renderLibraryTab() {
                         onclick="filterEquipmentByLocation(null)">All gyms</button>
                 ${locations.map((loc) => `
                     <button class="chip chip--sm ${currentLocationFilter === loc ? 'active' : ''}"
-                            onclick="filterEquipmentByLocation('${escapeAttr(loc)}')">${escapeHtml(loc)}</button>
+                            onclick="filterEquipmentByLocation('${escapeJsArg(loc)}')">${escapeHtml(loc)}</button>
                 `).join('')}
             </div>` : ''}
         </div>
@@ -2597,7 +2597,7 @@ function renderDiscoveryBlock() {
     let unmappedHTML = '';
     if (unmapped.length) {
         const rows = unmapped.slice(0, DISCOVERY_MAX_UNMAPPED).map((u) => `
-            <div class="row-card" onclick="discoveryOpenUnmapped('${escapeAttr(u.id)}')" role="button" tabindex="0">
+            <div class="row-card" onclick="discoveryOpenUnmapped('${escapeJsArg(u.id)}')" role="button" tabindex="0">
                 <div class="row-card__icon"><i class="fas fa-cog"></i></div>
                 <div class="row-card__content">
                     <div class="row-card__title">${u.name ? escapeHtml(u.name) : 'Unnamed machine'}</div>
@@ -2636,9 +2636,9 @@ function renderDiscoveryBlock() {
                     <div class="eq-discover__gap">
                         <div class="eq-discover__gap-name">${escapeHtml(m.name)}${m.bodyPart ? ` <span class="eq-discover__gap-part">· ${escapeHtml(m.bodyPart)}</span>` : ''}</div>
                         <div class="eq-discover__chips">
-                            <button class="chip chip--sm active" onclick="discoveryAnswerLineGap('${escapeAttr(m.key)}', 'yes', '${escapeAttr(g.gym)}', '${escapeAttr(m.id)}')">Yes, add it</button>
-                            <button class="chip chip--sm" onclick="discoveryAnswerLineGap('${escapeAttr(m.key)}', 'no', '${escapeAttr(g.gym)}', '${escapeAttr(m.id)}')">No</button>
-                            <button class="chip chip--sm" onclick="discoveryAnswerLineGap('${escapeAttr(m.key)}', 'unsure', '${escapeAttr(g.gym)}', '${escapeAttr(m.id)}')">Not sure</button>
+                            <button class="chip chip--sm active" onclick="discoveryAnswerLineGap('${escapeJsArg(m.key)}', 'yes', '${escapeJsArg(g.gym)}', '${escapeJsArg(m.id)}')">Yes, add it</button>
+                            <button class="chip chip--sm" onclick="discoveryAnswerLineGap('${escapeJsArg(m.key)}', 'no', '${escapeJsArg(g.gym)}', '${escapeJsArg(m.id)}')">No</button>
+                            <button class="chip chip--sm" onclick="discoveryAnswerLineGap('${escapeJsArg(m.key)}', 'unsure', '${escapeJsArg(g.gym)}', '${escapeJsArg(m.id)}')">Not sure</button>
                         </div>
                     </div>
                 `).join('')}
@@ -2662,7 +2662,7 @@ function renderBranchScoutingCard() {
     const label = movementLabel(g.pattern).toLowerCase() || g.pattern;
     const homeTxt = g.home === 0 ? `${escapeHtml(homeGym)} has none` : `${escapeHtml(homeGym)} has ${g.home}`;
     return `
-        <div class="eq-discover eq-discover--scout" onclick="discoveryScoutGym('${escapeAttr(g.gym)}')" role="button" tabindex="0">
+        <div class="eq-discover eq-discover--scout" onclick="discoveryScoutGym('${escapeJsArg(g.gym)}')" role="button" tabindex="0">
             <div class="eq-discover__icon"><i class="fas fa-route"></i></div>
             <div class="eq-discover__scout-txt"><b>${escapeHtml(g.gym)}</b> has ${g.count} ${escapeHtml(label)} machine${g.count === 1 ? '' : 's'} — ${homeTxt}. Worth a visit.</div>
             <i class="fas fa-chevron-right eq-discover__chev"></i>
@@ -2720,7 +2720,7 @@ function renderCatalogTab() {
         const lineCount = brand.lines?.length || 0;
         const machineCount = (brand.lines || []).reduce((s, l) => s + (l.machines?.length || 0), 0);
         return `
-            <button class="brand-tile" onclick="openBrandCatalog('${escapeAttr(brand.slug)}')">
+            <button class="brand-tile" onclick="openBrandCatalog('${escapeJsArg(brand.slug)}')">
                 <div class="brand-tile__name">${escapeHtml(brand.name)}</div>
                 <div class="brand-tile__meta">${lineCount} line${lineCount !== 1 ? 's' : ''} · ${machineCount}</div>
             </button>
@@ -2786,8 +2786,8 @@ function renderCatalogSearchResults(catalog, term) {
                 const typeColorClass = `equip-row__icon--${slugType(m.type)}`;
                 const owned = findOwnedForCatalogMachine(m.machine);
                 const onClick = owned
-                    ? `openEquipmentDetail('${escapeAttr(owned.id)}')`
-                    : `openCatalogMachine('${escapeAttr(m.machine.id)}')`;
+                    ? `openEquipmentDetail('${escapeJsArg(owned.id)}')`
+                    : `openCatalogMachine('${escapeJsArg(m.machine.id)}')`;
                 return `
                     <div class="row-card row-card--flat equip-row equip-row--compact" onclick="${onClick}">
                         <div class="equip-row__icon ${typeColorClass}">
@@ -2852,7 +2852,7 @@ function renderPopularAtGym(gymName) {
         const typeColorClass = `equip-row__icon--${(eq.equipmentType || 'Other').toLowerCase()}`;
         const displayName = eq.function || eq.name || '—';
         return `
-            <div class="row-card row-card--flat equip-row equip-row--compact" onclick="openEquipmentDetail('${escapeAttr(eq.id)}')">
+            <div class="row-card row-card--flat equip-row equip-row--compact" onclick="openEquipmentDetail('${escapeJsArg(eq.id)}')">
                 <div class="equip-row__icon ${typeColorClass}">
                     <i class="fas ${typeInfo.icon}"></i>
                 </div>
@@ -3038,7 +3038,7 @@ function renderBodyPartView(filtered) {
                 const subtitle = subtitleParts.join(' · ');
 
                 html += `
-                    <div class="row-card equip-nested-item" onclick="event.stopPropagation(); openEquipmentDetail('${escapeAttr(equip.id)}')">
+                    <div class="row-card equip-nested-item" onclick="event.stopPropagation(); openEquipmentDetail('${escapeJsArg(equip.id)}')">
                         <div class="equip-nested-item__info">
                             <span class="row-card__title">${escapeHtml(equip.name)}</span>
                             ${subtitle ? `<span class="row-card__subtitle">${escapeHtml(subtitle)}</span>` : ''}
@@ -3070,7 +3070,7 @@ function renderBodyPartView(filtered) {
             const subtitle = subtitleParts.join(' · ');
 
             html += `
-                <div class="row-card equip-nested-item" onclick="openEquipmentDetail('${escapeAttr(equip.id)}')">
+                <div class="row-card equip-nested-item" onclick="openEquipmentDetail('${escapeJsArg(equip.id)}')">
                     <div class="equip-nested-item__info">
                         <span class="row-card__title">${escapeHtml(equip.name)}</span>
                         ${subtitle ? `<span class="row-card__subtitle">${escapeHtml(subtitle)}</span>` : ''}
@@ -3275,14 +3275,14 @@ export async function openEquipmentDetail(equipmentId, { fromElsewhere = false }
                             <span class="equip-detail-hero__type-pill ${heroTypeClass}"><i class="fas ${typeInfo.icon}" aria-hidden="true"></i> ${escapeHtml(currentType)}</span>
                             ${BASE_WEIGHT_TYPES.includes(currentType) ? `
                             <button class="equip-detail-hero__bw-chip"
-                                    onclick="openEquipmentBaseWeightSheet('${escapeAttr(equipmentId)}')"
+                                    onclick="openEquipmentBaseWeightSheet('${escapeJsArg(equipmentId)}')"
                                     aria-haspopup="dialog" aria-label="Edit base weight">
                                 Base ${equipment.baseWeight || 0} ${equipment.baseWeightUnit || 'lbs'}
                             </button>` : ''}
                         </div>
                     </div>
                     <button class="equip-detail-hero__edit-btn"
-                            onclick="openEquipmentIdentitySheet('${escapeAttr(equipmentId)}')"
+                            onclick="openEquipmentIdentitySheet('${escapeJsArg(equipmentId)}')"
                             aria-haspopup="dialog" aria-label="Edit equipment identity">Edit</button>
                 </div>
 
@@ -3306,7 +3306,7 @@ export async function openEquipmentDetail(equipmentId, { fromElsewhere = false }
                 <!-- 3. LOCATIONS — quiet rows; remove is the row's ONE real action -->
                 <div class="sec-head">
                     <h4>Gyms <span class="count">${locations.length}</span></h4>
-                    <button class="sec-head__action" onclick="addEquipmentLocation('${escapeAttr(equipmentId)}')">+ Add</button>
+                    <button class="sec-head__action" onclick="addEquipmentLocation('${escapeJsArg(equipmentId)}')">+ Add</button>
                 </div>
                 ${locations.map((loc) => `
                     <div class="row-card row-card--static">
@@ -3316,7 +3316,7 @@ export async function openEquipmentDetail(equipmentId, { fromElsewhere = false }
                         </div>
                         ${sessionGym === loc ? '<span class="gym-card__here-pill">Here</span>' : ''}
                         <button class="equip-loc-row__remove"
-                                onclick="removeEquipmentLocation('${escapeAttr(equipmentId)}', '${escapeAttr(loc)}')"
+                                onclick="removeEquipmentLocation('${escapeJsArg(equipmentId)}', '${escapeJsArg(loc)}')"
                                 aria-label="Remove from ${escapeAttr(loc)}">
                             <i class="fas fa-times"></i>
                         </button>
@@ -3328,18 +3328,18 @@ export async function openEquipmentDetail(equipmentId, { fromElsewhere = false }
                      actually PLAYS (it used to be decoration that looked tappable) -->
                 <div class="sec-head">
                     <h4>Used for <span class="count">${exercises.length} exercise${exercises.length !== 1 ? 's' : ''}</span></h4>
-                    <button class="sec-head__action" onclick="assignExerciseToEquipment('${escapeAttr(equipmentId)}')">+ Assign</button>
+                    <button class="sec-head__action" onclick="assignExerciseToEquipment('${escapeJsArg(equipmentId)}')">+ Assign</button>
                 </div>
                 ${exercises.map(ex => `
                     <div class="row-card" role="button" tabindex="0"
-                         onclick="openEquipmentExerciseSheet('${escapeAttr(equipmentId)}', '${escapeAttr(ex.name)}')" aria-haspopup="dialog">
+                         onclick="openEquipmentExerciseSheet('${escapeJsArg(equipmentId)}', '${escapeJsArg(ex.name)}')" aria-haspopup="dialog">
                         <div class="row-card__content">
                             <div class="row-card__title">${escapeHtml(ex.name)}</div>
                             <div class="row-card__subtitle">${escapeHtml([ex.labels, ex.override ? 'Custom form video' : (ex.inherited ? 'Form video ready' : 'No form video')].filter(Boolean).join(' · '))}</div>
                         </div>
                         <div class="equip-rc-trail">
                             ${ex.effective ? `<button class="equip-rc-trail__play"
-                                onclick="event.stopPropagation(); awShowFormVideo('${escapeAttr(ex.effective)}', '${escapeAttr(ex.name)}')"
+                                onclick="event.stopPropagation(); awShowFormVideo('${escapeJsArg(ex.effective)}', '${escapeJsArg(ex.name)}')"
                                 aria-label="Play form video for ${escapeAttr(ex.name)}">
                                 <i class="fas fa-play"></i>
                             </button>` : ''}
@@ -3353,12 +3353,12 @@ export async function openEquipmentDetail(equipmentId, { fromElsewhere = false }
                 <div class="sec-head"><h4>Notes</h4></div>
                 <textarea class="field-input equip-notes"
                           placeholder="Setting 5 for chest fly, setting 8 for pushdown"
-                          oninput="saveEquipmentNotes('${escapeAttr(equipmentId)}', this.value)">${escapeHtml(notes)}</textarea>
+                          oninput="saveEquipmentNotes('${escapeJsArg(equipmentId)}', this.value)">${escapeHtml(notes)}</textarea>
 
                 <!-- 6. DANGER — bordered card, honest consequence copy -->
                 <div class="equip-danger-card">
                     <button class="danger-action-btn"
-                            onclick="deleteEquipmentFromLibrary('${escapeAttr(equipmentId)}')">
+                            onclick="deleteEquipmentFromLibrary('${escapeJsArg(equipmentId)}')">
                         <i class="fas fa-trash"></i> Delete equipment
                     </button>
                     <div class="equip-danger-card__sub">Your workout history keeps its records — they'll just show as unlinked.</div>
@@ -3399,18 +3399,18 @@ function renderIdentitySheetBody(equipment) {
         <div class="field">
             <div class="field-label">Name</div>
             <input class="field-input" value="${escapeAttr(equipment.name)}"
-                   onchange="saveEquipmentField('${escapeAttr(id)}', 'name', this.value)">
+                   onchange="saveEquipmentField('${escapeJsArg(id)}', 'name', this.value)">
         </div>
         <div class="field-label">Details</div>
-        <button class="row-card equip-id-row" onclick="identitySheetPickField('${escapeAttr(id)}', 'brand')">
+        <button class="row-card equip-id-row" onclick="identitySheetPickField('${escapeJsArg(id)}', 'brand')">
             <span class="equip-id-row__k">Brand</span>
             <span class="equip-id-row__v">${escapeHtml(brandLabel)} <i class="fas fa-chevron-right"></i></span>
         </button>
-        <button class="row-card equip-id-row" onclick="identitySheetPickField('${escapeAttr(id)}', 'line')">
+        <button class="row-card equip-id-row" onclick="identitySheetPickField('${escapeJsArg(id)}', 'line')">
             <span class="equip-id-row__k">Line</span>
             <span class="equip-id-row__v">${escapeHtml(lineLabel)} <i class="fas fa-chevron-right"></i></span>
         </button>
-        <button class="row-card equip-id-row" onclick="identitySheetPickField('${escapeAttr(id)}', 'function')">
+        <button class="row-card equip-id-row" onclick="identitySheetPickField('${escapeJsArg(id)}', 'function')">
             <span class="equip-id-row__k">Function</span>
             <span class="equip-id-row__v">${escapeHtml(funcLabel)} <i class="fas fa-chevron-right"></i></span>
         </button>
@@ -3418,7 +3418,7 @@ function renderIdentitySheetBody(equipment) {
         <div class="chips">
             ${EQUIPMENT_TYPES_LIST.map(t => `
                 <div class="chip ${currentType === t ? 'active' : ''}"
-                     onclick="identitySheetSetType('${escapeAttr(id)}', '${t}')">${t}</div>
+                     onclick="identitySheetSetType('${escapeJsArg(id)}', '${t}')">${t}</div>
             `).join('')}
         </div>
     `;
@@ -3431,7 +3431,7 @@ export function openEquipmentIdentitySheet(equipmentId) {
         title: 'Edit equipment',
         subtitle: 'Identity — everything else stays on the page',
         body: `<div id="equip-identity-body">${renderIdentitySheetBody(equipment)}</div>`,
-        actions: [{ label: 'Done', onClick: `closeEquipmentIdentitySheet(true, '${escapeAttr(equipmentId)}')`, primary: true }],
+        actions: [{ label: 'Done', onClick: `closeEquipmentIdentitySheet(true, '${escapeJsArg(equipmentId)}')`, primary: true }],
         // Done, backdrop, Escape and swipe all land back on a fresh detail page.
         onDismiss: () => openEquipmentDetail(equipmentId),
     });
@@ -3476,17 +3476,17 @@ export function openEquipmentBaseWeightSheet(equipmentId) {
                 <input type="number" inputmode="decimal" step="0.5"
                        class="equip-base-weight-input" id="equip-bw-input"
                        value="${equipment.baseWeight || 0}"
-                       onchange="saveEquipmentBaseWeight('${escapeAttr(equipmentId)}', this.value)">
+                       onchange="saveEquipmentBaseWeight('${escapeJsArg(equipmentId)}', this.value)">
                 <div class="equip-base-weight-unit-toggle">
                     <button class="chip chip--sm unit-chip ${unit === 'lbs' ? 'active' : ''}"
-                            onclick="setEquipmentBaseWeightUnit('${escapeAttr(equipmentId)}', 'lbs', this)">lb</button>
+                            onclick="setEquipmentBaseWeightUnit('${escapeJsArg(equipmentId)}', 'lbs', this)">lb</button>
                     <button class="chip chip--sm unit-chip ${unit === 'kg' ? 'active' : ''}"
-                            onclick="setEquipmentBaseWeightUnit('${escapeAttr(equipmentId)}', 'kg', this)">kg</button>
+                            onclick="setEquipmentBaseWeightUnit('${escapeJsArg(equipmentId)}', 'kg', this)">kg</button>
                 </div>
             </div>
             <div class="equip-base-weight-hint">Shown in the plate calculator and added on top of plate weight.</div>
         `,
-        actions: [{ label: 'Done', onClick: `closeEquipmentBaseWeightSheet('${escapeAttr(equipmentId)}')`, primary: true }],
+        actions: [{ label: 'Done', onClick: `closeEquipmentBaseWeightSheet('${escapeJsArg(equipmentId)}')`, primary: true }],
         onDismiss: () => openEquipmentDetail(equipmentId),
     });
 }
@@ -3512,13 +3512,13 @@ export function openEquipmentExerciseSheet(equipmentId, exerciseName) {
                 <input type="url" class="field-input" id="equip-uf-video"
                        placeholder="${inherited ? 'Override — leave blank to inherit' : 'YouTube URL'}"
                        value="${escapeAttr(override || '')}"
-                       onchange="saveEquipmentExerciseVideoFromLib('${escapeAttr(equipmentId)}', '${escapeAttr(exerciseName)}', this.value)">
+                       onchange="saveEquipmentExerciseVideoFromLib('${escapeJsArg(equipmentId)}', '${escapeJsArg(exerciseName)}', this.value)">
                 ${inherited ? '<div class="equip-uf-inherits"><i class="fas fa-arrow-up-from-bracket"></i> Inherits exercise default</div>' : ''}
             </div>
-            ${effective ? `<button class="row-card equip-sheet-row" onclick="awShowFormVideo('${escapeAttr(effective)}', '${escapeAttr(exerciseName)}')"><i class="fas fa-circle-play"></i> Play form video</button>` : ''}
-            <button class="row-card equip-sheet-row equip-sheet-row--danger" onclick="removeExerciseFromEquipSheet('${escapeAttr(equipmentId)}', '${escapeAttr(exerciseName)}')"><i class="fas fa-trash"></i> Remove from this equipment</button>
+            ${effective ? `<button class="row-card equip-sheet-row" onclick="awShowFormVideo('${escapeJsArg(effective)}', '${escapeJsArg(exerciseName)}')"><i class="fas fa-circle-play"></i> Play form video</button>` : ''}
+            <button class="row-card equip-sheet-row equip-sheet-row--danger" onclick="removeExerciseFromEquipSheet('${escapeJsArg(equipmentId)}', '${escapeJsArg(exerciseName)}')"><i class="fas fa-trash"></i> Remove from this equipment</button>
         `,
-        actions: [{ label: 'Done', onClick: `closeEquipmentExerciseSheet('${escapeAttr(equipmentId)}')`, primary: true }],
+        actions: [{ label: 'Done', onClick: `closeEquipmentExerciseSheet('${escapeJsArg(equipmentId)}')`, primary: true }],
         onDismiss: () => openEquipmentDetail(equipmentId),
     });
 }
@@ -3643,7 +3643,7 @@ export function assignExerciseToEquipment(equipmentId) {
         listHTML += `<div class="equip-assign-group">`;
         listHTML += `<div class="group-label group-label--band"><div class="group-label__name"><span>${escapeHtml(group)}</span></div><span class="group-label__count">${items.length}</span></div>`;
         listHTML += items.map(ex => `
-            <div class="equip-detail-ex-row" role="button" tabindex="0" onclick="confirmAssignExercise('${escapeAttr(ex.name)}')">
+            <div class="equip-detail-ex-row" role="button" tabindex="0" onclick="confirmAssignExercise('${escapeJsArg(ex.name)}')">
                 <div class="equip-detail-ex-row__name">${escapeHtml(ex.name)}</div>
                 <div class="row-card__action"><i class="fas fa-plus" aria-hidden="true"></i></div>
             </div>
@@ -4109,7 +4109,7 @@ function renderFieldPicker() {
     const rowsHTML = filtered.length > 0
         ? filtered.map(opt => `
             <button class="function-picker__row ${opt.name === currentValue ? 'is-current' : ''}"
-                    onclick="selectFieldValue('${escapeAttr(equipmentId)}', '${escapeAttr(field)}', '${escapeAttr(opt.name)}')">
+                    onclick="selectFieldValue('${escapeJsArg(equipmentId)}', '${escapeJsArg(field)}', '${escapeJsArg(opt.name)}')">
                 <span class="function-picker__row-name">${escapeHtml(opt.name)}</span>
                 ${opt.source === 'user' ? '<span class="function-picker__row-source">your equipment</span>' : ''}
                 ${opt.name === currentValue ? '<i class="fas fa-check function-picker__row-check"></i>' : ''}
@@ -4123,9 +4123,9 @@ function renderFieldPicker() {
                 <input type="text" class="function-picker__custom-input" id="function-picker-custom-input"
                        placeholder="${escapeAttr(placeholder || 'Enter a custom name…')}"
                        value="${escapeAttr(searchTerm)}"
-                       onkeydown="if(event.key==='Enter') selectFieldValue('${escapeAttr(equipmentId)}', '${escapeAttr(field)}', this.value.trim())">
+                       onkeydown="if(event.key==='Enter') selectFieldValue('${escapeJsArg(equipmentId)}', '${escapeJsArg(field)}', this.value.trim())">
                 <button class="btn btn-primary function-picker__custom-btn"
-                        onclick="selectFieldValue('${escapeAttr(equipmentId)}', '${escapeAttr(field)}', document.getElementById('function-picker-custom-input').value.trim())">
+                        onclick="selectFieldValue('${escapeJsArg(equipmentId)}', '${escapeJsArg(field)}', document.getElementById('function-picker-custom-input').value.trim())">
                     Use
                 </button>
             </div>
@@ -4183,7 +4183,7 @@ function renderFieldPickerList() {
     list.innerHTML = filtered.length > 0
         ? filtered.map(opt => `
             <button class="function-picker__row ${opt.name === currentValue ? 'is-current' : ''}"
-                    onclick="selectFieldValue('${escapeAttr(equipmentId)}', '${escapeAttr(field)}', '${escapeAttr(opt.name)}')">
+                    onclick="selectFieldValue('${escapeJsArg(equipmentId)}', '${escapeJsArg(field)}', '${escapeJsArg(opt.name)}')">
                 <span class="function-picker__row-name">${escapeHtml(opt.name)}</span>
                 ${opt.source === 'user' ? '<span class="function-picker__row-source">your equipment</span>' : ''}
                 ${opt.name === currentValue ? '<i class="fas fa-check function-picker__row-check"></i>' : ''}

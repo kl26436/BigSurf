@@ -10,10 +10,42 @@ export function escapeHtml(text) {
     return div.innerHTML;
 }
 
-// Escape a string for safe use inside an inline onclick attribute value (single-quoted)
+// Escape a string for an HTML attribute VALUE (aria-label, value, data-*).
+// NOT for a JS string inside an inline handler — use escapeJsArg there: the
+// browser decodes &#39; back to ' before the handler's code is parsed.
 export function escapeAttr(text) {
     if (!text) return '';
     return escapeHtml(text).replace(/'/g, '&#39;');
+}
+
+/**
+ * Escape a value for use as a quoted JS string argument inside an inline
+ * handler: onclick="fn('${escapeJsArg(name)}')".
+ *
+ * Two layers, in this order. JS first — backslash, both quotes, backtick and
+ * line breaks become escape sequences, so the value can't end the string.
+ * Then HTML — & < > " become entities, so it can't end the attribute. The
+ * browser undoes the HTML layer when it reads the attribute and the JS parser
+ * undoes the rest. escapeAttr only did the HTML layer, so "Machine's taken"
+ * reached the parser as 'Machine's taken' — "Unexpected identifier 's'"
+ * (10/27 bug log, live coach chip) and the same for any name with an
+ * apostrophe. No DOM needed, so it runs in node tests too.
+ */
+export function escapeJsArg(text) {
+    if (text == null) return '';
+    return String(text)
+        .replace(/\\/g, '\\\\')
+        .replace(/'/g, "\\'")
+        .replace(/"/g, '\\"')
+        .replace(/`/g, '\\`')
+        .replace(/\r/g, '\\r')
+        .replace(/\n/g, '\\n')
+        .replace(/\u2028/g, '\\u2028')
+        .replace(/\u2029/g, '\\u2029')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
 }
 
 let lastErrorTime = 0;

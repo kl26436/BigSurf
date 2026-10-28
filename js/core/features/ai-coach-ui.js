@@ -3,7 +3,7 @@
 // Handles modal, prompt cards, freeform input, and coach history display
 
 import { AppState } from '../utils/app-state.js';
-import { showNotification, escapeHtml, escapeAttr, convertWeight, closeModal } from '../ui/ui-helpers.js';
+import { showNotification, escapeHtml, convertWeight, closeModal, escapeJsArg } from '../ui/ui-helpers.js';
 import { formatRelativeDate } from '../utils/date-helpers.js';
 import { navigateTo, navigateBack } from '../ui/navigation.js';
 import { TrainingInsights } from './training-insights.js';
@@ -186,7 +186,7 @@ export function renderAICoachSection() {
                             <div class="coach-prompt-card__text">Review my week — how did my training go?</div>
                         </div>`;
     const promptsHtml = reviewCardHtml + prompts.map(p => `
-                        <div class="coach-prompt-card" onclick="askCoach('${escapeAttr(p.text)}')">
+                        <div class="coach-prompt-card" onclick="askCoach('${escapeJsArg(p.text)}')">
                             <div class="coach-prompt-card__icon${p.iconClass ? ' ' + p.iconClass : ''}"><i class="fas ${p.icon}"></i></div>
                             <div class="coach-prompt-card__text">${p.html}</div>
                         </div>`).join('');
@@ -982,7 +982,7 @@ function handleCoachActionCard(card, streamingBubble) {
                 </div>
                 <div class="coach-diff">${rows}</div>
                 <div class="coach-action-card__actions">
-                    <button class="live-proposal__apply" onclick="openCoachTemplate('${escapeAttr(card.templateId)}')">Open workout</button>
+                    <button class="live-proposal__apply" onclick="openCoachTemplate('${escapeJsArg(card.templateId)}')">Open workout</button>
                     ${card.undo?.priorExercises ? `<button class="live-proposal__dismiss" onclick="undoReplaceDay('${id}')">Undo</button>` : ''}
                 </div>
             </div>
@@ -1022,8 +1022,8 @@ function attachFeedbackRow(bubble, threadId, turnIdx) {
     const row = document.createElement('div');
     row.className = 'coach-feedback';
     row.innerHTML = `
-        <button class="coach-feedback__btn" onclick="rateCoachAnswer(this, '${escapeAttr(threadId)}', ${turnIdx}, 'up')" aria-label="Good answer"><i class="far fa-thumbs-up"></i></button>
-        <button class="coach-feedback__btn" onclick="rateCoachAnswer(this, '${escapeAttr(threadId)}', ${turnIdx}, 'down')" aria-label="Not helpful"><i class="far fa-thumbs-down"></i></button>
+        <button class="coach-feedback__btn" onclick="rateCoachAnswer(this, '${escapeJsArg(threadId)}', ${turnIdx}, 'up')" aria-label="Good answer"><i class="far fa-thumbs-up"></i></button>
+        <button class="coach-feedback__btn" onclick="rateCoachAnswer(this, '${escapeJsArg(threadId)}', ${turnIdx}, 'down')" aria-label="Not helpful"><i class="far fa-thumbs-down"></i></button>
     `;
     bubble.appendChild(row);
 }
@@ -1593,7 +1593,7 @@ async function loadCoachHistory() {
                 <span>Past reviews</span>
             </div>
             ${sessions.map(s => `
-                <div class="coach-history-item" onclick="showPastCoachSession('${escapeHtml(s.id)}')">
+                <div class="coach-history-item" onclick="showPastCoachSession('${escapeJsArg(s.id)}')">
                     <div class="coach-history-question">${s.type === 'weekly_review' ? '<i class="fas fa-calendar-week coach-history-review-icon"></i> ' : ''}${escapeHtml(truncate(coachSessionTitle(s), 60))}</div>
                     <div class="coach-history-date">${formatRelativeDate(s.timestamp, { daysAgo: true })}</div>
                 </div>
@@ -2092,7 +2092,7 @@ function renderActionCard({ templateId, name, category, exerciseCount, descLabel
     const iconClass = getCategoryIcon(category);
     const catKey = (category || 'other').toLowerCase();
     return `
-        <div class="coach-action-card" onclick="openCoachTemplate('${escapeAttr(templateId)}')">
+        <div class="coach-action-card" onclick="openCoachTemplate('${escapeJsArg(templateId)}')">
             <div class="coach-action-card__icon coach-action-card__icon--${catKey}"><i class="${iconClass}"></i></div>
             <div class="coach-action-card__body">
                 <div class="coach-action-card__title">${escapeHtml(name)}</div>

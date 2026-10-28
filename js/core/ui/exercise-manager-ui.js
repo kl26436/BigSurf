@@ -2,7 +2,7 @@
 // Handles the integrated exercise manager modal
 
 import { AppState } from '../utils/app-state.js';
-import { showNotification, escapeHtml, escapeAttr, openModal, closeModal } from './ui-helpers.js';
+import { showNotification, escapeHtml, escapeAttr, openModal, closeModal, escapeJsArg } from './ui-helpers.js';
 import { confirmSheet } from './confirm-sheet.js';
 import { FirebaseWorkoutManager } from '../data/firebase-workout-manager.js';
 import { countReassignmentImpact, reassignEquipment } from '../data/data-manager.js';
@@ -281,7 +281,7 @@ function renderMovementFilterChips(movements) {
     const chip = (value, label) => `
         <button type="button" class="chip chip--sm${currentPatternFilter === value ? ' active' : ''}"
                 aria-pressed="${currentPatternFilter === value}"
-                onclick="filterByMovement('${escapeAttr(value)}')">${escapeHtml(label)}</button>`;
+                onclick="filterByMovement('${escapeJsArg(value)}')">${escapeHtml(label)}</button>`;
     strip.innerHTML = chip('', 'All movements') + movements.map((p) => chip(p, movementLabel(p))).join('');
 }
 
@@ -550,12 +550,12 @@ function renderEditExerciseMarkup(title, v, showDelete) {
     const bpChips = BODY_PARTS.map(b => `
                     <div class="chip ${b.chipClass}${selectedBodyPart === b.value ? ' active' : ''}"
                          data-bp="${escapeAttr(b.value)}"
-                         onclick="setExerciseBodyPart('${escapeAttr(b.value)}')">${escapeHtml(b.value)}</div>`).join('');
+                         onclick="setExerciseBodyPart('${escapeJsArg(b.value)}')">${escapeHtml(b.value)}</div>`).join('');
 
     const eqChips = EQUIPMENT_TYPES.map(t => `
                     <div class="chip${selectedEquipmentType === t ? ' active' : ''}"
                          data-eqtype="${escapeAttr(t)}"
-                         onclick="setExerciseEquipmentType('${escapeAttr(t)}')"><i class="fas ${getEquipmentIcon(t)}"></i> ${escapeHtml(t)}</div>`).join('');
+                         onclick="setExerciseEquipmentType('${escapeJsArg(t)}')"><i class="fas ${getEquipmentIcon(t)}"></i> ${escapeHtml(t)}</div>`).join('');
 
     return `
         <div class="page-header">
@@ -731,7 +731,7 @@ function focusChipsHTML() {
         const on = selectedTags.includes(tag);
         const label = tag.charAt(0).toUpperCase() + tag.slice(1);
         return `<button type="button" class="chip${on ? ' active' : ''}" data-focus="${escapeAttr(tag)}"
-                        aria-pressed="${on}" onclick="toggleExerciseFocusTag('${escapeAttr(tag)}')">${escapeHtml(label)}</button>`;
+                        aria-pressed="${on}" onclick="toggleExerciseFocusTag('${escapeJsArg(tag)}')">${escapeHtml(label)}</button>`;
     }).join('');
 }
 
@@ -741,7 +741,7 @@ function movementChipsHTML(name) {
     const chips = choices.map((p) => {
         const on = current === p;
         return `<button type="button" class="chip${on ? ' active' : ''}" data-move="${escapeAttr(p)}"
-                        aria-pressed="${on}" onclick="setExerciseMovement('${escapeAttr(p)}')">${escapeHtml(movementLabel(p))}</button>`;
+                        aria-pressed="${on}" onclick="setExerciseMovement('${escapeJsArg(p)}')">${escapeHtml(movementLabel(p))}</button>`;
     }).join('');
     const more = !showAllMovements && choices.length < PATTERNS.length
         ? '<button type="button" class="chip" onclick="showAllExerciseMovements()">More…</button>'
@@ -1618,6 +1618,7 @@ function renderEquipmentExerciseVideos() {
     container.innerHTML = exerciseTypes.map(exName => {
         const videoUrl = exerciseVideos[exName] || '';
         const safeExName = escapeAttr(exName);
+        const jsExName = escapeJsArg(exName); // handler arguments — escapeAttr's &#39; decodes back to '
         return `
             <div class="row-card row-card--static equipment-video-row">
                 <div class="equipment-video-info">
@@ -1627,9 +1628,9 @@ function renderEquipmentExerciseVideos() {
                            data-exercise="${safeExName}"
                            value="${escapeAttr(videoUrl)}"
                            placeholder="YouTube URL"
-                           onchange="editEquipmentExerciseVideo('${safeExName}', this.value)">
+                           onchange="editEquipmentExerciseVideo('${jsExName}', this.value)">
                 </div>
-                ${videoUrl ? `<button type="button" class="btn-text" onclick="editEquipmentExerciseVideo('${safeExName}', ''); this.closest('.equipment-video-row').querySelector('input').value='';" title="Clear video" aria-label="Clear video">
+                ${videoUrl ? `<button type="button" class="btn-text" onclick="editEquipmentExerciseVideo('${jsExName}', ''); this.closest('.equipment-video-row').querySelector('input').value='';" title="Clear video" aria-label="Clear video">
                     <i class="fas fa-times"></i>
                 </button>` : ''}
             </div>

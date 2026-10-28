@@ -11,8 +11,11 @@
 //
 // `?debug&snap` also snaps automatically ~0.7 s after the visible page or the
 // set of open overlays changes — walk the app and every screen gets a record.
+// `&persist` sends those auto-snaps to the bug log too; a tapped "snap" always
+// goes there (10/27: the nav sat at different heights on different pages and
+// the session-only trace never left the phone).
 
-import { captureTrace } from './error-handler.js';
+import { captureTrace, captureWarning } from './error-handler.js';
 import { pageLockState } from '../ui/page-lock.js';
 
 const CONTROL_SELECTOR = [
@@ -31,7 +34,20 @@ const MIN_TAP = 44;
 export function formatHudLine(m) {
     const open = m.open.length ? m.open.join(',') : '—';
     return `ih ${m.ih} · vv ${m.vvH} @${m.vvTop} · kb ${m.kb} · sat ${m.sat} sab ${m.sab} · y ${m.scrollY}`
-        + ` · lock ${m.lock} · ${m.section || '—'} · ${open} · ${m.focus || '—'}`;
+        + ` · lock ${m.lock} · ${m.section || '—'} · ${open} · ${m.focus || '—'}`
+        + formatNavPart(m);
+}
+
+/**
+ * The bottom nav's numbers: height@top, its bottom padding (the home-indicator
+ * inset it reserves), any gap between it and the bottom of the viewport, and
+ * `doc↕` when the page itself scrolls — what makes iOS Safari collapse its
+ * toolbar and flip the bottom inset. Pure; '' when the nav isn't showing.
+ */
+export function formatNavPart(m) {
+    if (!m.nav) return '';
+    const { h, top, pb, gap } = m.nav;
+    return ` · nav ${h}@${top} pb ${pb}${gap ? ` gap ${gap}` : ''}${m.docScrolls ? ' · doc↕' : ''}`;
 }
 
 /**
@@ -85,6 +101,19 @@ function visibleSection() {
     return '';
 }
 
+function measureNav() {
+    const nav = document.getElementById('bottom-nav');
+    if (!nav || nav.classList.contains('hidden')) return null;
+    const r = nav.getBoundingClientRect();
+    if (!r.height) return null;
+    return {
+        h: Math.round(r.height),
+        top: Math.round(r.top),
+        pb: px(getComputedStyle(nav).paddingBottom),
+        gap: Math.round(window.innerHeight - r.bottom),
+    };
+}
+
 function measure() {
     const vv = window.visualViewport;
     const { sat, sab } = safeAreas();
@@ -104,6 +133,8 @@ function measure() {
         section: visibleSection(),
         open: [...new Set(open)].slice(0, 4),
         focus: a && a !== document.body ? `${a.tagName}${a.id ? `#${a.id}` : ''}` : '',
+        nav: measureNav(),
+        docScrolls: document.documentElement.scrollHeight > window.innerHeight + 1,
     };
 }
 
@@ -124,13 +155,17 @@ function measureControls() {
     return out;
 }
 
-/** Log one shell_snapshot (Error Log page, session-only like autofill_trace). */
-export function snapShell(reason = 'manual') {
+/**
+ * Log one shell_snapshot. Session-only (Error Log page) unless `persist`, which
+ * writes it to the bug log so it can be read off the phone.
+ */
+export function snapShell(reason = 'manual', { persist = false } = {}) {
     const m = measure();
     const controls = controlDefects(measureControls(), m.sat);
     const bad = controls.filter(c => c.defects.length);
-    captureTrace(
-        `shell_snapshot: ${m.section || '?'} · ${m.open.join(',') || 'no overlay'}${bad.length ? ` · ${bad.length} control defect${bad.length === 1 ? '' : 's'}` : ''}`,
+    const log = persist ? captureWarning : captureTrace;
+    log(
+        `shell_snapshot: ${m.section || '?'} · ${m.open.join(',') || 'no overlay'}${m.nav ? ` · nav ${m.nav.h}@${m.nav.top}` : ''}${bad.length ? ` · ${bad.length} control defect${bad.length === 1 ? '' : 's'}` : ''}`,
         'shellHud',
         { reason, metrics: m, controls, userAgent: navigator.userAgent, standalone: !!window.navigator.standalone || window.matchMedia?.('(display-mode: standalone)').matches },
     );
@@ -138,7 +173,7 @@ export function snapShell(reason = 'manual') {
 }
 
 let installed = false;
-export function installShellHud({ autoSnap = false } = {}) {
+export function installShellHud({ autoSnap = false, persist = false } = {}) {
     if (installed || typeof document === 'undefined') return;
     installed = true;
 
@@ -149,7 +184,7 @@ export function installShellHud({ autoSnap = false } = {}) {
     const line = hud.querySelector('.shell-hud__line');
     const btn = hud.querySelector('.shell-hud__snap');
     btn.addEventListener('click', () => {
-        snapShell('manual');
+        snapShell('manual', { persist: true });
         btn.textContent = 'saved';
         setTimeout(() => { btn.textContent = 'snap'; }, 900);
     });
@@ -165,7 +200,7 @@ export function installShellHud({ autoSnap = false } = {}) {
         if (key === lastKey) return;
         lastKey = key;
         clearTimeout(autoTimer);
-        autoTimer = setTimeout(() => snapShell('auto'), 700);
+        autoTimer = setTimeout(() => snapShell('auto', { persist }), 700);
     };
 
     const vv = window.visualViewport;

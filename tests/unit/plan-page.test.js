@@ -28,6 +28,7 @@ vi.mock('../../js/core/ui/ui-helpers.js', async (importOriginal) => {
         formatSet, unitLabel,
         escapeHtml: (s) => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])),
         escapeAttr: (s) => String(s ?? '').replace(/"/g, '&quot;'),
+        escapeJsArg: (s) => (s == null ? '' : String(s)).replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '\\"').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'),
         showNotification: vi.fn(),
     };
 });
