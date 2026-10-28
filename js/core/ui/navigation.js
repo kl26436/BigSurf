@@ -99,6 +99,9 @@ const LOGO_VIEWS = new Set(['dashboard', 'history', 'workout-history']);
 function applyHeaderMode(view) {
     const normalized = String(view).replace(/-section$/, '');
     if (window.setHeaderMode) window.setHeaderMode(LOGO_VIEWS.has(normalized));
+    // HOME.md — on Home the logo bar is the page's header: logo left, the
+    // settings avatar right, pinned, with a hairline once the page scrolls.
+    document.getElementById('main-header')?.classList.toggle('header--home', normalized === 'dashboard');
 }
 
 /**
@@ -148,7 +151,13 @@ function getCurrentView() {
         .find(Boolean) || null;
 }
 
-export function navigateTo(view) {
+/**
+ * @param {string} view
+ * @param {{replace?: boolean}} [opts] - replace: swap the current page instead
+ *   of stacking on it (the library switcher: Equipment ⇄ Exercises is one
+ *   place, so Back from either leaves both).
+ */
+export function navigateTo(view, { replace = false } = {}) {
     // Flush any pending inline template edit BEFORE we tear down or hide the
     // current view. Without this, a user who typed a new sets/reps/weight on
     // the workout-selector and tapped a nav button without blurring first
@@ -165,13 +174,14 @@ export function navigateTo(view) {
     // derived from what's open, so removing the sheets above releases it;
     // this also drops any explicit lockPage() hold.
     closeAllSheets();
+    window.closeLibrarySwitcher?.();
     resetPageLock();
 
     // Push current view onto stack for back navigation. SH-6 — going
     // "forward" to the view that's on top of the stack IS going back (a
     // fixed "back to dashboard" link must not leave a dashboard ↔ detail
     // loop behind it), and the same view is never pushed twice in a row.
-    if (!skipStackPush) recordNavigation(view);
+    if (!skipStackPush) recordNavigation(view, { replace });
     // Find the currently visible section
     const visibleSection = SECTION_IDS
         .map((id) => document.getElementById(id))

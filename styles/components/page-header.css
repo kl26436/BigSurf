@@ -307,3 +307,74 @@
 
 
 
+
+/* ── Library switcher (Pocket Inventory Landing v2 §1): the Equipment and
+   Exercises titles are one button that drops a two-row menu. The title
+   shrinks from 32px to 18px as the page scrolls (library-switcher.js sets
+   --collapse 0→1 on the section from the body's scrollTop). ── */
+.lib-switch {
+    display: flex;
+    align-items: center;
+    gap: var(--space-8);
+    min-width: 0;
+    min-height: var(--tap);
+    padding: 0;
+    background: none;
+    border: none;
+    color: var(--text-strong);
+    font-family: inherit;
+    cursor: pointer;
+}
+.lib-switch__title {
+    font-size: calc(var(--font-lg) + (var(--font-2xl) - var(--font-lg)) * (1 - var(--collapse, 0)));
+    font-weight: 800;
+    letter-spacing: -0.025em;
+}
+.lib-switch__chev {
+    font-size: var(--font-2xs);
+    color: var(--text-secondary);
+    transition: transform var(--anim-normal);
+}
+.lib-switch.is-open .lib-switch__chev { transform: rotate(180deg); }
+.lib-menu {
+    position: absolute;
+    top: calc(100% - var(--space-4));
+    left: var(--space-12);
+    z-index: 1;
+    width: 200px;
+    padding: var(--space-6);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    background: var(--bg-card-hi);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-14);
+    box-shadow: var(--shadow-menu);
+}
+.lib-menu__opt {
+    display: flex;
+    align-items: center;
+    gap: var(--space-10);
+    width: 100%;
+    min-height: var(--tap);
+    padding: 0 var(--space-10);
+    border: none;
+    border-radius: var(--radius-10);
+    background: transparent;
+    color: var(--text-main);
+    font-family: inherit;
+    font-size: var(--font-base);
+    font-weight: 700;
+    text-align: left;
+    cursor: pointer;
+}
+.lib-menu__opt.is-active { background: var(--primary-bg); color: var(--primary); }
+.lib-menu__icon { width: 16px; text-align: center; }
+.lib-menu__check { margin-left: auto; font-size: var(--font-xs); }
+@media (prefers-reduced-motion: no-preference) {
+    .lib-menu { animation: libMenuPop 180ms ease-out; }
+}
+@keyframes libMenuPop {
+    from { opacity: 0; transform: translateY(-6px) scale(0.97); }
+    to   { opacity: 1; transform: none; }
+}

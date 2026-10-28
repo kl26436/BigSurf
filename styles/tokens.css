@@ -351,4 +351,29 @@
     --equip-cardio-bg: rgba(227, 93, 106, 0.15);
     --equip-other: var(--text-muted);
     --equip-other-bg: var(--muted-bg);
+
+    /* Home "Today" hero (HOME.md, Option B) — the indigo card that holds the
+       week and today's workout. The accent is the hero's own eyebrow / coach
+       color; the lighter-week segment in the plan bar shares its hue. */
+    --hero-bg-start: #25224a;
+    --hero-bg-end: #1a1932;
+    --hero-border: rgba(150, 130, 255, 0.22);
+    --hero-accent: #b5a9ff;
+    --hero-lighter-seg: rgba(150, 130, 255, 0.35);
+    --hero-tile-bg: rgba(0, 0, 0, 0.22);
+    --hero-divider: rgba(255, 255, 255, 0.08);
+
+    /* Primary glows — the Start button's lift, the nav button's pulse ring,
+       today's ring in the week strip, the current-gym card's corner wash. */
+    --primary-glow: rgba(29, 211, 176, 0.28);
+    --primary-glow-nav: rgba(29, 211, 176, 0.35);
+    --primary-glow-nav-hi: rgba(29, 211, 176, 0.5);
+    --primary-ring: rgba(29, 211, 176, 0.45);
+    --primary-ring-today: rgba(29, 211, 176, 0.55);
+    --primary-ring-fade: rgba(29, 211, 176, 0);
+    --primary-wash: rgba(29, 211, 176, 0.16);
+    --shadow-menu: 0 16px 40px rgba(0, 0, 0, 0.55);
+    /* Screen motion (Pocket Inventory §5) — every use sits inside
+       prefers-reduced-motion: no-preference. */
+    --ease-screen: cubic-bezier(0.2, 0.8, 0.2, 1);
 }

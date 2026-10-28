@@ -16,13 +16,14 @@ import { loadAllWorkouts } from '../data/data-manager.js';
 import { getWorkoutCategory } from './template-selection.js';
 import { TrainingInsights } from '../features/training-insights.js';
 import { showFirstUseTip } from '../features/first-use-tips.js';
-import { satisfiedDays, todayCard, weekDates, loadWeekPlan } from '../features/week-plan.js';
+import { satisfiedDays, todayCard, weekDates, loadWeekPlan, reflowWeek, DAY_KEYS, DAY_LABELS, dayKeyOf } from '../features/week-plan.js';
+import { buildWeekStrip, splitWorkoutTitle, heroStats, liftBadge, weeklyE1rmSeries } from '../features/home-model.js';
+import { describeStuck } from '../features/plain-language.js';
 import {
-    loadActiveProgram, programSessionForToday, programSessionMeta,
+    loadActiveProgram, programSessionForToday,
     programNoticeForToday, programCompletionForToday,
     programBlockStats, trailingWeekLight,
 } from '../features/program-session.js';
-import { describeWeekTarget } from '../features/week-targets.js';
 
 import {
     aggregateBodyPartStats, getTemplatesForDayOfWeek, aggregateExerciseStats,
@@ -138,19 +139,15 @@ async function renderDashboard() {
         const recentPRs = PRTracker.getRecentPRs(3);
 
         const weekCount = weeklyStats.uniqueDays || weeklyStats.workouts.length;
-        // Pace vs last week: unique training days last week THROUGH the same
-        // weekday, so a mid-week comparison is apples-to-apples (not partial
-        // week vs full week). Computed from the already-loaded workouts — no
-        // extra query, no cross-module export (prod pins JS for a year).
-        const weekPace = computeWeekPace(allWorkouts);
         const weeklyGoal = AppState.settings?.weeklyGoal || 5;
         const streakDays = streaks?.currentStreak || 0;
+        paintHeaderAvatar();
 
         const hasWorkouts = streaks && streaks.totalWorkouts > 0;
+        const firstPaint = container.dataset.rendered !== '1';
 
         if (!hasWorkouts) {
             container.innerHTML = `
-                ${renderGreetingHeader()}
                 ${renderActiveWorkoutPill()}
                 <div class="empty-state">
                     <div class="empty-state-icon"><i class="fas fa-dumbbell"></i></div>
@@ -196,16 +193,22 @@ async function renderDashboard() {
                 recentPRs.filter(pr => pr.date === todayStr).map(prKey)
             );
 
-            // V3 layout (2026-07 redesign): one hero, quiet lists, grouped
-            // sections. The page's only card-weight element above the fold is
-            // the For-Today hero; the retrospective tail collapses into two
-            // grouped cards (This week, Body) so the hero has no competition.
+            // HOME.md Option B ("Today-first"): one indigo hero that holds the
+            // week and today's workout, then Next up / My plan, All workouts,
+            // and the main lifts as tiles. The retrospective tail (This week,
+            // Body) stays below the fold, unchanged.
+            const week = {
+                days: buildWeekStrip({
+                    workouts: allWorkouts, weekPlan: AppState._weekPlan || null,
+                    templates: AppState.templates, today: AppState.getTodayDateString(),
+                }),
+                done: weekCount, goal: Math.min(7, Math.max(1, weeklyGoal)),
+                streak: streakDays, lighter: detectDeloadWeek(allWorkouts),
+            };
             container.innerHTML = `
-                ${renderGreetingHeader()}
-                ${renderMetaStrip(streakDays, weekCount, weeklyGoal, detectDeloadWeek(allWorkouts), weekPace)}
                 ${renderActiveWorkoutPill()}
                 ${renderProgramCompleteBanner(allWorkouts)}
-                ${renderForToday(allWorkouts)}
+                ${renderForToday(allWorkouts, week)}
                 ${reportEntryHTML}
                 ${renderTodayPRBanner(recentPRs)}
                 ${renderScoreboardCard(allWorkouts)}
@@ -214,8 +217,13 @@ async function renderDashboard() {
             `;
 
             if (AppState.currentWorkout || window.inProgressWorkout) startPillTimer();
+            // The nav's workout button glows while there's something to do
+            // today (nothing logged yet, nothing running) — not as constant noise.
+            const trainedToday = week.days.some(d => d.isToday && d.state === 'done');
+            document.body.classList.toggle('fab-glow', !trainedToday && !(AppState.currentWorkout || window.inProgressWorkout));
         }
         container.dataset.rendered = '1';
+        if (firstPaint) playEntrance(container);
         perfMark('dashboard:painted');
         perfReport();
 
@@ -270,57 +278,96 @@ async function loadBodyWeightData() {
 }
 
 // ===================================================================
-// GREETING + ACTIVE PILL
+// HEADER AVATAR · ENTRANCE MOTION · THE TODAY HERO'S HEAD
 // ===================================================================
 
-function renderGreetingHeader() {
-    const dateStr = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+/** The settings door lives in the logo bar now (HOME.md header), Home only. */
+function paintHeaderAvatar() {
+    const el = document.getElementById('header-avatar');
+    if (!el) return;
     const displayName = AppState.currentUser?.displayName || AppState.currentUser?.email || '';
-    const initial = (displayName.trim().charAt(0) || '?').toUpperCase();
+    el.textContent = (displayName.trim().charAt(0) || '?').toUpperCase();
+}
+
+// The logo bar's hairline fades in once the page scrolls (HOME.md header).
+let _headerScrollWired = false;
+function wireHeaderScroll() {
+    if (_headerScrollWired || typeof window === 'undefined') return;
+    _headerScrollWired = true;
+    let raf = 0;
+    window.addEventListener('scroll', () => {
+        if (raf) return;
+        raf = requestAnimationFrame(() => {
+            raf = 0;
+            document.getElementById('main-header')?.classList.toggle('header--scrolled', window.scrollY > 60);
+        });
+    }, { passive: true });
+}
+
+const motionOK = () => typeof window !== 'undefined'
+    && !!window.matchMedia?.('(prefers-reduced-motion: no-preference)').matches;
+
+/**
+ * First paint of the session only: the hero, tiles, All workouts and the lift
+ * tiles rise in, and the streak / "N up" / lift weights count up from 0.
+ * Re-renders (tab switches, data refreshes) paint still.
+ */
+function playEntrance(container) {
+    wireHeaderScroll();
+    if (!motionOK()) return;
+    container.querySelectorAll('.dash-rise').forEach((el, i) => el.style.setProperty('--rise-i', String(i)));
+    container.classList.add('is-entering');
+    setTimeout(() => container.classList.remove('is-entering'), 1400);
+
+    const targets = [...container.querySelectorAll('[data-count-to]')]
+        .map(el => ({ el, to: Number(el.dataset.countTo), dec: Number(el.dataset.countDec || 0) }))
+        .filter(t => Number.isFinite(t.to) && t.to > 0);
+    if (!targets.length) return;
+    const start = performance.now();
+    const step = (now) => {
+        const p = Math.min(1, (now - start) / 800);
+        const eased = 1 - Math.pow(1 - p, 3);
+        for (const t of targets) t.el.textContent = (t.to * eased).toFixed(t.dec);
+        if (p < 1) requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+}
+
+const WEEK_DAY_WORDS = { done: 'done', today: 'today', plan: 'planned', rest: 'rest' };
+
+/**
+ * The hero's head, shared by every hero state: the date and streak, the
+ * week strip (done · today · planned · rest), and a full-bleed divider.
+ */
+function renderHeroHead(week) {
+    const dateStr = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+    let badge = '';
+    if (week.lighter) {
+        badge = `<span class="dash-hero__streak-badge dash-hero__streak-badge--calm"><i class="fas fa-battery-half" aria-hidden="true"></i>Lighter week</span>`;
+    } else if (week.streak > 0) {
+        badge = `<span class="dash-hero__streak-badge" aria-label="${week.streak} day streak"><i class="fas fa-fire" aria-hidden="true"></i><span data-count-to="${week.streak}">${week.streak}</span></span>`;
+    }
+    const label = `This week: ${week.days.map(d => `${d.dayName} ${WEEK_DAY_WORDS[d.state]}`).join(', ')}`;
+    const days = week.days.map(d => `
+        <div class="dash-week__day${d.isToday ? ' is-today' : ''}">
+            <span class="dash-week__letter">${d.letter}</span>
+            <span class="dash-week__dot dash-week__dot--${d.state}">${d.state === 'done' ? '<i class="fas fa-check"></i>' : ''}</span>
+        </div>`).join('');
     return `
-        <div class="dash-greeting">
-            <span class="dash-greeting__date">${dateStr}</span>
-            <div class="dash-greeting__avatar" onclick="navigateTo('settings')" role="button" tabindex="0" aria-label="Open settings">${escapeHtml(initial)}</div>
+        <div class="dash-hero__top">
+            <span class="dash-hero__date">${dateStr}</span>
+            ${badge}
         </div>
+        <div class="dash-week" role="img" aria-label="${escapeAttr(label)}">${days}</div>
+        <div class="dash-hero__divider" aria-hidden="true"></div>
     `;
 }
 
-/**
- * One-line status strip under the date (V3): streak + week-goal dots + pace.
- * Replaces the three hero chips — same signal, a fraction of the visual
- * weight, and it can't be mistaken for the page's subject. Body weight moved
- * to the Body card where it has context.
- */
-function renderMetaStrip(streak, weekDone, weekGoal, isDeload = false, weekPace = {}) {
-    const goal = Math.min(7, Math.max(1, weekGoal));
-    const dots = Array.from({ length: goal }, (_, i) =>
-        `<span class="dash-strip__dot${i < weekDone ? ' dash-strip__dot--done' : ''}"></span>`
-    ).join('');
+const weekCountText = (week) => `${week.done} of ${week.goal} this week`;
 
-    const streakHtml = isDeload
-        ? `<span class="dash-strip__streak"><i class="fas fa-battery-half"></i> Lighter week</span>`
-        : (streak > 0 ? `<span class="dash-strip__streak"><i class="fas fa-fire"></i> ${streak} day streak</span>` : '');
-
-    // Ahead-of-last-week pace reads as a win; behind stays silent — a lighter
-    // week isn't a failure, so we inform without shaming (carried over from
-    // the hero-chip rules).
-    const lastDays = weekPace.lastWeekDays || 0;
-    const delta = lastDays > 0 ? weekDone - lastDays : 0;
-    const paceHtml = delta > 0 ? `<span class="dash-strip__pace">↑${delta} vs last week</span>` : '';
-
-    const parts = [
-        streakHtml,
-        `<span class="dash-strip__dots" role="img" aria-label="${weekDone} of ${goal} workouts this week">${dots}</span><span class="dash-strip__count">${weekDone} of ${goal}</span>`,
-        paceHtml,
-    ].filter(Boolean);
-
-    return `<div class="dash-strip">${parts.join('<span class="dash-strip__sep">·</span>')}</div>`;
-}
-
-// Active-workout hero: same shell as renderForTodayHero, but the eyebrow
-// shows the running timer and the two CTAs become Continue / Cancel. Returns
-// '' when no workout is in progress so renderForToday keeps its normal path.
-function renderActiveWorkoutHero() {
+// Active-workout hero: same shell, the eyebrow shows the running timer and
+// the actions become Continue / Cancel. '' when nothing is in progress.
+function renderActiveWorkoutHero(week) {
     const inProgress = window.inProgressWorkout;
     const hasActiveWorkout = AppState.currentWorkout || inProgress;
     if (!hasActiveWorkout) return '';
@@ -339,22 +386,23 @@ function renderActiveWorkoutHero() {
         ? Math.floor((Date.now() - new Date(startedAt).getTime()) / 1000)
         : 0;
     const elapsed = formatPillElapsed(elapsedSeconds);
-    const category = (getWorkoutCategory(workoutType) || 'other').toLowerCase();
+    const { title, sub } = splitWorkoutTitle(workoutType);
 
     return `
-        <div class="dash-today-hero dash-today-hero--active cat-fill-${category}">
-            <div class="dash-today-hero__eyebrow">
-                <span class="dash-today-hero__live-dot" aria-hidden="true"></span>
+        <div class="dash-hero dash-hero--active dash-rise">
+            ${renderHeroHead(week)}
+            <div class="dash-hero__eyebrow">
+                <span class="dash-hero__live-dot" aria-hidden="true"></span>
                 In progress · <span id="dash-active-hero-timer">${elapsed}</span>
             </div>
-            <div class="dash-today-hero__name">${escapeHtml(workoutType)}</div>
-            <div class="dash-today-hero__meta">${done}/${total} exercise${total === 1 ? '' : 's'} done</div>
-            <div class="dash-today-hero__actions">
-                <button class="dash-today-hero__cta" onclick="resumeActiveWorkout()" aria-label="Continue workout">
-                    <i class="fas fa-play"></i> Continue
+            <div class="dash-hero__title">${escapeHtml(title)}</div>
+            <div class="dash-hero__sub">${sub ? `${escapeHtml(sub)} · ` : ''}${done}/${total} exercise${total === 1 ? '' : 's'} done</div>
+            <div class="dash-hero__actions">
+                <button class="dash-hero__start" onclick="resumeActiveWorkout()" aria-label="Continue workout">
+                    <i class="fas fa-play" aria-hidden="true"></i> Continue
                 </button>
-                <button class="dash-today-hero__cta dash-today-hero__cta--ghost" onclick="confirmCancelActiveWorkout()" aria-label="Cancel workout">
-                    <i class="fas fa-times"></i> Cancel workout
+                <button class="dash-hero__wide dash-hero__wide--danger" onclick="confirmCancelActiveWorkout()" aria-label="Cancel workout">
+                    <i class="fas fa-times" aria-hidden="true"></i> Cancel workout
                 </button>
             </div>
         </div>
@@ -438,54 +486,6 @@ function startPillTimer() {
 }
 function stopPillTimer() {
     if (pillTimerInterval) { clearInterval(pillTimerInterval); pillTimerInterval = null; }
-}
-
-// ===================================================================
-// HERO CHIP ROW — Streak, Week, Body Weight
-// ===================================================================
-
-// "This week vs last week" pace, comparing like spans: the current partial week
-// against last week THROUGH the same weekday. Returns both a training-day count
-// and total volume for each span so the hero chip can show either — sessions
-// answers "am I hitting my goal?", volume answers "am I actually doing more?".
-// Reads the already-loaded workouts array — no Firestore round-trip.
-function computeWeekPace(allWorkouts) {
-    const empty = { lastWeekDays: 0, thisWeekVol: 0, lastWeekVol: 0 };
-    if (!Array.isArray(allWorkouts)) return empty;
-    const today = new Date();
-    const dayOfWeek = today.getDay(); // 0 = Sunday
-    const startOfThisWeek = new Date(today);
-    startOfThisWeek.setDate(today.getDate() - dayOfWeek);
-    startOfThisWeek.setHours(0, 0, 0, 0);
-    const startOfLastWeek = new Date(startOfThisWeek);
-    startOfLastWeek.setDate(startOfThisWeek.getDate() - 7);
-    const lastCutoff = new Date(startOfLastWeek);
-    lastCutoff.setDate(startOfLastWeek.getDate() + dayOfWeek); // same weekday, last week
-
-    const thisStart = getDateString(startOfThisWeek);
-    const todayStr = getDateString(today);
-    const lastStart = getDateString(startOfLastWeek);
-    const lastEnd = getDateString(lastCutoff);
-
-    let thisWeekVol = 0;
-    let lastWeekVol = 0;
-    const lastDays = new Set();
-    for (const w of allWorkouts) {
-        if (!w || !w.date || !w.completedAt || w.cancelledAt) continue;
-        const inThis = w.date >= thisStart && w.date <= todayStr;
-        const inLast = w.date >= lastStart && w.date <= lastEnd;
-        if (!inThis && !inLast) continue;
-        if (inLast) lastDays.add(w.date);
-        let vol = 0;
-        if (w.exercises) {
-            Object.values(w.exercises).forEach(ex => (ex.sets || []).forEach(s => {
-                if (s.reps && s.weight) vol += s.reps * s.weight;
-            }));
-        }
-        if (inThis) thisWeekVol += vol;
-        if (inLast) lastWeekVol += vol;
-    }
-    return { lastWeekDays: lastDays.size, thisWeekVol, lastWeekVol };
 }
 
 // Conservative, honest deload detection using rolling 7-day windows from today
@@ -582,11 +582,12 @@ function renderProgramCompleteBanner(allWorkouts = []) {
     `;
 }
 
-// TP-6 c — "Your plan" under the hero: the same timeline header the Plan
+// TP-6 c — "My plan" tile beside Next up: the same timeline header the Plan
 // page shows (so the two can't disagree) — the week's kind, never "week N of
-// M"; the next lighter week, the next date, swaps waiting, when the next
-// weeks get set up. Quiet footer weight, not a card. Taps into the Plan page.
-let _planCard = null;   // { title, meta } — planSummaryLine
+// M"; the next lighter week, the next date, swaps waiting. The bar is the
+// next four weeks by kind (this week lit, a lighter week tinted). Taps into
+// the Plan page.
+let _planCard = null;   // { name, title, meta, segs } — planSummaryLine + the next 4 weeks
 let _planHasDoc = false;
 
 async function planCardModel(summary, allWorkouts) {
@@ -597,29 +598,24 @@ async function planCardModel(summary, allWorkouts) {
             import('../features/plan-timeline.js'), import('../features/exercise-rotation.js'),
         ]);
         const templates = AppState.workoutPlans || [];
+        const today = AppState.getTodayDateString();
         const tl = buildPlanTimeline({
             plan: summary.plan, weekPlan: AppState._weekPlan || null, programs: summary.programs || [],
-            templates, workouts: allWorkouts || [], events: summary.events || [], today: AppState.getTodayDateString(),
+            templates, workouts: allWorkouts || [], events: summary.events || [], today,
         });
         if (!summary.plan && !tl.header.thisWeek) return null;
-        return planSummaryLine(tl.header, { hasPlan: !!summary.plan, waiting: waitingSwaps(tl.activeProgram, templates).length });
+        const line = planSummaryLine(tl.header, { hasPlan: !!summary.plan, waiting: waitingSwaps(tl.activeProgram, templates).length });
+        const from = tl.weeks.findIndex(w => w.state === 'current' || w.weekStart > today);
+        const segs = from < 0 ? [] : tl.weeks.slice(from, from + 4).map(w => ({ kind: w.kind, current: w.state === 'current' }));
+        return {
+            name: tl.header.name || 'My plan',
+            title: tl.header.paused ? 'Paused' : (tl.header.thisWeek || line.title),
+            meta: line.meta, segs,
+        };
     } catch (e) {
         debugLog('dashboard: plan card failed', e);
         return null;
     }
-}
-
-function renderProgramHeartbeat() {
-    const t = _planCard;
-    if (!t) return '';
-    return `
-        <div class="dash-program-line" onclick="openBlockPage()" role="button" tabindex="0"
-            aria-label="${escapeAttr(`${t.title}${t.meta ? `. ${t.meta}` : ''} — open your plan`)}">
-            <i class="fas fa-calendar-week dash-program-line__icon" aria-hidden="true"></i>
-            <span class="dash-program-line__txt">${escapeHtml(t.title)}${t.meta ? `<span class="dash-program-line__meta">${escapeHtml(t.meta)}</span>` : ''}</span>
-            <i class="fas fa-chevron-right dash-program-line__chev" aria-hidden="true"></i>
-        </div>
-    `;
 }
 
 /** TP-6 c — "these weeks are done" without a plan: turn it on, right here. */
@@ -633,30 +629,38 @@ export function dashEnablePlan() {
     });
 }
 
-function renderForToday(allWorkouts) {
+/**
+ * For Today: ONE hero (the week + today's workout + Start), then the Next up
+ * / My plan tiles, All workouts, and the quiet one-time setup hints.
+ * HOME.md Option B — Start always applies the plan week's targets, so the
+ * old "Apply & start" box is gone: one filled button above the fold.
+ */
+function renderForToday(allWorkouts, week) {
     const dayName = getDayName();
-    // 7/9 UX: when a workout is in progress, the For-Today hero becomes the
-    // active-workout hero — same visual, buttons swap to Continue/Cancel and
-    // the eyebrow shows the running timer. Keeps the pretty hero while
-    // removing the pill+Start-workout redundancy the user flagged.
-    const activeHero = renderActiveWorkoutHero();
-    if (activeHero) return activeHero;
     // Phase 7 — archived workouts drop out of For Today ranking.
     const templates = (AppState.templates || []).filter(t => !t.archived);
-    // No workouts at all (new user) → still give the dashboard a start path.
-    if (templates.length === 0) return renderForTodayEmpty(dayName);
+
+    // Most-recent completed session per workout type — the hero's "~35 min"
+    // and "last done" read it. allWorkouts is date-desc, so the first match
+    // per type is the latest.
+    const lastDoneByType = {};
+    for (const w of allWorkouts) {
+        const type = w.workoutType;
+        if (!type || lastDoneByType[type] || !w.completedAt) continue;
+        lastDoneByType[type] = { date: w.date, duration: w.totalDuration || 0 };
+    }
 
     // Week plan (5.5): when a plan exists it DECIDES today — the usage-ranked
     // suggestion below becomes the fallback for open/unplanned days.
     const wp = AppState._weekPlan;
     let planCard = null;
+    let satisfied = new Set();
     if (wp) {
         const monday = weekDates().mon;
         const weekWos = allWorkouts.filter(w => w.completedAt && !w.cancelledAt && w.date >= monday);
-        planCard = todayCard(wp, satisfiedDays(wp, weekWos, templates), new Date());
+        satisfied = satisfiedDays(wp, weekWos, templates);
+        planCard = todayCard(wp, satisfied, new Date());
     }
-    if (planCard?.kind === 'rest') return renderPlanStateCard(dayName, 'rest');
-    if (planCard?.kind === 'done') return renderPlanStateCard(dayName, 'done');
 
     const dow = new Date().getDay();
     const dayKey = dayName.toLowerCase();
@@ -670,14 +674,11 @@ function renderForToday(allWorkouts) {
             return b.score - a.score;
         });
 
-    // V3 diet: hero + ONE alternative, everything else behind "All workouts".
     // Ranking is recency-decayed (see getTemplatesForDayOfWeek), so a switched
-    // routine — chest Mondays → leg Mondays → back — converges on what you've
-    // actually done lately instead of accumulating stale suggestions.
+    // routine converges on what you've actually done lately.
     let visible = ranked.filter(r => r.count > 0 || r.scheduled).slice(0, 2);
-
     // Planned workout takes the hero slot (reflowed: a missed Monday can land
-    // here on Wednesday). The best usage-ranked OTHER template stays as alt.
+    // here on Wednesday).
     if (planCard?.kind === 'workout') {
         const planned = templates.find(t => t.id === planCard.templateId);
         if (planned) {
@@ -688,57 +689,39 @@ function renderForToday(allWorkouts) {
         }
     }
 
-    // Rest day (has workouts, none ranked for today) → offer to wing it.
-    if (visible.length === 0) return renderForTodayEmpty(dayName);
-
-    // Most-recent completed session per workout type — lets each row show
-    // "Last done 4d ago · ~52 min" so the user can tell if they're on schedule.
-    // allWorkouts is date-desc, so the first match per type is the latest.
-    const lastDoneByType = {};
-    for (const w of allWorkouts) {
-        const type = w.workoutType;
-        if (!type || lastDoneByType[type]) continue;
-        if (!w.completedAt) continue;
-        lastDoneByType[type] = { date: w.date, duration: w.totalDuration || 0 };
+    // 7/9 UX: a workout in progress turns the hero into Continue / Cancel.
+    let hero = renderActiveWorkoutHero(week);
+    let heroTemplate = null;
+    if (!hero) {
+        if (templates.length === 0) hero = renderCalmHero(week, 'empty', dayName);
+        else if (planCard?.kind === 'rest') hero = renderCalmHero(week, 'rest', dayName);
+        else if (planCard?.kind === 'done') hero = renderCalmHero(week, 'done', dayName);
+        else if (visible.length === 0) hero = renderCalmHero(week, 'empty', dayName);
+        else {
+            heroTemplate = visible[0].template;
+            hero = renderTodayHero(visible[0], week, dayName, lastDoneByType, allWorkouts, planCard, wp);
+        }
     }
 
-    // The top pick renders as the page's single hero with two co-equal doors:
-    // Start workout (the plan) and Quick start (freestyle). The one runner-up
-    // renders as a quiet divider row; "All workouts" closes the list.
-    const [hero, ...rest] = visible;
-    const proximity = findPRProximity(
-        buildProximityCandidates(hero.template, allWorkouts)
-    );
-
-    // Trust rung 2 (auto_confirm): when the plan decided today's hero AND the
-    // active program's week adjusts it, the hero pre-builds the session —
-    // Start is the confirmation.
-    const heroIsPlanned = planCard?.kind === 'workout'
-        && hero.template.id === planCard.templateId
-        && AppState._activeProgram;
-    const programToday = AppState.getTodayDateString();
-    const programSession = heroIsPlanned
-        ? programSessionForToday(AppState._activeProgram, programToday)
-        : null;
-    // Propose-only visibility: on adjustment weeks before auto mode, the hero
-    // still gets a quiet notice line (tap → coach proposes the adjustments) so
-    // the default Start habit can't blow past the week the program exists for.
-    const programNotice = heroIsPlanned && !programSession
-        ? programNoticeForToday(AppState._activeProgram, programToday)
-        : null;
-
-    // Pre-Start caution: before a program-adjusted HEAVY session (weight going
-    // UP), if the trailing week was light, warn in the moment — the weekly
-    // digest catches this a week too late. Deloads after a light week are
-    // fine, so only weight increases trigger it.
-    const adj = programSession || programNotice;
-    const programCaution = (adj && adj.weightPct > 0 && wp)
-        ? trailingWeekLight(wp, allWorkouts, programToday)
-        : null;
+    // Next up: the plan's next day that isn't today's workout; without a plan,
+    // the usage-ranked runner-up.
+    let next = null;
+    if (wp) {
+        const { effective } = reflowWeek(wp, satisfied, new Date());
+        const todayKey = dayKeyOf(new Date());
+        for (const key of DAY_KEYS.slice(DAY_KEYS.indexOf(todayKey) + 1)) {
+            const t = effective[key] && templates.find(x => x.id === effective[key]);
+            if (t && t.id !== heroTemplate?.id) { next = { template: t, day: DAY_LABELS[key] }; break; }
+        }
+    }
+    if (!next) {
+        const runnerUp = visible.find(r => r.template.id !== heroTemplate?.id);
+        if (runnerUp) next = { template: runnerUp.template, day: null };
+    }
 
     // One-time quiet setup hint when no plan exists — dismissible forever,
     // never a popup (pull, not push).
-    const setupRow = (wp === null && !AppState.settings?.weekPlanSetupDismissed) ? `
+    const setupRow = (wp === null && templates.length > 0 && !AppState.settings?.weekPlanSetupDismissed) ? `
         <div class="row-card row-card--flat row-card--static dash-alt-row dash-alt-row--setup" id="week-plan-setup-row">
             <i class="fas fa-calendar-week dash-alt-row__icon"></i>
             <div class="dash-alt-row__txt dash-alt-row__txt--muted" onclick="openWeekPlanSheet()" role="button" tabindex="0">Plan your week — one workout per day</div>
@@ -747,10 +730,9 @@ function renderForToday(allWorkouts) {
             </button>
         </div>` : '';
 
-    // Program door on the home surface (discoverability review): quiet and
-    // dismissible like the week-plan hint, and only one hint at a time — the
+    // Program door (discoverability review): only one hint at a time — the
     // week-plan hint goes first, since a plan is the natural first rung.
-    const programRow = (!setupRow && !AppState._activeProgram && !AppState.settings?.programStarterDismissed) ? `
+    const programRow = (!setupRow && templates.length > 0 && !_planCard && !AppState._activeProgram && !AppState.settings?.programStarterDismissed) ? `
         <div class="row-card row-card--flat row-card--static dash-alt-row dash-alt-row--setup" id="program-starter-row">
             <i class="fas fa-flag-checkered dash-alt-row__icon"></i>
             <div class="dash-alt-row__txt dash-alt-row__txt--muted" onclick="startProgramChat()" role="button" tabindex="0">Get a 4-week plan built from your workouts</div>
@@ -759,37 +741,45 @@ function renderForToday(allWorkouts) {
             </button>
         </div>` : '';
 
+    const hints = setupRow || programRow;
     return `
-        ${renderForTodayHero(hero, dayName, lastDoneByType, proximity, programSession, programNotice, programCaution)}
-        ${renderProgramHeartbeat()}
-        <div class="dash-alt-list">
-            ${rest.map(r => renderForTodayAltRow(r, lastDoneByType)).join('')}
-            <div class="row-card row-card--flat dash-alt-row" onclick="openWorkoutSelectorForDay('${escapeAttr(dayName)}')" role="button" tabindex="0">
-                <i class="fas fa-list dash-alt-row__icon"></i>
-                <div class="dash-alt-row__txt dash-alt-row__txt--muted">All workouts</div>
-                <i class="fas fa-chevron-right dash-chev"></i>
-            </div>
-            ${setupRow}
-            ${programRow}
+        ${hero}
+        ${renderTodayTiles(next, lastDoneByType)}
+        <div class="row-card dash-all-workouts dash-rise" onclick="openWorkoutSelectorForDay('${escapeAttr(dayName)}')" role="button" tabindex="0">
+            <div class="row-card__icon"><i class="fas fa-list-ul" aria-hidden="true"></i></div>
+            <div class="row-card__content"><div class="row-card__title">All workouts</div></div>
+            <i class="fas fa-chevron-right row-card__action" aria-hidden="true"></i>
         </div>
+        ${hints ? `<div class="dash-alt-list">${hints}</div>` : ''}
     `;
 }
 
-// Plan-decided non-workout states: rest day (calm, no CTA) and done-for-today.
-function renderPlanStateCard(dayName, kind) {
-    const isRest = kind === 'rest';
+/**
+ * The hero when today isn't a workout: rest day, done for today, or nothing
+ * planned. Calm — no filled button unless Quick start IS today's way in.
+ */
+function renderCalmHero(week, kind, dayName) {
+    const copy = {
+        rest: { eyebrow: `Rest day · ${weekCountText(week)}`, title: 'Rest day', sub: 'Recovery is part of the plan' },
+        done: { eyebrow: `Done · ${weekCountText(week)}`, title: 'Done for today', sub: "Today's planned workout is in the books" },
+        empty: { eyebrow: `For ${dayName} · ${weekCountText(week)}`, title: 'Nothing planned', sub: 'Start now and add exercises as you go' },
+    }[kind];
+    const quick = kind === 'empty'
+        ? `<button class="dash-hero__start" onclick="openQuickStartSheet()"><i class="fas fa-bolt" aria-hidden="true"></i> Quick start</button>`
+        : `<button class="dash-hero__wide" onclick="openQuickStartSheet()"><i class="fas fa-bolt" aria-hidden="true"></i> Quick start</button>`;
     return `
-        <div class="dash-today-hero dash-today-hero--calm">
-            <div class="dash-today-hero__eyebrow">For ${escapeHtml(dayName)}</div>
-            <div class="dash-today-hero__name">${isRest ? 'Rest day' : 'Done for today'}</div>
-            <div class="dash-today-hero__meta">${isRest ? 'Recovery is part of the plan' : "Today's planned workout is in the books"}</div>
-            <div class="dash-today-hero__actions">
-                <button class="dash-today-hero__cta dash-today-hero__cta--ghost" onclick="openWorkoutSelectorForDay('${escapeAttr(dayName)}')">
-                    All workouts
+        <div class="dash-hero dash-hero--calm dash-rise">
+            ${renderHeroHead(week)}
+            <div class="dash-hero__eyebrow">${escapeHtml(copy.eyebrow)}</div>
+            <div class="dash-hero__title">${copy.title}</div>
+            <div class="dash-hero__sub">${copy.sub}</div>
+            <div class="dash-hero__actions">
+                ${quick}
+                <button class="dash-hero__icon-btn dash-hero__icon-btn--coach" onclick="bottomNavTo('ai-coach')" aria-label="Ask coach">
+                    <i class="fas fa-robot" aria-hidden="true"></i>
                 </button>
             </div>
         </div>
-        ${renderProgramHeartbeat()}
     `;
 }
 
@@ -811,25 +801,6 @@ export function dismissProgramStarter(event) {
 }
 if (typeof window !== 'undefined') {
     window.dismissProgramStarter = dismissProgramStarter;
-}
-
-// Rest day / new user: Quick start takes the hero slot instead of hiding.
-function renderForTodayEmpty(dayName) {
-    return `
-        <div class="dash-today-hero">
-            <div class="dash-today-hero__eyebrow">For ${dayName}</div>
-            <div class="dash-today-hero__name">Nothing planned</div>
-            <div class="dash-today-hero__meta">Start now and add exercises as you go</div>
-            <div class="dash-today-hero__actions">
-                <button class="dash-today-hero__cta" onclick="openQuickStartSheet()">
-                    <i class="fas fa-bolt"></i> Quick start
-                </button>
-                <button class="dash-today-hero__cta dash-today-hero__cta--ghost" onclick="openWorkoutSelectorForDay('${escapeAttr(dayName)}')">
-                    All workouts
-                </button>
-            </div>
-        </div>
-    `;
 }
 
 /**
@@ -873,126 +844,137 @@ function buildProximityCandidates(template, allWorkouts) {
     return candidates;
 }
 
-function renderForTodayHero({ template, count, scheduled }, dayName, lastDoneByType, proximity, programSession = null, programNotice = null, programCaution = null) {
-    const category = template.category || getWorkoutCategory(template.name || template.day) || 'other';
+/**
+ * THE hero (HOME.md Option B): the week, "Up today · N of M this week", the
+ * workout's name split into title + subtitle, three stat tiles, and Start —
+ * which applies this plan week's targets on its own (auto-confirm weeks start
+ * the pre-built session; propose weeks apply and start). Quick start and Ask
+ * coach sit beside it as icon buttons.
+ */
+function renderTodayHero({ template, scheduled }, week, dayName, lastDoneByType, allWorkouts, planCard, wp) {
     const exList = Array.isArray(template.exercises) ? template.exercises : Object.values(template.exercises || {});
-    const exCount = exList.length;
+    const name = template.name || template.day;
     const startArg = escapeAttr(template.day || template.name || template.id);
+    const { title, sub } = splitWorkoutTitle(name);
+    const rec = lastDoneByType[name];
 
-    const usageText = scheduled ? `Usually ${dayName}` : (count > 0 ? `${count}× on ${dayName}s` : '');
-    const lastDoneText = formatLastDoneMeta(lastDoneByType[template.name || template.day]);
-    // Program-adjusted session (rung 2) leads the meta — it changes what
-    // today's numbers will be. +N% only scales weighted moves, so say the
-    // skip out loud when the template has bodyweight entries.
-    const hasBw = programSession && exList.some(e => !(typeof e.weight === 'number' && e.weight > 0));
-    const programPart = programSession
-        ? programSessionMeta(programSession) + (hasBw ? ' · bodyweight moves unchanged' : '')
-        : '';
-    const meta = [programPart, usageText, lastDoneText, `${exCount} exercises`]
-        .filter(Boolean).join(' · ');
+    // Trust rung 2 (auto_confirm): when the plan decided today's hero AND the
+    // active program's week adjusts it, Start runs the pre-built session.
+    // Propose-only weeks: Start applies the (deterministic) adjustment and
+    // starts — no chat round trip, and the default Start habit can't blow
+    // past the week the program exists for.
+    const heroIsPlanned = planCard?.kind === 'workout' && template.id === planCard.templateId && AppState._activeProgram;
+    const today = AppState.getTodayDateString();
+    const programSession = heroIsPlanned ? programSessionForToday(AppState._activeProgram, today) : null;
+    const programNotice = heroIsPlanned && !programSession ? programNoticeForToday(AppState._activeProgram, today) : null;
+    const target = programSession || programNotice;
 
-    // Propose-only adjustment week: the adjustment is deterministic, so the
-    // primary action APPLIES it and starts (no chat round trip mid-workout);
-    // a secondary link opens the coach for anyone who wants to discuss.
-    let programHook = '';
-    if (!programSession && programNotice) {
-        const desc = describeWeekTarget(programNotice);
-        const label = capitalize(programNotice.label);
-        programHook = `
-            <div class="dash-today-hero__program">
-                <div class="dash-today-hero__program-head">
-                    <i class="fas fa-flag-checkered"></i>
-                    <div class="dash-today-hero__program-txt"><b>${escapeHtml(label)}</b> — ${escapeHtml(desc)} · applied for you</div>
-                </div>
-                <div class="dash-today-hero__program-actions">
-                    <button class="dash-today-hero__program-apply" onclick="applyProgramWeekAndStart('${startArg}')">
-                        Apply &amp; start
-                    </button>
-                    <button class="dash-today-hero__program-ask" onclick="askCoachAboutProgramWeek()">Ask coach</button>
-                </div>
-            </div>
-        `;
-    }
-
-    // Pre-Start caution before a heavy week off a light trailing week.
-    let programCautionHook = '';
-    if (programCaution?.light) {
-        programCautionHook = `
-            <div class="dash-today-hero__caution" onclick="askCoachToReflow()" role="button" tabindex="0"
-                aria-label="Light week behind you — trained ${programCaution.trained} of ${programCaution.planned} planned days. Tap to ask the coach to reflow.">
-                <i class="fas fa-exclamation-triangle"></i>
-                <div class="dash-today-hero__caution-txt"><b>Light week behind you</b> — ${programCaution.trained} of ${programCaution.planned} planned days. Ease in or tap to reflow.</div>
-            </div>
-        `;
-    }
+    // Pre-Start caution: before a program-adjusted HEAVY session after a light
+    // trailing week, warn in the moment — the weekly digest is a week late.
+    const programCaution = (target && target.weightPct > 0 && wp) ? trailingWeekLight(wp, allWorkouts, today) : null;
+    const cautionHook = programCaution?.light ? `
+        <div class="dash-hero__note dash-hero__note--caution" onclick="askCoachToReflow()" role="button" tabindex="0"
+            aria-label="Light week behind you — trained ${programCaution.trained} of ${programCaution.planned} planned days. Tap to ask the coach to reflow.">
+            <i class="fas fa-exclamation-triangle" aria-hidden="true"></i>
+            <div class="dash-hero__note-txt"><b>Light week behind you</b> — ${programCaution.trained} of ${programCaution.planned} planned days. Ease in or tap to reflow.</div>
+        </div>` : '';
 
     // PR-proximity hook — forward-looking "you're close, go for it".
+    const proximity = findPRProximity(buildProximityCandidates(template, allWorkouts));
     let prHook = '';
     if (proximity) {
         const gap = Math.round(proximity.gap * 10) / 10;
         const equip = proximity.equipment && proximity.equipment !== 'Unknown Equipment'  // copy-ok: stored fallback key — matched against saved data
             ? ` (${escapeHtml(proximity.equipment)})` : '';
         prHook = `
-            <div class="dash-today-hero__pr">
-                <i class="fas fa-trophy"></i>
-                <div class="dash-today-hero__pr-txt"><b>${gap} ${unitLabel(proximity.unit)} off your ${escapeHtml(proximity.exercise)} PR</b>${equip} — today's the day</div>
-            </div>
-        `;
+            <div class="dash-hero__note dash-hero__note--pr">
+                <i class="fas fa-trophy" aria-hidden="true"></i>
+                <div class="dash-hero__note-txt"><b>${gap} ${unitLabel(proximity.unit)} off your ${escapeHtml(proximity.exercise)} PR</b>${equip} — today's the day</div>
+            </div>`;
     }
 
+    // A weight-scaling week says so about the bodyweight moves it can't scale.
+    const hasBw = target && target.weightPct && exList.some(e => !(typeof e.weight === 'number' && e.weight > 0));
+    const stats = heroStats({ exercises: exList, lastDuration: rec?.duration || 0, target });
+    const statsHTML = stats.map(s => `
+        <div class="dash-hero__stat">
+            <div class="dash-hero__stat-value">${escapeHtml(s.value)}</div>
+            <div class="dash-hero__stat-label">${escapeHtml(s.label)}</div>
+        </div>`).join('');
+
+    const when = rec?.date ? formatRelative(rec.date) : '';
+    const foot = target
+        ? [`${target.label} targets applied`, hasBw ? 'bodyweight moves unchanged' : null, when ? `last done ${when}` : null]
+        : [scheduled ? `Usually ${dayName}` : null, when ? `last done ${when}` : null];
+    const footText = capitalize(foot.filter(Boolean).join(' · '));
+
+    const startCall = programSession ? `startProgramSession('${startArg}')`
+        : programNotice ? `applyProgramWeekAndStart('${startArg}')`
+            : `startWorkout('${startArg}')`;
+    const coachCall = programNotice ? 'askCoachAboutProgramWeek()' : "bottomNavTo('ai-coach')";
+
     return `
-        <div class="dash-today-hero cat-fill-${category.toLowerCase()}">
-            <div class="dash-today-hero__eyebrow">Up today</div>
-            <div class="dash-today-hero__name">${escapeHtml(template.name || template.day)}</div>
-            <div class="dash-today-hero__meta">${meta}</div>
-            ${programCautionHook}
-            ${programHook}
+        <div class="dash-hero dash-rise">
+            ${renderHeroHead(week)}
+            <div class="dash-hero__eyebrow">Up today · ${weekCountText(week)}</div>
+            <div class="dash-hero__title">${escapeHtml(title)}</div>
+            ${sub ? `<div class="dash-hero__sub">${escapeHtml(sub)}</div>` : ''}
+            ${cautionHook}
             ${prHook}
-            <div class="dash-today-hero__actions">
-                <button class="dash-today-hero__cta" onclick="${programSession ? `startProgramSession('${startArg}')` : `startWorkout('${startArg}')`}" aria-label="Start ${escapeAttr(template.name || template.day)}">
-                    <i class="fas fa-play"></i> ${programSession ? `Start — ${escapeHtml(programSession.label)}` : 'Start workout'}
+            <div class="dash-hero__stats">${statsHTML}</div>
+            <div class="dash-hero__actions">
+                <button class="dash-hero__start" onclick="${startCall}" aria-label="Start ${escapeAttr(name)}">
+                    <i class="fas fa-play" aria-hidden="true"></i> Start
                 </button>
-                <button class="dash-today-hero__cta dash-today-hero__cta--ghost" onclick="openQuickStartSheet()">
-                    <i class="fas fa-bolt"></i> Quick start
+                <button class="dash-hero__icon-btn" onclick="openQuickStartSheet()" aria-label="Quick start">
+                    <i class="fas fa-bolt" aria-hidden="true"></i>
+                </button>
+                <button class="dash-hero__icon-btn dash-hero__icon-btn--coach" onclick="${coachCall}" aria-label="Ask coach">
+                    <i class="fas fa-robot" aria-hidden="true"></i>
                 </button>
             </div>
+            ${footText ? `<div class="dash-hero__foot">${target ? '<i class="fas fa-flag-checkered" aria-hidden="true"></i>' : ''}${escapeHtml(footText)}</div>` : ''}
         </div>
     `;
 }
 
-// One quiet runner-up under the hero: no card chrome, no play circle — the
-// hero must be the only card-weight element in For Today.
-function renderForTodayAltRow({ template }, lastDoneByType = {}) {
-    const category = (template.category || getWorkoutCategory(template.name || template.day) || 'other').toLowerCase();
-    const icon = getCategoryIcon(category);
-    const startArg = escapeAttr(template.day || template.name || template.id);
-    const rec = lastDoneByType[template.name || template.day];
-    const when = rec?.date ? formatRelativeDate(rec.date, { daysAgo: true, weeksAgo: true }) : '';
-
-    return `
-        <div class="row-card row-card--flat dash-alt-row" onclick="startWorkout('${startArg}')" role="button" tabindex="0" aria-label="Start ${escapeAttr(template.name || template.day)}">
-            <i class="${icon} dash-alt-row__icon cat-txt-${category}"></i>
-            <div class="dash-alt-row__txt">
-                <span class="dash-alt-row__name">${escapeHtml(template.name || template.day)}</span>
-                ${when ? `<span class="dash-alt-row__meta"> · ${when}</span>` : ''}
-            </div>
-            <i class="fas fa-chevron-right dash-chev"></i>
-        </div>
-    `;
-}
-
-// "Last done 4 days ago · ~52 min" from a {date, duration} record, or '' if never.
-function formatLastDoneMeta(rec) {
-    if (!rec || !rec.date) return '';
-    const when = formatRelative(rec.date);
-    // An unparseable stored date used to render "Last done NaNd ago". Bail
-    // (and surface the bad doc under ?debug).
-    if (!when) {
-        debugLog('formatLastDoneMeta: unparseable rec.date →', rec.date);
-        return '';
+/**
+ * Next up (opens that workout) and My plan (opens the Plan page), two
+ * columns; one alone spans both. '' when there's neither.
+ */
+function renderTodayTiles(next, lastDoneByType) {
+    const tiles = [];
+    if (next) {
+        const t = next.template;
+        const name = t.name || t.day;
+        const category = (t.category || getWorkoutCategory(name) || 'other').toLowerCase();
+        const rec = lastDoneByType[name];
+        const meta = [next.day, rec?.date ? `last done ${formatRelative(rec.date)}` : null].filter(Boolean).join(' · ');
+        tiles.push(`
+            <div class="dash-tile" onclick="editTemplate('${escapeAttr(t.id)}')" role="button" tabindex="0"
+                 aria-label="${escapeAttr(`Next up: ${name}${meta ? `. ${meta}` : ''}`)}">
+                <div class="dash-tile__eyebrow">Next up</div>
+                <div class="dash-tile__title"><i class="${getCategoryIcon(category)} cat-txt-${category}" aria-hidden="true"></i>${escapeHtml(name)}</div>
+                ${meta ? `<div class="dash-tile__meta">${escapeHtml(capitalize(meta))}</div>` : ''}
+            </div>`);
     }
-    const durPart = Math.round((rec.duration || 0) / 60) > 0 ? ` · ~${formatDuration(rec.duration)}` : '';
-    return `Last done ${when}${durPart}`;
+    const p = _planCard;
+    if (p) {
+        const bar = p.segs.length ? `
+            <div class="dash-tile__bar" aria-hidden="true">
+                ${p.segs.map(s => `<span class="dash-tile__seg${s.current ? ' is-current' : ''}${s.kind === 'lighter' ? ' is-lighter' : ''}"></span>`).join('')}
+            </div>` : '';
+        tiles.push(`
+            <div class="dash-tile" onclick="openBlockPage()" role="button" tabindex="0"
+                 aria-label="${escapeAttr(`${p.name}: ${p.title}${p.meta ? `. ${p.meta}` : ''} — open your plan`)}">
+                <div class="dash-tile__eyebrow">${escapeHtml(p.name)}</div>
+                <div class="dash-tile__title">${escapeHtml(p.title)}</div>
+                ${bar}
+                ${p.meta ? `<div class="dash-tile__meta">${escapeHtml(capitalize(p.meta))}</div>` : ''}
+            </div>`);
+    }
+    if (!tiles.length) return '';
+    return `<div class="dash-tiles${tiles.length === 1 ? ' dash-tiles--one' : ''} dash-rise">${tiles.join('')}</div>`;
 }
 
 // Navigate to the workout selector, pre-sorted by how often each template is
@@ -1121,22 +1103,25 @@ function renderThisWeekCard(allWorkouts, recentPRs, excludeKeys, topInsight) {
 // MAIN LIFTS SCOREBOARD (AP-21) — "am I progressing?" in one glance
 // ===================================================================
 
-const SB_TREND_ICON = {
-    up: 'fa-caret-up', down: 'fa-caret-down', flat: 'fa-equals', new: 'fa-seedling', idle: 'fa-pause',
-};
 const SB_TREND_LABEL = {
     up: 'Up', down: 'Down', flat: 'Holding', new: 'New this month', idle: 'Not trained in 4 weeks',
 };
 const SB_PATTERN_CHIP = { under: 'low', 'in-range': 'good', over: 'high', recovery: 'muted' };
+const LIFT_TONE_COLOR = {
+    up: 'var(--success)', stuck: 'var(--warning)', down: 'var(--danger)', flat: 'var(--text-muted)', new: 'var(--primary)',
+};
 
 /**
  * Best estimated 1RM per main lift, this 4-week window vs the one before
  * (progress-scoreboard.js — the coach and the weekly review quote the same
- * object). Placed under For Today: the hero stays the page's one primary
- * action; this card is the answer to "is it working?".
+ * object), as tiles (HOME.md): the first lift spans both columns; each shows
+ * its estimated max, the 4-week change (or Stuck, from the stall ladder) and
+ * a six-week sparkline. Placed under For Today: the hero stays the page's one
+ * primary action; this is the answer to "is it working?".
  */
 function renderScoreboardCard(allWorkouts) {
     const unit = AppState.globalUnit || 'lbs';
+    const today = AppState.getTodayDateString();
     let sb;
     try {
         const plates = unit === 'kg' ? AppState.settings?.plateKg : AppState.settings?.plateLbs;
@@ -1145,7 +1130,7 @@ function renderScoreboardCard(allWorkouts) {
             workouts: allWorkouts,
             templates,
             unit,
-            today: AppState.getTodayDateString(),
+            today,
             config: { patternTarget: Config.PATTERN_TARGET_SETS, mrv: Config.VOLUME_MRV, increment: weightIncrement(unit, plates) },
             library: AppState.exerciseDatabase || [],
         });
@@ -1154,44 +1139,71 @@ function renderScoreboardCard(allWorkouts) {
         return '';
     }
 
+    const trended = sb.primaries.filter(p => p.trend === 'up' || p.trend === 'flat' || p.trend === 'down');
+    const up = trended.filter(p => p.trend === 'up').length;
+    const meta = trended.length
+        ? `<span class="sec-head__meta dash-lifts__meta"><span data-count-to="${up}">${up}</span> of ${trended.length} up · 4 weeks</span>`
+        : '';
     const head = `
-        <div class="sec-head sec-head--compact">
+        <div class="sec-head sec-head--compact dash-lifts__head">
             <h3>Main lifts</h3>
+            ${meta}
             <a onclick="openPrimaryLiftsSheet()">Edit</a>
         </div>`;
 
     if (!sb.primaries.length) {
-        return `${head}
+        return `<div class="dash-lifts dash-rise">${head}
             <div class="dash-week-card">
                 <div class="sb-card__empty">
                     <b>No main-lift trend yet</b>
                     Log your compound lifts for a few weeks and the 4-week trend shows up here.
                 </div>
-            </div>`;
+            </div></div>`;
     }
 
-    const rows = sb.primaries.map((p) => {
+    // The "N of M up" count rides the head; a warning headline (a lift down
+    // two windows running, a pattern under target) or "still building" says
+    // itself under it.
+    const note = sb.headlineKind !== 'up' && sb.headline
+        ? `<div class="dash-lifts__note dash-lifts__note--${sb.headlineKind}">${escapeHtml(sb.headline)}</div>`
+        : '';
+
+    const tiles = sb.primaries.map((p, i) => {
         const trend = p.trend || 'idle';
+        const badge = liftBadge(p);
         const value = p.e1rmNow ?? p.e1rmPrev;
-        let deltaStr = '±0';
-        if (p.delta > 0) deltaStr = `+${p.delta}`;
-        else if (p.delta < 0) deltaStr = `−${Math.abs(p.delta)}`;
-        const delta = (trend === 'up' || trend === 'down' || trend === 'flat') && p.delta != null
-            ? `<span class="sb-row__delta sb-row__delta--${trend}">${deltaStr}</span>`
-            : '';
-        const chips = [
-            p.repPR ? `<span class="vol-badge vol-badge--pr">Rep PR ${formatSet({ reps: p.repPR.reps, weight: p.repPR.weight, originalUnit: unit }, unit, { effort: false })}</span>` : '',
-            p.rung > 0 ? `<span class="vol-badge vol-badge--rung" aria-label="Stuck — ${p.rung === 1 ? 'chase one more rep' : p.rung === 2 ? 'backing off to reset' : 'time to rotate'}">Stuck</span>` : '',
-            // AP-22 — effort climbing at the same load: a leading fatigue sign.
-            p.fatigue ? `<span class="vol-badge vol-badge--rung" aria-label="${escapeAttr(`Effort rising: ${p.fatigue}`)}">Effort ↑</span>` : '',
-        ].join('');
         const valueStr = value != null ? `${value} ${unitLabel(unit)}` : '—';
+        const wide = i === 0;
+        const series = weeklyE1rmSeries(allWorkouts, p, unit, today, 6);
+        const spark = series.length >= 2
+            ? chartSparkline({
+                points: series.map((y, x) => ({ x, y })), color: LIFT_TONE_COLOR[badge.tone],
+                width: wide ? 120 : 52, height: 20, strokeWidth: 1.75, dot: true,
+            })
+            : '';
+        const hint = p.rung > 0
+            ? capitalize(describeStuck({ rung: p.rung }).split(' — ').pop())
+            // AP-22 — effort climbing at the same load: a leading fatigue sign.
+            : (p.fatigue ? 'Effort rising at the same weight' : '');
+        const repPR = p.repPR
+            ? `<div class="dash-lift__rep">Rep PR ${formatSet({ reps: p.repPR.reps, weight: p.repPR.weight, originalUnit: unit }, unit, { effort: false })}</div>`
+            : '';
+        const valueHTML = value != null
+            ? `<span data-count-to="${value}" data-count-dec="${value % 1 ? 1 : 0}">${value}</span><span class="dash-lift__unit">${unitLabel(unit)}</span>`
+            : '—';
         return `
-            <div class="row-card row-card--flat dash-week-row sb-row" onclick="showExerciseDetail('${escapeAttr(p.name)}')" role="button" tabindex="0"
-                 aria-label="${escapeAttr(`${p.name}: ${SB_TREND_LABEL[trend]}, estimated max ${valueStr}`)}">
-                <i class="fas ${SB_TREND_ICON[trend]} sb-row__trend sb-row__trend--${trend}" aria-hidden="true"></i>
-                <div class="dash-week-row__txt"><b>${escapeHtml(p.name)}</b> · ${valueStr}${delta}${chips}</div>
-                <i class="fas fa-chevron-right dash-chev"></i>
+            <div class="dash-lift${wide ? ' dash-lift--wide' : ''}${p.rung > 0 ? ' dash-lift--stuck' : ''}" onclick="showExerciseDetail('${escapeAttr(p.name)}')" role="button" tabindex="0"
+                 aria-label="${escapeAttr(`${p.name}: ${p.rung > 0 ? 'Stuck' : SB_TREND_LABEL[trend]}, estimated max ${valueStr}`)}">
+                <div class="dash-lift__top">
+                    <span class="dash-lift__name">${escapeHtml(p.name)}</span>
+                    <span class="dash-lift__badge dash-lift__badge--${badge.tone}">${badge.text}</span>
+                </div>
+                <div class="dash-lift__bottom">
+                    <span class="dash-lift__value">${valueHTML}</span>
+                    ${spark}
+                </div>
+                ${hint ? `<div class="dash-lift__hint">${escapeHtml(hint)}</div>` : ''}
+                ${repPR}
             </div>`;
     }).join('');
 
@@ -1203,13 +1215,11 @@ function renderScoreboardCard(allWorkouts) {
         ? `<div class="sb-card__debug">now ${sb.window.from}→${sb.window.to} · prev ${sb.window.prevFrom}→${sb.window.prevTo}</div>`
         : '';
 
-    return `${head}
-        <div class="dash-week-card">
-            <div class="sb-card__headline sb-card__headline--${sb.headlineKind}">
-                ${escapeHtml(sb.headline)}
-                <span class="sb-card__sub">Best estimated max, last 4 weeks vs the 4 before</span>
-            </div>
-            ${rows}
+    return `
+        <div class="dash-lifts dash-rise">
+            ${head}
+            ${note}
+            <div class="dash-lifts__grid">${tiles}</div>
             <div class="sb-patterns" aria-label="Sets per movement pattern, last 7 days">${patterns}</div>
             ${debug}
         </div>`;

@@ -14,67 +14,12 @@
     display: flex;
     flex-direction: column;
     gap: var(--gap-items);
-    padding: var(--pad-page) var(--pad-page) var(--nav-clearance);
+    /* HOME.md — 16px-ish sides: the app container already pads 18px. */
+    padding: var(--space-4) 0 var(--nav-clearance);
 }
 #dashboard-content > * {
     margin: 0;
 }
-
-/* ===== HEADER: DATE + AVATAR, THEN STATUS STRIP (V3) ===== */
-/* The greeting demoted to a quiet date line — the For-Today hero owns the
-   page's largest type now, not the pleasantries. */
-.dash-greeting {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 0 var(--space-4);
-}
-.dash-greeting__date {
-    font-size: var(--font-sm);
-    color: var(--text-secondary);
-    font-weight: 600;
-}
-.dash-greeting__avatar {
-    width: 44px;
-    height: 44px;
-    border-radius: 50%;
-    background: linear-gradient(135deg, var(--cat-push-bg), var(--cat-pull-bg));
-    color: var(--text-strong);
-    font-size: var(--font-base);
-    font-weight: 700;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    transition: transform var(--anim-fast);
-    user-select: none;
-}
-.dash-greeting__avatar:active { transform: scale(0.95); }
-
-/* One-line status strip: streak · week dots · pace. Replaces the hero chips. */
-.dash-strip {
-    display: flex;
-    align-items: center;
-    gap: var(--space-8);
-    padding: 0 var(--space-4);
-    margin-top: -6px;
-    font-size: var(--font-xs);
-    color: var(--text-muted);
-    flex-wrap: wrap;
-}
-.dash-strip__streak { color: var(--highlight-warm); font-weight: 600; }
-.dash-strip__sep { color: var(--text-very-muted); }
-.dash-strip__dots { display: inline-flex; gap: 4px; align-items: center; }
-.dash-strip__dot {
-    width: 7px;
-    height: 7px;
-    border-radius: 50%;
-    background: var(--bg-card-hi);
-    border: 1px solid var(--border-light);
-}
-.dash-strip__dot--done { background: var(--primary); border-color: var(--primary); }
-.dash-strip__count { font-weight: 600; color: var(--text-secondary); }
-.dash-strip__pace { color: var(--success); font-weight: 600; }
 
 /* Dashboard loading skeletons — sized to match the real cards below */
 .dash-skel--hero  { height: 140px; }
@@ -353,195 +298,6 @@
 .cat-bg-shoulders { background: var(--cat-shoulders-bg); color: var(--cat-shoulders); }
 .cat-bg-other     { background: var(--muted-bg);         color: var(--text-secondary); }
 
-/* ── For Today hero (V3): THE card on the page. Solid category-tinted fill
-   (tint layered over the card base via a flat two-stop gradient — same trick
-   as the streak chip), display-size name, and two co-equal doors: Start
-   workout (the plan) and Quick start (freestyle). ── */
-.dash-today-hero {
-    background: var(--bg-card);
-    border: 1px solid var(--border-light);
-    border-radius: var(--radius-md);
-    padding: var(--space-16);
-    margin-bottom: var(--space-8);
-}
-.dash-today-hero.cat-fill-push      { background: linear-gradient(var(--cat-push-bg), var(--cat-push-bg)), var(--bg-card); border-color: var(--cat-push-border); }
-.dash-today-hero.cat-fill-pull      { background: linear-gradient(var(--cat-pull-bg), var(--cat-pull-bg)), var(--bg-card); border-color: var(--cat-pull-border); }
-.dash-today-hero.cat-fill-legs      { background: linear-gradient(var(--cat-legs-bg), var(--cat-legs-bg)), var(--bg-card); border-color: var(--cat-legs-border); }
-.dash-today-hero.cat-fill-core      { background: linear-gradient(var(--cat-core-bg), var(--cat-core-bg)), var(--bg-card); border-color: var(--cat-core-border); }
-.dash-today-hero.cat-fill-cardio    { background: linear-gradient(var(--cat-cardio-bg), var(--cat-cardio-bg)), var(--bg-card); border-color: var(--cat-cardio-border); }
-.dash-today-hero.cat-fill-arms      { background: linear-gradient(var(--cat-arms-bg), var(--cat-arms-bg)), var(--bg-card); border-color: var(--cat-arms-border); }
-.dash-today-hero.cat-fill-shoulders { background: linear-gradient(var(--cat-shoulders-bg), var(--cat-shoulders-bg)), var(--bg-card); border-color: var(--cat-shoulders-border); }
-.dash-today-hero__eyebrow {
-    font-size: var(--font-xs);
-    color: var(--text-secondary);
-    font-weight: 600;
-    margin-bottom: 2px;
-}
-.dash-today-hero__name {
-    color: var(--text-strong);
-    font-size: var(--font-xl);
-    font-weight: 800;
-    line-height: 1.2;
-}
-.dash-today-hero__meta { color: var(--text-secondary); font-size: var(--font-xs); margin-top: 3px; }
-.dash-today-hero__actions {
-    display: flex;
-    gap: var(--space-8);
-    margin-top: var(--space-12);
-}
-.dash-today-hero__cta {
-    flex: 1.4;
-    min-height: var(--tap);
-    border: none;
-    border-radius: var(--radius-sm);
-    background: var(--primary);
-    color: var(--text-on-accent);
-    font-size: var(--font-base);
-    font-weight: 700;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: var(--space-8);
-    cursor: pointer;
-}
-.dash-today-hero__cta:active { transform: scale(0.98); }
-.dash-today-hero__cta--ghost {
-    flex: 1;
-    background: transparent;
-    border: 1px solid var(--primary-border);
-    color: var(--primary);
-}
-
-/* Active-workout hero: same shell as .dash-today-hero, live-dot in the eyebrow
-   marks it as "running." The Cancel ghost gets a danger tint. */
-.dash-today-hero--active .dash-today-hero__eyebrow {
-    color: var(--success);
-    display: flex;
-    align-items: center;
-    gap: var(--space-6);
-}
-.dash-today-hero__live-dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: var(--success);
-    animation: dashActiveHeroPulse 1.6s ease-in-out infinite;
-}
-@keyframes dashActiveHeroPulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.4; }
-}
-.dash-today-hero--active .dash-today-hero__cta--ghost {
-    border-color: var(--danger);
-    color: var(--danger);
-}
-.dash-today-hero__pr {
-    display: flex;
-    align-items: center;
-    gap: var(--space-8);
-    margin-top: 12px;
-    background: var(--badge-gold-bg);
-    border: 1px solid var(--badge-gold-border);
-    border-radius: var(--radius-sm);
-    padding: 8px 10px;
-}
-.dash-today-hero__pr i { color: var(--badge-gold); font-size: var(--font-xs); }
-.dash-today-hero__pr-txt { font-size: var(--font-2xs); color: var(--text-main); line-height: 1.35; }
-.dash-today-hero__pr-txt b { color: var(--text-strong); }
-
-/* Program adjustment-week notice (propose-only trust) — success-tinted; the
-   primary button APPLIES the deterministic adjustment and starts (no chat
-   round trip), with a secondary "Ask coach" for discussion. */
-.dash-today-hero__program {
-    margin-top: 12px;
-    background: var(--success-bg-subtle);
-    border: 1px solid var(--success-border);
-    border-radius: var(--radius-sm);
-    padding: 8px 10px;
-}
-.dash-today-hero__program-head {
-    display: flex;
-    align-items: center;
-    gap: var(--space-8);
-}
-.dash-today-hero__program-head i { color: var(--success); font-size: var(--font-xs); }
-.dash-today-hero__program-txt { font-size: var(--font-2xs); color: var(--text-main); line-height: 1.35; }
-.dash-today-hero__program-txt b { color: var(--text-strong); }
-.dash-today-hero__program-actions {
-    display: flex;
-    gap: var(--space-8);
-    margin-top: var(--space-8);
-}
-.dash-today-hero__program-apply {
-    flex: 1;
-    background: var(--success);
-    border: none;
-    color: var(--text-on-accent);
-    font-size: var(--font-xs);
-    font-weight: 600;
-    border-radius: var(--radius-sm);
-    padding: 8px;
-    cursor: pointer;
-}
-.dash-today-hero__program-ask {
-    background: transparent;
-    border: 1px solid var(--success-border);
-    color: var(--success);
-    font-size: var(--font-xs);
-    font-weight: 600;
-    border-radius: var(--radius-sm);
-    padding: 8px 12px;
-    cursor: pointer;
-}
-
-/* Pre-Start caution — light trailing week before a heavy program week. Amber,
-   quieter than the success notice; taps through to a coach reflow. */
-.dash-today-hero__caution {
-    display: flex;
-    align-items: center;
-    gap: var(--space-8);
-    margin-top: 12px;
-    background: var(--warning-bg);
-    border: 1px solid var(--warning-border);
-    border-radius: var(--radius-sm);
-    padding: 8px 10px;
-    cursor: pointer;
-}
-.dash-today-hero__caution i { color: var(--warning); font-size: var(--font-xs); }
-.dash-today-hero__caution-txt { font-size: var(--font-2xs); color: var(--text-main); line-height: 1.35; }
-.dash-today-hero__caution-txt b { color: var(--text-strong); }
-
-/* Persistent program heartbeat — a quiet muted footer row under the hero, not
-   a highlighted card. Just enough to confirm the block is running and open its
-   detail; deliberately understated so it never competes with Start. */
-.dash-program-line {
-    display: flex;
-    align-items: center;
-    gap: var(--space-8);
-    margin-top: var(--space-10);
-    padding: 6px 4px;
-    cursor: pointer;
-}
-.dash-program-line__icon { color: var(--text-muted); font-size: var(--font-2xs); flex-shrink: 0; }
-.dash-program-line__txt {
-    flex: 1;
-    min-width: 0;
-    font-size: var(--font-2xs);
-    color: var(--text-muted);
-    font-weight: 500;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-.dash-program-line__chev { color: var(--text-muted); font-size: var(--font-2xs); flex-shrink: 0; }
-/* TP-6 c — "lighter week starts Nov 2 · 2 swaps waiting" under the plan line */
-.dash-program-line__meta {
-    display: block;
-    font-weight: 400;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
 /* Program-complete banner — the block finishing is a milestone (gold, like a
    PR), with the next block one tap away. */
 .dash-program-done {
@@ -655,23 +411,6 @@
 
 /* ── Main lifts scoreboard (AP-21): headline, one row per main lift,
    movement-pattern strip — rides inside a .dash-week-card ── */
-.sb-card__headline {
-    padding: var(--space-10) var(--space-12);
-    border-bottom: 1px solid var(--border-subtle);
-    font-size: var(--font-sm);
-    font-weight: 600;
-    color: var(--text-strong);
-    line-height: 1.35;
-}
-.sb-card__headline--down,
-.sb-card__headline--under { color: var(--warning-moderate); }
-.sb-card__sub {
-    display: block;
-    margin-top: var(--space-2);
-    font-size: var(--font-2xs);
-    font-weight: 500;
-    color: var(--text-muted);
-}
 .sb-card__empty {
     padding: var(--space-12);
     font-size: var(--font-xs);
@@ -679,16 +418,6 @@
     line-height: 1.45;
 }
 .sb-card__empty b { display: block; color: var(--text-main); font-weight: 600; margin-bottom: var(--space-2); }
-.sb-row__trend { width: 18px; text-align: center; font-size: var(--font-md); flex-shrink: 0; color: var(--text-muted); }
-.sb-row__trend--up   { color: var(--success); }
-.sb-row__trend--down { color: var(--danger); }
-.sb-row__trend--new  { color: var(--primary); font-size: var(--font-sm); }
-.sb-row__trend--flat,
-.sb-row__trend--idle { font-size: var(--font-sm); }
-.sb-row__delta { margin-left: var(--space-6); font-weight: 700; }
-.sb-row__delta--up   { color: var(--success); }
-.sb-row__delta--down { color: var(--danger); }
-.sb-row__delta--flat { color: var(--text-muted); }
 .sb-patterns {
     display: flex;
     flex-wrap: wrap;
@@ -825,8 +554,6 @@
 }
 
 /* ── Week plan (Phase 5.5) ── */
-/* Calm plan-state hero: rest day / done for today — no loud CTA. */
-.dash-today-hero--calm .dash-today-hero__name { color: var(--text-main); }
 .dash-alt-row--setup .dash-alt-row__txt { flex: 1; }
 .dash-alt-row__dismiss {
     width: var(--tap-sm);
@@ -839,4 +566,432 @@
     display: flex;
     align-items: center;
     justify-content: center;
+}
+
+/* ===== TODAY HERO (HOME.md, Option B "Today-first") =====================
+   THE card on Home: the date + streak, the week strip, then today's workout
+   with three stat tiles and one filled button (Start). Every state — up
+   today, in progress, rest day, done, nothing planned — uses this shell. */
+.dash-hero {
+    background: linear-gradient(160deg, var(--hero-bg-start) 0%, var(--hero-bg-end) 100%);
+    border: 1px solid var(--hero-border);
+    border-radius: var(--radius-xl);
+    padding: var(--space-16) var(--space-16) var(--space-12);
+}
+.dash-hero__top {
+    display: flex;
+    align-items: center;
+    margin-bottom: var(--space-12);
+}
+.dash-hero__date {
+    font-size: var(--font-sm);
+    font-weight: 700;
+    color: var(--text-muted);
+}
+.dash-hero__streak-badge {
+    margin-left: auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: var(--space-4) 9px;
+    border-radius: var(--radius-pill);
+    background: var(--highlight-warm-bg);
+    color: var(--highlight-warm);
+    font-size: var(--font-xs);
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+}
+.dash-hero__streak-badge--calm {
+    background: var(--hero-tile-bg);
+    color: var(--text-muted);
+}
+
+/* Week strip: day letter over a 22px circle — done (filled, check), today
+   (ring, pulses), planned (thin ring), rest (a dash, no ring — never "missed"). */
+.dash-week {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: var(--space-4);
+}
+.dash-week__day {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+}
+.dash-week__letter {
+    font-size: var(--font-2xs);
+    font-weight: 600;
+    color: var(--text-secondary);
+}
+.dash-week__day.is-today .dash-week__letter {
+    font-weight: 800;
+    color: var(--text-strong);
+}
+.dash-week__dot {
+    width: 22px;
+    height: 22px;
+    box-sizing: border-box;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: var(--font-2xs);
+    color: var(--text-on-accent);
+}
+.dash-week__dot--done { background: var(--primary); }
+.dash-week__dot--today { border: 2px solid var(--primary); }
+.dash-week__dot--plan { border: 1.5px solid var(--border-light); }
+.dash-week__dot--rest::after {
+    content: '';
+    width: 8px;
+    height: 2px;
+    border-radius: var(--radius-2xs);
+    background: var(--border-medium);
+}
+.dash-hero__divider {
+    height: 1px;
+    background: var(--hero-divider);
+    margin: var(--space-16) calc(-1 * var(--space-16));
+}
+
+.dash-hero__eyebrow {
+    display: flex;
+    align-items: center;
+    gap: var(--space-6);
+    font-size: var(--font-2xs);
+    font-weight: 800;
+    letter-spacing: var(--tracking-eyebrow);
+    text-transform: uppercase;
+    color: var(--hero-accent);
+}
+.dash-hero--active .dash-hero__eyebrow { color: var(--success); }
+.dash-hero__live-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--success);
+}
+.dash-hero__title {
+    margin: var(--space-8) 0 var(--space-4);
+    font-size: var(--font-2xl);
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    line-height: 1.05;
+    color: var(--text-strong);
+    overflow-wrap: anywhere;
+}
+.dash-hero--calm .dash-hero__title { color: var(--text-main); }
+.dash-hero__sub {
+    font-size: var(--font-base);
+    font-weight: 600;
+    color: var(--text-main);
+}
+
+/* PR-proximity and light-week notes ride inside the hero, above the tiles. */
+.dash-hero__note {
+    display: flex;
+    align-items: center;
+    gap: var(--space-8);
+    margin-top: var(--space-12);
+    padding: var(--space-8) var(--space-10);
+    border-radius: var(--radius-sm);
+    border: 1px solid transparent;
+}
+.dash-hero__note i { font-size: var(--font-xs); flex-shrink: 0; }
+.dash-hero__note--pr { background: var(--badge-gold-bg); border-color: var(--badge-gold-border); }
+.dash-hero__note--pr i { color: var(--badge-gold); }
+.dash-hero__note--caution { background: var(--warning-bg); border-color: var(--warning-border); cursor: pointer; }
+.dash-hero__note--caution i { color: var(--warning); }
+.dash-hero__note-txt { font-size: var(--font-xs); color: var(--text-main); line-height: 1.35; }
+.dash-hero__note-txt b { color: var(--text-strong); }
+
+.dash-hero__stats {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(0, 1fr);
+    gap: var(--space-8);
+    margin-top: var(--space-12);
+}
+.dash-hero__stat {
+    min-width: 0;
+    padding: 9px var(--space-10);
+    border-radius: var(--radius-sm);
+    background: var(--hero-tile-bg);
+}
+.dash-hero__stat-value {
+    font-size: var(--font-lg);
+    font-weight: 800;
+    color: var(--text-strong);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+.dash-hero__stat-label {
+    font-size: var(--font-2xs);
+    font-weight: 600;
+    color: var(--text-secondary);
+}
+
+.dash-hero__actions {
+    display: flex;
+    gap: var(--space-8);
+    margin-top: var(--space-12);
+}
+.dash-hero__start,
+.dash-hero__wide,
+.dash-hero__icon-btn {
+    height: 54px;
+    border-radius: var(--radius-14);
+    font-family: inherit;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-8);
+    cursor: pointer;
+}
+.dash-hero__start {
+    flex: 1;
+    min-width: 0;
+    border: none;
+    background: var(--primary);
+    color: var(--text-on-accent);
+    font-size: var(--font-md);
+    font-weight: 800;
+    box-shadow: 0 10px 28px var(--primary-glow);
+}
+.dash-hero__wide {
+    flex: 1;
+    min-width: 0;
+    background: var(--hero-tile-bg);
+    border: 1px solid var(--border-light);
+    color: var(--primary);
+    font-size: var(--font-base);
+    font-weight: 800;
+}
+.dash-hero__wide--danger { color: var(--danger); border-color: var(--danger-border); }
+.dash-hero__icon-btn {
+    width: 54px;
+    flex-shrink: 0;
+    background: var(--hero-tile-bg);
+    border: 1px solid var(--border-light);
+    color: var(--primary);
+    font-size: var(--font-md);
+}
+.dash-hero__icon-btn--coach { color: var(--hero-accent); }
+.dash-hero__foot {
+    margin-top: var(--space-10);
+    text-align: center;
+    font-size: var(--font-xs);
+    color: var(--text-secondary);
+}
+.dash-hero__foot i { color: var(--success); margin-right: 5px; }
+
+/* ── Next up / My plan tiles + the All workouts row ── */
+.dash-tiles {
+    display: grid;
+    /* minmax(0, …) or a long workout name pushes the grid wider than the screen */
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-8);
+}
+.dash-tiles--one { grid-template-columns: minmax(0, 1fr); }
+.dash-tile {
+    min-width: 0;
+    padding: var(--space-12);
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+}
+.dash-tile__eyebrow {
+    font-size: var(--font-2xs);
+    font-weight: 700;
+    letter-spacing: var(--tracking-eyebrow);
+    text-transform: uppercase;
+    color: var(--text-secondary);
+}
+.dash-tile__title {
+    margin-top: var(--space-6);
+    font-size: var(--font-base);
+    font-weight: 800;
+    color: var(--text-strong);
+    overflow-wrap: anywhere;
+}
+.dash-tile__title i { margin-right: var(--space-6); }
+.dash-tile__meta {
+    margin-top: var(--space-4);
+    font-size: var(--font-xs);
+    color: var(--text-secondary);
+    line-height: 1.35;
+}
+.dash-tile__bar {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 3px;
+    margin-top: var(--space-8);
+}
+.dash-tile__seg {
+    height: 4px;
+    border-radius: var(--radius-2xs);
+    background: var(--bg-tertiary);
+}
+.dash-tile__seg.is-lighter { background: var(--hero-lighter-seg); }
+.dash-tile__seg.is-current { background: var(--primary); }
+.dash-all-workouts { min-height: 52px; padding-top: var(--space-6); padding-bottom: var(--space-6); }
+.dash-all-workouts .row-card__icon {
+    width: auto;
+    height: auto;
+    background: none;
+    color: var(--text-secondary);
+    font-size: var(--font-sm);
+}
+.dash-all-workouts .row-card__action { color: var(--text-secondary); font-size: var(--font-xs); }
+
+/* ── Main lifts as tiles: the first spans both columns ── */
+.dash-lifts__head.sec-head--compact {
+    justify-content: flex-start;
+    align-items: baseline;
+    gap: var(--space-8);
+}
+.dash-lifts__head.sec-head--compact h3 { font-size: var(--font-md); font-weight: 800; }
+.dash-lifts__head a { margin-left: auto; font-size: var(--font-sm); }
+.dash-lifts__meta {
+    color: var(--success);
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+.dash-lifts__note {
+    margin: 0 2px var(--space-8);
+    font-size: var(--font-xs);
+    color: var(--text-secondary);
+    line-height: 1.4;
+}
+.dash-lifts__note--down,
+.dash-lifts__note--under { color: var(--warning-moderate); }
+.dash-lifts__grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-8);
+}
+.dash-lift {
+    min-width: 0;
+    padding: var(--space-12);
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+}
+.dash-lift--wide { grid-column: span 2; }
+.dash-lift--stuck { border-color: var(--warning-border); }
+.dash-lift__top {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-6);
+}
+.dash-lift__name {
+    flex: 1;
+    min-width: 0;
+    font-size: var(--font-sm);
+    font-weight: 700;
+    color: var(--text-muted);
+    line-height: 1.25;
+    /* Two lines, then an ellipsis — one line made "Incline Chest Press" read "Incline …" on a half tile. */
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    overflow-wrap: anywhere;
+}
+.dash-lift__badge {
+    flex-shrink: 0;
+    padding: 3px var(--space-8);
+    border-radius: var(--radius-pill);
+    font-size: var(--font-xs);
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+.dash-lift__badge--up    { background: var(--success-bg); color: var(--success); }
+.dash-lift__badge--stuck { background: var(--warning-bg); color: var(--warning); }
+.dash-lift__badge--down  { background: var(--danger-soft-bg); color: var(--danger); }
+.dash-lift__badge--flat  { background: var(--muted-bg); color: var(--text-muted); }
+.dash-lift__badge--new   { background: var(--primary-bg); color: var(--primary); }
+.dash-lift__bottom {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: var(--space-6);
+    margin-top: var(--space-8);
+}
+/* The sparkline gives way first on a narrow half tile. */
+.dash-lift__bottom svg { flex: 0 1 auto; min-width: 24px; max-width: 100%; }
+.dash-lift__value {
+    font-size: var(--font-lg);
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    line-height: 1;
+    color: var(--text-strong);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+.dash-lift--wide .dash-lift__value { font-size: var(--font-xl); }
+.dash-lift__unit {
+    margin-left: 3px;
+    font-size: var(--font-xs);
+    font-weight: 600;
+    letter-spacing: 0;
+    color: var(--text-secondary);
+}
+.dash-lift__hint {
+    margin-top: var(--space-6);
+    font-size: var(--font-xs);
+    color: var(--text-secondary);
+}
+.dash-lift__rep {
+    margin-top: var(--space-4);
+    font-size: var(--font-xs);
+    font-weight: 600;
+    color: var(--badge-gold);
+}
+.dash-lifts .sb-patterns { padding: var(--space-10) 2px 0; }
+
+/* ── Motion (HOME.md) — all of it opt-in to motion ── */
+@media (prefers-reduced-motion: no-preference) {
+    /* First paint only: the hero, tiles, All workouts and lifts rise in. */
+    #dashboard-content.is-entering .dash-rise {
+        animation: dashRise 480ms var(--ease-screen) both;
+        animation-delay: calc(60ms + var(--rise-i, 0) * 70ms);
+    }
+    .dash-week__day.is-today .dash-week__dot { animation: dashTodayPulse 2s ease-out infinite; }
+    .dash-hero__live-dot { animation: dashLivePulse 1.6s ease-in-out infinite; }
+    .dash-hero__start,
+    .dash-hero__wide,
+    .dash-hero__icon-btn,
+    .dash-tile,
+    .dash-lift,
+    .dash-all-workouts {
+        transition: transform 160ms var(--ease-screen), filter 160ms;
+    }
+    .dash-hero__start:active,
+    .dash-hero__wide:active,
+    .dash-hero__icon-btn:active,
+    .dash-tile:active,
+    .dash-lift:active,
+    .dash-all-workouts:active {
+        transform: scale(0.97);
+        filter: brightness(1.15);
+    }
+}
+@keyframes dashRise {
+    from { opacity: 0; transform: translateY(14px); }
+    to   { opacity: 1; transform: none; }
+}
+@keyframes dashTodayPulse {
+    0%   { box-shadow: 0 0 0 0 var(--primary-ring-today); }
+    70%  { box-shadow: 0 0 0 8px var(--primary-ring-fade); }
+    100% { box-shadow: 0 0 0 0 var(--primary-ring-fade); }
+}
+@keyframes dashLivePulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
 }

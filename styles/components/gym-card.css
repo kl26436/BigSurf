@@ -9,8 +9,9 @@
    The current GPS-detected gym gets a primary left-border accent + "HERE"
    badge so users can identify it at a glance.
    ========================================================================== */
+/* Landing v2 — flush with the search bar above (the page body pads). */
 .gym-card-list {
-    padding: 0 var(--pad-page-compact);
+    padding: 0;
 }
 
 .gym-card {
@@ -20,7 +21,7 @@
     background: var(--bg-card);
     border: 1px solid var(--border-subtle);
     border-left: 3px solid transparent;
-    border-radius: var(--radius-sm);
+    border-radius: var(--radius-14);
     margin-bottom: var(--space-8);
     text-align: left;
     cursor: pointer;
@@ -75,6 +76,19 @@
     font-variant-numeric: tabular-nums;
     letter-spacing: -0.02em;
 }
+/* Landing v2 — the count is labeled ("machines"), stacked under the number. */
+.gym-card__count-block {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    line-height: 1;
+}
+.gym-card__count-label {
+    margin-top: var(--space-2);
+    font-size: var(--font-2xs);
+    font-weight: 600;
+    color: var(--text-secondary);
+}
 .gym-card__chev {
     font-size: var(--font-2xs);
     color: var(--text-very-muted);
@@ -84,11 +98,15 @@
 /* Type-mix bar: each segment uses flex-grow proportional to its count. */
 .gym-card__mix {
     display: flex;
+    gap: 2px;
     height: 6px;
-    border-radius: var(--radius-xs);
+    border-radius: var(--radius-pill);
     overflow: hidden;
     margin-top: var(--space-8);
 }
+/* Landing v2 — the hero's bar is 8px with a legend; a list row's is 4px, no legend. */
+.gym-card__mix--hero { height: 8px; margin-top: 0; }
+.gym-card__mix--thin { height: 4px; margin-top: var(--space-10); }
 .gym-card__mix-seg { opacity: 0.85; }
 .gym-card__mix-seg--plate-loaded  { background: var(--equip-plate-loaded); }
 .gym-card__mix-seg--selectorized  { background: var(--equip-selectorized); }
@@ -138,43 +156,6 @@
 }
 
 /* ==========================================================================
-   Stat strip — 4-up summary above the gym list (Gyms / Machines / Brands /
-   Orphans). The Orphans card uses warning colors when its count is > 0.
-   ========================================================================== */
-.stat-strip {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: var(--space-8);
-    padding: var(--space-8) var(--pad-page);
-}
-.stat-strip__card {
-    padding: var(--space-8) var(--space-6);
-    background: var(--bg-card);
-    border: 1px solid var(--border-subtle);
-    border-radius: var(--radius-10);
-    text-align: center;
-}
-.stat-strip__card--warning {
-    background: var(--warning-bg);
-    border-color: var(--warning-border);
-}
-.stat-strip__value {
-    font-size: var(--font-base);
-    font-weight: 800;
-    color: var(--text-strong);
-    font-variant-numeric: tabular-nums;
-}
-.stat-strip__card--warning .stat-strip__value { color: var(--warning); }
-.stat-strip__label {
-    font-size: var(--font-2xs);
-    font-weight: 700;
-    color: var(--text-very-muted);
-    letter-spacing: var(--tracking-eyebrow);
-    text-transform: uppercase;
-    margin-top: var(--space-2);
-}
-
-/* ==========================================================================
    Brand tile grid — used on the Catalog tab. 3 columns; each tile drills
    into the existing brand-section view.
    ========================================================================== */
@@ -218,9 +199,6 @@
 
 /* Catalog tab — a .field-search with a summary line below it and an
    empty-state for no matches. */
-.catalog-search {
-    padding: var(--space-12) var(--pad-page) var(--space-6);
-}
 .catalog-search__summary {
     padding: var(--space-6) var(--pad-page) 0;
     font-size: var(--font-2xs);
@@ -309,3 +287,91 @@
     text-overflow: ellipsis;
     white-space: nowrap;
 }
+
+/* ==========================================================================
+   Current-gym hero (Landing v2 §2) — first on the Gyms tab when a session
+   gym is known; that gym isn't repeated in the list under "Other gyms".
+   ========================================================================== */
+.gym-hero {
+    margin-bottom: var(--space-12);
+    padding: var(--space-12) var(--space-12) var(--space-12);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--primary-border);
+    background:
+        radial-gradient(120% 90% at 100% 0%, var(--primary-wash), transparent 60%),
+        var(--bg-card);
+    cursor: pointer;
+}
+.gym-hero__eyebrow {
+    display: flex;
+    align-items: center;
+    gap: var(--space-6);
+    min-width: 0;
+    font-size: var(--font-2xs);
+    font-weight: 800;
+    letter-spacing: var(--tracking-eyebrow);
+    text-transform: uppercase;
+    color: var(--primary);
+}
+.gym-hero__city {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-weight: 600;
+    letter-spacing: 0;
+    text-transform: none;
+    color: var(--text-secondary);
+}
+.gym-hero__name {
+    margin-top: var(--space-6);
+    font-size: var(--font-xl);
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    color: var(--text-strong);
+    overflow-wrap: anywhere;
+}
+.gym-hero__count-line {
+    display: flex;
+    align-items: baseline;
+    gap: var(--space-6);
+    margin: var(--space-2) 0 var(--space-12);
+}
+.gym-hero__count {
+    font-size: var(--font-2xl);
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    color: var(--text-strong);
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+}
+.gym-hero__count-label { font-size: var(--font-sm); font-weight: 600; color: var(--text-muted); }
+.gym-hero__visited { margin-left: auto; font-size: var(--font-xs); color: var(--text-secondary); }
+.gym-hero__legend { gap: var(--space-12); margin-top: var(--space-8); }
+.gym-hero__legend .gym-card__legend-item { font-size: var(--font-xs); }
+.gym-hero__legend .gym-card__legend-dot { width: 7px; height: 7px; }
+.gym-hero__legend .gym-card__legend-count { color: var(--text-strong); }
+.gym-hero__actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-8);
+    margin-top: var(--space-12);
+}
+.gym-hero__action {
+    min-height: var(--tap);
+    border-radius: var(--radius-sm);
+    background: var(--bg-card-hi);
+    border: 1px solid var(--border);
+    color: var(--text-strong);
+    font-family: inherit;
+    font-size: var(--font-sm);
+    font-weight: 700;
+    cursor: pointer;
+}
+.gym-hero__action--add {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: var(--text-on-accent);
+    font-weight: 800;
+}
+.gym-card-list__label { margin: 0 2px var(--space-8); }

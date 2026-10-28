@@ -23,7 +23,9 @@
    block used to live here; it matched nothing (the element only carries
    id="main-header") and silently hid the safe-area-inset-top rule. */
 
-/* Bottom Nav — 5-tab with elevated center FAB */
+/* Bottom Nav — 5 equal columns, every item vertically centered, the
+   workout button in line with the others (HOME.md: it used to sit 10px
+   above the bar while the icons top-aligned). */
 .bottom-nav {
     position: fixed;
     bottom: 0;
@@ -32,10 +34,11 @@
     height: calc(60px + env(safe-area-inset-bottom, 0px));
     background: var(--bg-surface);
     border-top: 1px solid var(--border-subtle);
-    display: flex;
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
     align-items: center;
-    justify-content: space-around;
-    padding-bottom: env(safe-area-inset-bottom, 0px);
+    justify-items: center;
+    padding: 0 var(--space-8) env(safe-area-inset-bottom, 0px);
     z-index: var(--z-header);
 }
 
@@ -51,34 +54,43 @@
     background: none;
     border: none;
     min-height: var(--tap);
-    flex: 1 1 0;
+    width: 100%;
+    padding: 0;
     transition: color var(--anim-fast);
     cursor: pointer;
 }
-.bottom-nav__btn.active { color: var(--primary); }
+.bottom-nav__btn.active { color: var(--primary); font-weight: 700; }
 .bottom-nav__btn i { font-size: var(--font-md); }
 
-/* Elevated center FAB — opens Workout picker */
+/* Center workout button — opens the Workout picker */
 .bottom-nav__fab {
     position: relative;
     background: var(--primary);
     color: var(--bg-app);
-    width: 50px;
-    height: 50px;
+    width: 48px;
+    height: 48px;
     border-radius: 50%;
     border: none;
     display: flex;
     align-items: center;
     justify-content: center;
-    transform: translateY(-10px);
-    box-shadow: var(--shadow-md);
-    flex: 0 0 50px;
+    box-shadow: 0 10px 24px var(--primary-glow-nav);
     cursor: pointer;
     transition: transform var(--anim-fast);
 }
 .bottom-nav__fab i { font-size: var(--font-lg); }
 .bottom-nav__fab:active {
-    transform: translateY(-10px) scale(0.92);
+    transform: scale(0.92);
+}
+/* Something to do today (nothing logged, nothing running — dashboard-ui.js
+   sets body.fab-glow): a slow pulse ring, not constant noise. */
+@media (prefers-reduced-motion: no-preference) {
+    body.fab-glow:not(.workout-active) .bottom-nav__fab { animation: fabGlow 2.4s ease-out infinite; }
+}
+@keyframes fabGlow {
+    0%   { box-shadow: 0 10px 24px var(--primary-glow-nav), 0 0 0 0 var(--primary-ring); }
+    70%  { box-shadow: 0 10px 28px var(--primary-glow-nav-hi), 0 0 0 14px var(--primary-ring-fade); }
+    100% { box-shadow: 0 10px 24px var(--primary-glow-nav), 0 0 0 0 var(--primary-ring-fade); }
 }
 /* FAB should always look the same — never get the "active tab" color */
 .bottom-nav__fab.active,
@@ -117,8 +129,8 @@ body.workout-active .bottom-nav__fab i {
 }
 
 @keyframes fab-lift {
-    0%, 100% { transform: translateY(-10px) rotate(0deg); }
-    50%      { transform: translateY(-14px) rotate(-3deg); }
+    0%, 100% { transform: translateY(0) rotate(0deg); }
+    50%      { transform: translateY(-4px) rotate(-3deg); }
 }
 @keyframes fab-ring {
     0%   { transform: scale(1);   opacity: 0.8; }

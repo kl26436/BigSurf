@@ -358,9 +358,9 @@
     align-items: center;
     justify-content: center;
     gap: var(--space-8);
-    width: calc(100% - 2 * var(--pad-page));
+    width: 100%;
     min-height: var(--tap);
-    margin: var(--space-12) var(--pad-page) var(--space-8);
+    margin: var(--space-12) 0 var(--space-8);
     padding: 0 var(--space-16);
     background: var(--primary-bg);
     border: 1px dashed var(--primary-border);
@@ -372,41 +372,6 @@
 }
 .add-gym-btn:active { transform: scale(0.99); }
 
-.scan-banner {
-    display: flex;
-    align-items: center;
-    gap: var(--space-12);
-    padding: var(--space-12) var(--pad-page);
-    margin: var(--space-8) var(--pad-page);
-    background: var(--warning-bg);
-    border: 1px solid var(--warning-border);
-    border-radius: var(--radius-md);
-}
-.scan-banner__icon {
-    width: var(--icon-md);
-    height: var(--icon-md);
-    border-radius: var(--radius-pill);
-    background: var(--warning-bg);
-    color: var(--warning);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-}
-.scan-banner__text {
-    flex: 1;
-    min-width: 0;
-}
-.scan-banner__title {
-    font-size: var(--font-sm);
-    font-weight: 700;
-    color: var(--text-strong);
-}
-.scan-banner__sub {
-    font-size: var(--font-xs);
-    color: var(--text-muted);
-    margin-top: var(--space-2);
-}
 /* CP-7 — discovery cards (finish the map · line gaps · branch scouting).
    Mockup: mockups/equipment-discovery.html */
 .eq-discover {
@@ -504,19 +469,6 @@
 }
 .eq-discover__scout-txt b {
     color: var(--text-strong);
-}
-
-.scan-banner__btn {
-    appearance: none;
-    padding: var(--space-6) var(--space-12);
-    background: var(--primary);
-    color: var(--text-on-accent);
-    border: 0;
-    border-radius: var(--radius-pill);
-    font-size: var(--font-xs);
-    font-weight: 700;
-    cursor: pointer;
-    flex-shrink: 0;
 }
 
 .scan-review {
@@ -1091,14 +1043,93 @@
 .machine-id__error i { font-size: var(--font-2xl); margin-bottom: var(--space-8); }
 .machine-id__progress { justify-content: center; padding: var(--space-16); }
 
-/* UD-5 — gym context row above the tabs, and the search's "Add …" row. */
-.equip-gym-context {
-    margin-bottom: var(--space-12);
-}
+/* UD-5 — the search's "Add …" row. */
 .equip-search-add {
     margin-bottom: var(--space-12);
     border-style: dashed;
 }
 .equip-search-add .row-card__title {
     color: var(--primary);
+}
+
+/* --------------------------------------------------------------------------
+   Landing v2 (Pocket Inventory) — the one search + scan, the history banner,
+   motion. The gym hero and gym rows are in components/gym-card.css.
+   -------------------------------------------------------------------------- */
+.equip-landing-search {
+    display: flex;
+    gap: var(--space-8);
+    margin-bottom: var(--space-6);
+}
+.equip-landing-search__field { flex: 1; min-width: 0; }
+.equip-landing-search__scan {
+    width: var(--tap);
+    height: var(--tap);
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-sm);
+    background: var(--primary-bg);
+    border: 1px solid var(--primary-border);
+    color: var(--primary);
+    font-size: var(--font-md);
+    cursor: pointer;
+}
+
+/* History names that aren't in the library — the whole row is the button. */
+.scan-banner {
+    display: flex;
+    align-items: center;
+    gap: var(--space-10);
+    width: 100%;
+    margin: var(--space-10) 0;
+    padding: var(--space-10) var(--space-12);
+    background: var(--warning-bg);
+    border: 1px solid var(--warning-border);
+    border-radius: var(--radius-sm);
+    font-family: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+.scan-banner__icon { color: var(--warning); font-size: var(--font-sm); flex-shrink: 0; }
+.scan-banner__text {
+    flex: 1;
+    min-width: 0;
+    font-size: var(--font-xs);
+    font-weight: 600;
+    color: var(--text-strong);
+}
+.scan-banner__link {
+    flex-shrink: 0;
+    font-size: var(--font-xs);
+    font-weight: 700;
+    color: var(--warning);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+    /* Once per open: banner, hero, label and gym rows rise in. */
+    #equipment-library-content.is-entering .eq-rise {
+        animation: eqRise 460ms var(--ease-screen) both;
+        animation-delay: calc(80ms + var(--rise-i, 0) * 70ms);
+    }
+    .scan-banner,
+    .gym-hero,
+    .gym-hero__action,
+    .gym-card,
+    .equip-landing-search__scan {
+        transition: transform 160ms var(--ease-screen), filter 160ms, background var(--anim-fast);
+    }
+    .scan-banner:active,
+    .gym-hero:active,
+    .gym-hero__action:active,
+    .gym-card:active,
+    .equip-landing-search__scan:active {
+        transform: scale(0.97);
+        filter: brightness(1.15);
+    }
+}
+@keyframes eqRise {
+    from { opacity: 0; transform: translateY(14px); }
+    to   { opacity: 1; transform: none; }
 }

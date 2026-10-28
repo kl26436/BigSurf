@@ -137,6 +137,7 @@
         <link rel="modulepreload" href="js/core/features/coach-live.js">
         <link rel="modulepreload" href="js/core/features/gym-session-context.js">
         <link rel="modulepreload" href="js/core/features/machine-id.js">
+        <link rel="modulepreload" href="js/core/ui/library-switcher.js">
         <link rel="modulepreload" href="js/core/data/equipment-catalog-firestore.js">
         <link rel="modulepreload" href="js/core/features/geocoding.js">
         <link rel="modulepreload" href="js/core/features/pr-tracker.js">
@@ -163,6 +164,7 @@
         <link rel="modulepreload" href="js/core/ui/error-log-ui.js">
         <link rel="modulepreload" href="js/core/features/streak-tracker.js">
         <link rel="modulepreload" href="js/core/features/stats-tracker.js">
+        <link rel="modulepreload" href="js/core/features/home-model.js">
         <link rel="modulepreload" href="js/core/features/metrics/range-filter.js">
         <link rel="modulepreload" href="js/core/features/charts/chart-sparkline.js">
         <link rel="modulepreload" href="js/core/features/charts/chart-line.js">
@@ -208,6 +210,7 @@
                     "
                 />
                 <div class="logo-fallback" style="display: none">BS</div>
+                <button class="header__avatar" id="header-avatar" onclick="navigateTo('settings')" aria-label="Open settings"></button>
             </header>
 
             <!-- Auth Section (Clean New Structure) -->
@@ -801,7 +804,10 @@
                     <button class="page-header__back" onclick="navigateBack()" aria-label="Back">
                         <i class="fas fa-chevron-left"></i>
                     </button>
-                    <div class="page-header__title">Exercises</div>
+                    <button class="lib-switch" onclick="toggleLibrarySwitcher(event, 'exercises')" aria-haspopup="menu" aria-expanded="false" aria-label="Exercises — switch library">
+                        <span class="page-header__title lib-switch__title">Exercises</span>
+                        <i class="fas fa-chevron-down lib-switch__chev" aria-hidden="true"></i>
+                    </button>
                 </div>
                 <button class="page-header__save" onclick="showAddExerciseModal()">
                     <i class="fas fa-plus"></i> New
@@ -1220,11 +1226,9 @@
                     <button class="page-header__back" onclick="navigateBack()" aria-label="Back">
                         <i class="fas fa-chevron-left"></i>
                     </button>
-                    <div class="page-header__title">Equipment</div>
-                </div>
-                <div class="page-header__actions">
-                    <button class="page-header__save page-header__save--icon" onclick="openMachineIdCamera()" aria-label="Identify a machine by photo" title="Identify by photo">
-                        <i class="fas fa-camera"></i>
+                    <button class="lib-switch" onclick="toggleLibrarySwitcher(event, 'equipment')" aria-haspopup="menu" aria-expanded="false" aria-label="Equipment — switch library">
+                        <span class="page-header__title lib-switch__title">Equipment</span>
+                        <i class="fas fa-chevron-down lib-switch__chev" aria-hidden="true"></i>
                     </button>
                 </div>
             </div>

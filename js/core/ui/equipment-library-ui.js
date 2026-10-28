@@ -31,6 +31,7 @@ import { BODY_PARTS, canonicalBodyPart, movementLabel, labelLine } from '../feat
 import { patternsForEquipment } from '../features/movement-patterns.js';
 import { once } from './busy.js';
 import { getSessionGym } from '../features/gym-session-context.js';
+import { librarySwitcherHTML } from './library-switcher.js';
 
 let workoutManager = null;
 let allEquipment = [];
@@ -184,6 +185,7 @@ export async function openEquipmentLibrary() {
     if (!section) return;
 
     section.classList.remove('hidden');
+    _landingEntrance = true;
     scanReviewActive = false; // always land on the normal list, not the review view
     _detailFromElsewhere = false; // a standalone open is the library's own list
     _addFlowAssignTo = null;
@@ -868,9 +870,10 @@ function renderEquipmentLibrary() {
     // Ensure the static page-header is restored if we just exited a sub-view.
     restoreLibraryHeader();
 
-    // Pocket Inventory IA: compact tabs across the top, content per tab.
-    // UD-5 — gym-first: where you are comes before the tabs.
-    const tabsHTML = renderGymContextRow() + renderCompactTabs();
+    // Pocket Inventory IA (Landing v2): the one search + the scan button,
+    // then the compact tabs, then the tab. Where you are now leads the Gyms
+    // tab as its hero card (UD-5 gym-first).
+    const tabsHTML = renderLandingSearch() + renderCompactTabs();
     let tabBody;
     if (currentTab === 'gyms') {
         tabBody = renderMyGymsTab();
@@ -885,6 +888,58 @@ function renderEquipmentLibrary() {
     // Post-render: walk mix segments to set their flexGrow from the data
     // attribute, avoiding inline `style=` (design audit constraint).
     applyGymMixBarFlex(container);
+
+    // Landing v2 §5 — the Gyms tab rises in once per open, not on every
+    // re-render (the catalog load and the history scan both repaint it).
+    if (_landingEntrance && currentTab === 'gyms') {
+        _landingEntrance = false;
+        playRise(container, '.eq-rise');
+    }
+}
+
+let _landingEntrance = false;
+const motionOK = () => !!window.matchMedia?.('(prefers-reduced-motion: no-preference)').matches;
+
+function playRise(container, selector) {
+    if (!motionOK()) return;
+    container.querySelectorAll(selector).forEach((el, i) => el.style.setProperty('--rise-i', String(i)));
+    container.classList.add('is-entering');
+    setTimeout(() => container.classList.remove('is-entering'), 1200);
+}
+
+// Gym card → Gym Detail (Landing v2 §5): the detail page grows out of the
+// tapped card's rect. The card is noted on the way down (capture phase runs
+// before the card's own onclick), so openGymDetail knows where it came from.
+let _gymOrigin = null;      // DOMRect of the tapped gym card | null
+let _landingScrollTop = 0;  // the landing's scroll, restored on Back
+if (typeof document !== 'undefined') {
+    document.addEventListener('click', (e) => {
+        const card = e.target?.closest?.('#equipment-library-content [data-gym-card]');
+        _gymOrigin = card ? card.getBoundingClientRect() : null;
+    }, true);
+}
+
+function animateGymDetailIn() {
+    const section = document.getElementById('equipment-library-section');
+    const origin = _gymOrigin;
+    _gymOrigin = null;
+    if (!section || !motionOK() || typeof section.animate !== 'function') return;
+    const easing = 'cubic-bezier(.2,.8,.2,1)';
+    if (origin) {
+        const vw = window.innerWidth;
+        const vh = window.innerHeight;
+        const inset = `inset(${Math.max(0, origin.top)}px ${Math.max(0, vw - origin.right)}px ${Math.max(0, vh - origin.bottom)}px ${Math.max(0, origin.left)}px round 16px)`;
+        section.animate(
+            [{ clipPath: inset, opacity: 0.5 }, { clipPath: 'inset(0 round 0px)', opacity: 1 }],
+            { duration: 440, easing },
+        );
+    } else {
+        const content = document.getElementById('equipment-library-content');
+        content?.animate(
+            [{ opacity: 0, transform: 'translateX(28px)' }, { opacity: 1, transform: 'none' }],
+            { duration: 280, easing },
+        );
+    }
 }
 
 /**
@@ -900,12 +955,7 @@ function restoreLibraryHeader() {
             <button class="page-header__back" onclick="navigateBack()" aria-label="Back">
                 <i class="fas fa-chevron-left"></i>
             </button>
-            <div class="page-header__title">Equipment</div>
-        </div>
-        <div class="page-header__actions">
-            <button class="page-header__save page-header__save--icon" onclick="openMachineIdCamera()" aria-label="Identify a machine by photo" title="Identify by photo">
-                <i class="fas fa-camera"></i>
-            </button>
+            ${librarySwitcherHTML('equipment')}
         </div>
     `;
     delete header.dataset.mutated;
@@ -1254,6 +1304,8 @@ export function openGymDetail(locationIdOrNull, fallbackName) {
         : null;
     const gymName = loc?.name || fallbackName;
     if (!gymName) return;
+    const content = document.getElementById('equipment-library-content');
+    if (!currentGymDetail && content) _landingScrollTop = content.scrollTop;
     currentGymDetail = {
         name: gymName,
         id: loc?.id || null,
@@ -1261,6 +1313,8 @@ export function openGymDetail(locationIdOrNull, fallbackName) {
     };
     currentBpFilter = 'All';
     renderEquipmentLibrary();
+    if (content) content.scrollTop = 0;
+    animateGymDetailIn();
 }
 
 /**
@@ -1271,6 +1325,9 @@ export function closeGymDetail() {
     currentBpFilter = 'All';
     currentTab = 'gyms';
     renderEquipmentLibrary();
+    // Back lands where you left the list, not at the top.
+    const content = document.getElementById('equipment-library-content');
+    if (content) content.scrollTop = _landingScrollTop;
 }
 
 /**
@@ -2095,8 +2152,7 @@ export function closeGymPickerSheet() {
  * Render the three-tab strip (My gyms / Library / Catalog) with live counts.
  */
 function renderCompactTabs() {
-    const catalog = getCatalogSync();
-    const totalCatalog = catalog.reduce((sum, b) => sum + (b.lines || []).reduce((s, l) => s + (l.machines?.length || 0), 0), 0);
+    const totalCatalog = catalogMachineCount();
 
     const tabs = [
         { id: 'gyms',    label: 'Gyms', count: allLocations.length },
@@ -2117,34 +2173,61 @@ function renderCompactTabs() {
     `;
 }
 
+function catalogMachineCount() {
+    return getCatalogSync().reduce((sum, b) => sum + (b.lines || []).reduce((s, l) => s + (l.machines?.length || 0), 0), 0);
+}
+
 /**
- * UD-5 — the gym you're at, one tap from its machines; without a session gym
- * the row says so and points at Gyms (where the one add-gym flow lives).
+ * Landing v2 §4 — ONE search field under the header, plus the scan button
+ * (identify a machine by photo). On All machines it searches yours (and
+ * offers to add what you typed); on Gyms and Catalog it searches the catalog,
+ * where machines you already have are marked — so typing on Gyms moves you
+ * to the Catalog's results.
  */
-function renderGymContextRow() {
-    const gym = getSessionGym();
-    if (!gym) {
-        return `
-            <div class="row-card equip-gym-context" onclick="setEquipmentTab('gyms')" role="button" tabindex="0">
-                <div class="row-card__icon"><i class="fas fa-location-dot" aria-hidden="true"></i></div>
-                <div class="row-card__content">
-                    <div class="row-card__title">Not at a gym yet</div>
-                    <div class="row-card__subtitle">Pick one, or it's picked up when you start a workout there</div>
-                </div>
-                <i class="fas fa-chevron-right row-card__action" aria-hidden="true"></i>
-            </div>`;
-    }
-    const loc = allLocations.find((l) => l.name === gym);
-    const here = allEquipment.filter((e) => (e.locations || []).includes(gym)).length;
+function renderLandingSearch() {
+    const onLibrary = currentTab === 'library';
+    const term = onLibrary ? currentSearchTerm : catalogSearchTerm;
+    const placeholder = onLibrary ? 'Find or add a machine…' : `Search ${formatCount(catalogMachineCount())} machines`;
     return `
-        <div class="row-card equip-gym-context" onclick="openGymDetail(${loc?.id ? `'${escapeAttr(loc.id)}'` : 'null'}, '${escapeAttr(gym)}')" role="button" tabindex="0">
-            <div class="row-card__icon"><i class="fas fa-location-dot" aria-hidden="true"></i></div>
-            <div class="row-card__content">
-                <div class="row-card__title">At ${escapeHtml(gym)}</div>
-                <div class="row-card__subtitle">${here} machine${here === 1 ? '' : 's'} here</div>
+        <div class="equip-landing-search">
+            <div class="field-search equip-landing-search__field${term ? ' field-search--with-clear' : ''}">
+                <i class="fas fa-search" aria-hidden="true"></i>
+                <input type="search" id="equip-landing-search-input" aria-label="${escapeAttr(placeholder)}"
+                       placeholder="${escapeAttr(placeholder)}" value="${escapeAttr(term)}"
+                       oninput="setLandingSearch(this.value)">
+                ${term ? LANDING_CLEAR_HTML : ''}
             </div>
-            <i class="fas fa-chevron-right row-card__action" aria-hidden="true"></i>
+            <button class="equip-landing-search__scan" onclick="openMachineIdCamera()" aria-label="Identify a machine by photo">
+                <i class="fas fa-camera" aria-hidden="true"></i>
+            </button>
         </div>`;
+}
+
+const LANDING_CLEAR_HTML = `<button class="field-search__clear" onclick="setLandingSearch('')" aria-label="Clear search"><i class="fas fa-times" aria-hidden="true"></i></button>`;
+
+export function setLandingSearch(term) {
+    if (currentTab === 'library') {
+        // List-only re-render keeps the field (and the iOS keyboard) alive.
+        filterEquipmentBySearch(term);
+        syncLandingSearchField(term);
+        return;
+    }
+    if (currentTab === 'gyms' && term.trim()) currentTab = 'catalog';
+    setCatalogSearch(term);
+}
+if (typeof window !== 'undefined') window.setLandingSearch = setLandingSearch;
+
+/** Keep the field's value and its clear button in step without rebuilding it. */
+function syncLandingSearchField(term) {
+    const wrap = document.querySelector('.equip-landing-search__field');
+    if (!wrap) return;
+    const input = wrap.querySelector('input');
+    if (input && input.value !== term) input.value = term;
+    const clear = wrap.querySelector('.field-search__clear');
+    wrap.classList.toggle('field-search--with-clear', !!term);
+    if (term && !clear) wrap.insertAdjacentHTML('beforeend', LANDING_CLEAR_HTML);
+    if (!term && clear) clear.remove();
+    if (!term) input?.focus();
 }
 
 /**
@@ -2161,36 +2244,15 @@ function formatCount(n) {
 function renderMyGymsTab() {
     const stats = computeGymStats();
     const unlinked = getUnlinkedActive();
+    const n = unlinked.length;
 
-    // Stat strip: gyms / machines / brands / orphans
-    const brandSet = new Set();
-    allEquipment.forEach((e) => { if (e.brand && e.brand !== 'Unknown') brandSet.add(e.brand); });
-    const stripCards = [
-        { value: stats.length, label: 'Gyms' },
-        { value: allEquipment.length, label: 'Machines' },
-        { value: brandSet.size, label: 'Brands' },
-        { value: unlinked.length, label: 'From history', warning: unlinked.length > 0 },
-    ];
-    const stripHTML = `
-        <div class="stat-strip">
-            ${stripCards.map((c) => `
-                <div class="stat-strip__card${c.warning ? ' stat-strip__card--warning' : ''}">
-                    <div class="stat-strip__value">${c.value}</div>
-                    <div class="stat-strip__label">${escapeHtml(c.label)}</div>
-                </div>
-            `).join('')}
-        </div>
-    `;
-
-    const scanBannerHTML = unlinked.length > 0 ? `
-        <div class="scan-banner" onclick="reviewDiscoveredEquipment()" role="button" tabindex="0">
-            <div class="scan-banner__icon"><i class="fas fa-history"></i></div>
-            <div class="scan-banner__text">
-                <div class="scan-banner__title">${unlinked.length} machine${unlinked.length !== 1 ? 's' : ''} found in history</div>
-                <div class="scan-banner__sub">Not yet in your library</div>
-            </div>
-            <button class="scan-banner__btn" onclick="event.stopPropagation(); reviewDiscoveredEquipment()">Review</button>
-        </div>
+    // The whole row is the tap target (Landing v2 — not just "Review →").
+    const scanBannerHTML = n > 0 ? `
+        <button class="scan-banner eq-rise" onclick="reviewDiscoveredEquipment()">
+            <i class="fas fa-circle-exclamation scan-banner__icon" aria-hidden="true"></i>
+            <span class="scan-banner__text">${n} name${n === 1 ? '' : 's'} from your history ${n === 1 ? "isn't" : "aren't"} in your library</span>
+            <span class="scan-banner__link">Review →</span>
+        </button>
     ` : '';
 
     const addGymBtn = `
@@ -2215,10 +2277,69 @@ function renderMyGymsTab() {
     // (or no subtitle) and refresh when the address resolves.
     backfillGymAddresses(stats);
 
-    const cardsHTML = stats.map(renderGymCard).join('');
-    return stripHTML + renderBranchScoutingCard() + scanBannerHTML + `
-        <div class="gym-card-list">${cardsHTML}</div>
+    // Landing v2 §2 — the gym you're at is the hero, and isn't repeated below.
+    const current = stats.find((g) => g.isCurrent) || null;
+    const others = current ? stats.filter((g) => g !== current) : stats;
+    const label = current && others.length ? '<div class="group-label gym-card-list__label eq-rise">Other gyms</div>' : '';
+    return scanBannerHTML + renderBranchScoutingCard() + `
+        <div class="gym-card-list">
+            ${current ? renderGymHero(current) : ''}
+            ${label}
+            ${others.map(renderGymCard).join('')}
+        </div>
         ${addGymBtn}
+    `;
+}
+
+/** Type-mix bar: one segment per equipment type, sized by its count. */
+function gymMixBarHTML(gym, modifier) {
+    // Mix segments carry their proportion as a data attribute. Inline `style=`
+    // would blow the design-audit budget; instead applyGymMixBarFlex() walks
+    // the rendered DOM and sets `element.style.flexGrow` (allowed per the
+    // truly-dynamic-values exception in CLAUDE.md design rule #8).
+    const segs = gym.typeMix.length > 0
+        ? gym.typeMix.map((m) =>
+            `<div class="gym-card__mix-seg gym-card__mix-seg--${slugType(m.type)}" data-mix-flex="${m.count}"></div>`
+        ).join('')
+        : '<div class="gym-card__mix-seg gym-card__mix-seg--other" data-mix-flex="1"></div>';
+    return `<div class="gym-card__mix gym-card__mix--${modifier}" aria-hidden="true">${segs}</div>`;
+}
+
+/**
+ * Landing v2 §2 — the current gym's hero: "You're here", the machine count,
+ * the type mix with its legend, and two doors: View machines and Add machine
+ * (quick-add bound to this gym — it doesn't also open the gym).
+ */
+function renderGymHero(gym) {
+    const openArg = gym.id ? `'${escapeAttr(gym.id)}'` : `null, '${escapeAttr(gym.name)}'`;
+    const legend = gym.typeMix.slice(0, 4).map((m) => `
+        <span class="gym-card__legend-item">
+            <span class="gym-card__legend-dot gym-card__legend-dot--${slugType(m.type)}"></span>
+            <span class="gym-card__legend-label">${escapeHtml(typeShortLabel(m.type))}</span>
+            <span class="gym-card__legend-count">${m.count}</span>
+        </span>
+    `).join('');
+    return `
+        <div class="gym-hero eq-rise" data-gym-card onclick="openGymDetail(${openArg})">
+            <div class="gym-hero__eyebrow">
+                <i class="fas fa-location-dot" aria-hidden="true"></i>You're here
+                ${gym.locationStr ? `<span class="gym-hero__city">· ${escapeHtml(gym.locationStr)}</span>` : ''}
+            </div>
+            <div class="gym-hero__name">${escapeHtml(gym.name)}</div>
+            <div class="gym-hero__count-line">
+                <span class="gym-hero__count">${gym.count}</span>
+                <span class="gym-hero__count-label">machine${gym.count === 1 ? '' : 's'}</span>
+                ${gym.lastVisit ? `<span class="gym-hero__visited">Visited ${escapeHtml(formatRelative(gym.lastVisit))}</span>` : ''}
+            </div>
+            ${gymMixBarHTML(gym, 'hero')}
+            <div class="gym-card__legend gym-hero__legend">${legend}</div>
+            <div class="gym-hero__actions">
+                <button class="gym-hero__action" onclick="event.stopPropagation(); openGymDetail(${openArg})">View machines</button>
+                <button class="gym-hero__action gym-hero__action--add" onclick="event.stopPropagation(); openQuickAddSheet('${escapeAttr(gym.name)}')">
+                    <i class="fas fa-plus" aria-hidden="true"></i> Add machine
+                </button>
+            </div>
+        </div>
     `;
 }
 
@@ -2358,28 +2479,10 @@ function computeGymStats() {
 }
 
 /**
- * Render a single gym card with the type-mix bar + legend.
+ * One gym in the list (Landing v2 §2): name + meta, the machine count with
+ * its label, a thin type-mix bar. The legend lives on the hero.
  */
 function renderGymCard(gym) {
-    const typeSlug = (t) => slugType(t);
-    // Mix segments carry their proportion as a data attribute. Inline `style=`
-    // would blow the design-audit budget; instead applyGymMixBarFlex() walks
-    // the rendered DOM and sets `element.style.flexGrow` (allowed per the
-    // truly-dynamic-values exception in CLAUDE.md design rule #8).
-    const mixBar = gym.typeMix.length > 0
-        ? gym.typeMix.map((m) =>
-            `<div class="gym-card__mix-seg gym-card__mix-seg--${typeSlug(m.type)}" data-mix-flex="${m.count}"></div>`
-        ).join('')
-        : `<div class="gym-card__mix-seg gym-card__mix-seg--other" data-mix-flex="1"></div>`;
-
-    const legend = gym.typeMix.slice(0, 4).map((m) => `
-        <span class="gym-card__legend-item">
-            <span class="gym-card__legend-dot gym-card__legend-dot--${typeSlug(m.type)}"></span>
-            <span class="gym-card__legend-label">${escapeHtml(typeShortLabel(m.type))}</span>
-            <span class="gym-card__legend-count">${m.count}</span>
-        </span>
-    `).join('');
-
     // Only include parts we actually have — never fall back to a "no address"
     // placeholder when the data isn't there.
     const metaParts = [
@@ -2390,19 +2493,21 @@ function renderGymCard(gym) {
     const onclickArg = gym.id ? `'${escapeAttr(gym.id)}'` : `null, '${escapeAttr(gym.name)}'`;
 
     return `
-        <button class="gym-card${gym.isCurrent ? ' is-here' : ''}"
+        <button class="gym-card${gym.isCurrent ? ' is-here' : ''} eq-rise" data-gym-card
                 onclick="openGymDetail(${onclickArg})"
-                aria-label="${escapeAttr(gym.name)}, ${gym.count} machines${gym.isCurrent ? ', you are here' : ''}">
+                aria-label="${escapeAttr(gym.name)}, ${gym.count} machine${gym.count === 1 ? '' : 's'}${gym.isCurrent ? ', you are here' : ''}">
             <div class="gym-card__head">
                 <div class="gym-card__info">
                     <span class="gym-card__name">${escapeHtml(gym.name)}${gym.isCurrent ? '<span class="gym-card__here-pill">Here</span>' : ''}</span>
                     ${metaParts ? `<span class="gym-card__meta">${escapeHtml(metaParts)}</span>` : ''}
                 </div>
-                <span class="gym-card__count">${gym.count}</span>
-                <i class="fas fa-chevron-right gym-card__chev"></i>
+                <span class="gym-card__count-block">
+                    <span class="gym-card__count">${gym.count}</span>
+                    <span class="gym-card__count-label">machine${gym.count === 1 ? '' : 's'}</span>
+                </span>
+                <i class="fas fa-chevron-right gym-card__chev" aria-hidden="true"></i>
             </div>
-            <div class="gym-card__mix" aria-hidden="true">${mixBar}</div>
-            <div class="gym-card__legend">${legend}</div>
+            ${gymMixBarHTML(gym, 'thin')}
         </button>
     `;
 }
@@ -2455,26 +2560,13 @@ function renderLibraryTab() {
         </div>
     `;
 
-    const searchHTML = `
-        <div class="equip-search-bar" id="equip-search-bar">
-            <div class="field-search equip-search-bar__field ${currentSearchTerm ? 'field-search--with-clear' : ''}">
-                <i class="fas fa-search" aria-hidden="true"></i>
-                <input type="search" aria-label="Find or add a machine" placeholder="Find or add a machine…"
-                       value="${escapeAttr(currentSearchTerm)}"
-                       oninput="filterEquipmentBySearch(this.value)"
-                       onfocus="setTimeout(() => this.scrollIntoView({ block: 'start' }), 200)">
-                ${currentSearchTerm ? `<button class="field-search__clear" onclick="filterEquipmentBySearch('')" aria-label="Clear search"><i class="fas fa-times" aria-hidden="true"></i></button>` : ''}
-            </div>
-        </div>
-    `;
-
     let listHTML;
     if (filtered.length === 0) {
         listHTML = currentSearchTerm ? searchAddRowHTML() : `
             <div class="empty-state-compact">
                 <i class="fas fa-wrench"></i>
                 <p>No equipment yet</p>
-                <p class="empty-state-hint">Machines are saved as you log sets on them — or type one above to add it.</p>
+                <p class="empty-state-hint">Machines are saved as you log sets on them — or type one in the search to add it.</p>
             </div>
         `;
     } else {
@@ -2485,7 +2577,7 @@ function renderLibraryTab() {
     // filter means the user is looking for something specific.
     const discoveryHTML = (!currentSearchTerm && !currentLocationFilter) ? renderDiscoveryBlock() : '';
 
-    return filterHTML + searchHTML + discoveryHTML +
+    return filterHTML + discoveryHTML +
         `<div class="equip-lib-list equip-lib-list--compact" id="equip-lib-list-wrap">${listHTML}</div>`;
 }
 
@@ -2618,20 +2710,9 @@ function renderCatalogTab() {
     const term = catalogSearchTerm.trim();
     const catalog = getCatalogSync();
 
-    const searchHTML = `
-        <div class="catalog-search field-search ${term ? 'field-search--with-clear' : ''}">
-            <i class="fas fa-search" aria-hidden="true"></i>
-            <input type="search" id="catalog-search-input"
-                   placeholder="Search 1.3k catalog machines…"
-                   value="${escapeAttr(catalogSearchTerm)}"
-                   oninput="setCatalogSearch(this.value)">
-            ${term ? `<button class="field-search__clear" onclick="setCatalogSearch('')" aria-label="Clear search"><i class="fas fa-times" aria-hidden="true"></i></button>` : ''}
-        </div>
-    `;
-
     // Search mode — flat machine results across all brands
     if (term) {
-        return searchHTML + renderCatalogSearchResults(catalog, term);
+        return renderCatalogSearchResults(catalog, term);
     }
 
     // Browse mode — brand tile grid + popular-at-current-gym
@@ -2649,7 +2730,7 @@ function renderCatalogTab() {
     const currentGym = getSessionLocation();
     const popularHTML = currentGym ? renderPopularAtGym(currentGym) : '';
 
-    return searchHTML + `
+    return `
         <div class="brand-tile-grid">${tilesHTML}</div>
         ${popularHTML}
     `;
@@ -2745,7 +2826,7 @@ export function setCatalogSearch(term) {
     catalogSearchTerm = term;
     renderEquipmentLibrary();
     // Restore focus + caret on the search input after re-render
-    const input = document.getElementById('catalog-search-input');
+    const input = document.getElementById('equip-landing-search-input');
     if (input && document.activeElement !== input) {
         input.focus();
         const len = input.value.length;
@@ -2898,7 +2979,7 @@ function renderEquipmentLibraryList() {
             <div class="empty-state-compact">
                 <i class="fas fa-wrench"></i>
                 <p>No machines yet</p>
-                <p class="empty-state-hint">Machines are saved as you log sets on them — or type one above to add it.</p>
+                <p class="empty-state-hint">Machines are saved as you log sets on them — or type one in the search to add it.</p>
             </div>
         `;
     } else {

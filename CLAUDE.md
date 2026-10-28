@@ -89,6 +89,7 @@ js/
     │   ├── manual-workout.js       # Manual workout entry
     │   ├── plate-calculator.js     # Plate breakdown algorithm + standalone page
     │   ├── pr-tracker.js           # Personal record detection (segmented per exercise+equipment)
+    │   ├── home-model.js           # HOME.md Option B: PURE week strip, hero title split / stat tiles, main-lift badge + sparkline series
     │   ├── progress-scoreboard.js  # AP-21: rolling 4-wk e1RM per main lift, rep PRs, pattern coverage (dashboard card + coach + weekly review)
     │   ├── coach-rules.js          # AP-16: computeVerdicts/formatVerdictsContext — the rules' answers handed to the coach as facts
     │   ├── coach-context-builder.js # AP-20c: PURE chat-context builder (buildChatContext) — ai-coach-ui + the eval build the same block
@@ -129,6 +130,7 @@ js/
     │   ├── exercise-manager-ui.js  # Exercise library modal
     │   ├── error-log-ui.js         # Error log page (Settings → Data)
     │   ├── navigation.js           # Bottom nav, routing, navStack (10 deep), enterSection, system-back guard wiring, the logo-bar rule (LOGO_VIEWS)
+    │   ├── library-switcher.js     # Landing v2: the Equipment ⇄ Exercises title dropdown (replace, not push) + collapsing title
     │   ├── more-menu.js            # UD-1: the More tab — openSheet() rendered from moreMenuGroups() (the app's map)
     │   ├── back-guard.js           # SH-6: one history entry so Android back / iOS edge swipe does an in-app back
     │   ├── settings-ui.js          # Settings page, onboarding flow, profile detail

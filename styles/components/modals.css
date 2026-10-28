@@ -599,13 +599,6 @@ dialog.modal:not([open]) {
 }
 .equip-location-pills::-webkit-scrollbar { display: none; }
 
-/* Search bar (hidden by default) */
-.equip-search-bar {
-    padding: 0 var(--pad-page) var(--space-8);
-}
-.equip-search-bar.hidden {
-    display: none;
-}
 
 
 .equip-exercise-chevron {

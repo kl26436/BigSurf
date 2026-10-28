@@ -14,6 +14,7 @@ import { exportWorkoutData, exportDataForAI } from './core/data/data-manager.js'
 import { dismissFirstUseTip } from './core/features/first-use-tips.js';
 import { openLiveCoach } from './core/features/coach-live.js';
 import { openMachineIdCamera } from './core/features/machine-id.js';
+import { toggleLibrarySwitcher, pickLibrary } from './core/ui/library-switcher.js';
 import {
     openEquipmentLibrary, openEquipmentDetail, backToEquipmentList,
     filterEquipmentByLocation, filterEquipmentBySearch,
@@ -786,6 +787,8 @@ window.dismissFirstUseTip = dismissFirstUseTip;
 window.openLiveCoach = openLiveCoach;
 // Machine photo ID (Phase 8) — camera button renders in the equipment library header.
 window.openMachineIdCamera = openMachineIdCamera;
+window.toggleLibrarySwitcher = toggleLibrarySwitcher;
+window.pickLibrary = pickLibrary;
 
 // Body Measurements (Phase 12)
 window.showWeightEntryModal = showWeightEntryModal;
