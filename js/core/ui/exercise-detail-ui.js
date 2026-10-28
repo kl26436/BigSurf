@@ -181,9 +181,77 @@ export function renderExerciseDetail(exerciseName) {
                 `;
             })() : ''}
             `}
+            <div id="exd-places"></div>
         </div>
     `;
+    hydratePlaces(exerciseName);
 }
+
+// Pocket Inventory parity with Machine Detail: where you've done this lift
+// (all history, the gym you're at marked) and the machines in your library
+// that do it — the exercise → equipment side of the mapping, one tap to the
+// machine's page. Equipment loads after paint (cached after the first read).
+let _placesSeq = 0;
+async function hydratePlaces(exerciseName) {
+    const seq = ++_placesSeq;
+    const gyms = new Map();
+    for (const sess of aggregateExerciseStats(AppState.workouts || [], exerciseName, 'All').sessions) {
+        if (sess.location) gyms.set(sess.location, (gyms.get(sess.location) || 0) + 1);
+    }
+    let machines = [];
+    let here = null;
+    try {
+        const [{ FirebaseWorkoutManager }, { getSessionGym }] = await Promise.all([
+            import('../data/firebase-workout-manager.js'), import('../features/gym-session-context.js'),
+        ]);
+        here = getSessionGym();
+        if (!Array.isArray(AppState._cachedEquipment)) {
+            AppState._cachedEquipment = await new FirebaseWorkoutManager(AppState).getUserEquipment();
+        }
+        const key = exerciseName.toLowerCase();
+        machines = (AppState._cachedEquipment || [])
+            .filter(eq => (eq.exerciseTypes || []).some(t => String(t).toLowerCase() === key));
+    } catch { /* the sections are extras — the page stands without them */ }
+    const el = document.getElementById('exd-places');
+    if (!el || seq !== _placesSeq) return;
+
+    const gymRows = [...gyms.entries()].sort((a, b) => b[1] - a[1]).map(([gym, n]) => `
+        <div class="row-card row-card--static exd-place">
+            <div class="row-card__icon${gym === here ? ' exd-place__icon--here' : ''}"><i class="fas fa-location-dot" aria-hidden="true"></i></div>
+            <div class="row-card__content">
+                <div class="row-card__title">${escapeHtml(gym)}${gym === here ? ' <span class="exd-here-badge">Here</span>' : ''}</div>
+            </div>
+            <span class="exd-place__value">${n} session${n === 1 ? '' : 's'}</span>
+        </div>`).join('');
+    const machineRows = machines.map(eq => {
+        const sub = [eq.brand && eq.brand !== 'Unknown' ? eq.brand : null, eq.line, eq.equipmentType].filter(Boolean).join(' · ');
+        const atHere = here && (eq.locations || []).includes(here);
+        return `
+        <div class="row-card exd-place" onclick="openMachineFromExercise('${escapeAttr(eq.id)}')" role="button" tabindex="0">
+            <div class="row-card__icon"><i class="fas fa-cog" aria-hidden="true"></i></div>
+            <div class="row-card__content">
+                <div class="row-card__title">${escapeHtml(eq.function || eq.name || 'Machine')}${atHere ? ' <span class="exd-here-badge">Here</span>' : ''}</div>
+                ${sub ? `<div class="row-card__subtitle">${escapeHtml(sub)}</div>` : ''}
+            </div>
+            <i class="fas fa-chevron-right row-card__action" aria-hidden="true"></i>
+        </div>`;
+    }).join('');
+
+    el.innerHTML = `
+        ${gymRows ? `<div class="sec-head sec-head--inset"><h3>Done at</h3></div><div class="exd-places">${gymRows}</div>` : ''}
+        ${machineRows ? `<div class="sec-head sec-head--inset"><h3>Machines that do this <span class="sec-head__meta">${machines.length}</span></h3></div><div class="exd-places">${machineRows}</div>` : ''}
+    `;
+}
+
+/** A machine row → that machine's page in the Equipment library. */
+export async function openMachineFromExercise(equipmentId) {
+    try {
+        const m = await import('./equipment-library-ui.js');
+        m.setPendingEquipmentDetail(equipmentId);
+    } catch { /* lands on the library list instead */ }
+    window.navigateTo?.('equipment-library');
+}
+if (typeof window !== 'undefined') window.openMachineFromExercise = openMachineFromExercise;
 
 // Shown when the picked range has zero sessions for this exercise — a clear
 // reason + one-tap widen instead of a screen of zeros and dashes.

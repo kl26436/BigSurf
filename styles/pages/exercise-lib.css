@@ -680,15 +680,18 @@
 /* ===========================================
    31. EXERCISE LIBRARY CARDS (Apple-style flat)
    =========================================== */
+/* Pocket Inventory parity: the dense row the Equipment library uses — a
+   32px type-tinted tile, tighter padding, 14px radius. */
 .exercise-card-new {
     display: flex;
     align-items: center;
-    gap: var(--space-16);
-    padding: var(--space-16);
+    gap: var(--space-12);
+    min-height: var(--tap);
+    padding: var(--space-10) var(--space-12);
     background: var(--bg-card);
     border: 1px solid var(--border-subtle);
-    border-radius: var(--radius-lg);
-    margin-bottom: var(--space-12);
+    border-radius: var(--radius-14);
+    margin-bottom: var(--space-8);
     cursor: pointer;
     position: relative;
     overflow: hidden;
@@ -700,16 +703,34 @@
     background: var(--bg-card-hi);
 }
 .exercise-card-icon {
-    width: var(--tap);
-    height: var(--tap);
+    width: 32px;
+    height: 32px;
     display: flex;
     align-items: center;
     justify-content: center;
     background: var(--primary-bg);
-    border-radius: var(--radius-sm);
+    border-radius: var(--radius-8);
     color: var(--primary);
-    font-size: var(--font-lg);
+    font-size: var(--font-sm);
     flex-shrink: 0;
+}
+/* Tinted by the exercise's equipment type — the Equipment library's colors. */
+.exercise-card-icon--plate-loaded { color: var(--equip-plate-loaded); background: var(--equip-plate-loaded-bg); }
+.exercise-card-icon--selectorized { color: var(--equip-selectorized); background: var(--equip-selectorized-bg); }
+.exercise-card-icon--machine      { color: var(--equip-machine);      background: var(--equip-machine-bg); }
+.exercise-card-icon--barbell      { color: var(--equip-barbell);      background: var(--equip-barbell-bg); }
+.exercise-card-icon--dumbbell     { color: var(--equip-dumbbell);     background: var(--equip-dumbbell-bg); }
+.exercise-card-icon--cable        { color: var(--equip-cable);        background: var(--equip-cable-bg); }
+.exercise-card-icon--bench        { color: var(--equip-bench);        background: var(--equip-bench-bg); }
+.exercise-card-icon--rack         { color: var(--equip-rack);         background: var(--equip-rack-bg); }
+.exercise-card-icon--cardio       { color: var(--equip-cardio);       background: var(--equip-cardio-bg); }
+.exercise-card-icon--bodyweight   { color: var(--equip-bodyweight);   background: var(--equip-bodyweight-bg); }
+.exercise-card-icon--other        { color: var(--equip-other);        background: var(--equip-other-bg); }
+.exercise-card-fav {
+    margin-left: var(--space-6);
+    font-size: var(--font-2xs);
+    color: var(--badge-gold);
+    vertical-align: 1px;
 }
 .exercise-card-info {
     flex: 1;
@@ -719,7 +740,7 @@
     display: block;
     font-weight: 600;
     color: var(--text-strong);
-    font-size: var(--font-md);
+    font-size: var(--font-base);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;

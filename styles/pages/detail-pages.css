@@ -578,3 +578,44 @@
 .md-bmi-delta.delta-down { color: var(--warning); }
 
 .md-bc-legend { font-size: var(--font-sm); }
+
+/* Exercise detail — "Done at" and "Machines that do this" (Pocket Inventory
+   parity with Machine Detail's "At these gyms" / exercises sections). */
+.exd-places {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-8);
+    padding: 0 var(--space-16);
+}
+.exd-place {
+    gap: var(--space-12);
+    padding: var(--space-10) var(--space-12);
+}
+.exd-place .row-card__icon {
+    width: 32px;
+    height: 32px;
+    border-radius: var(--radius-8);
+    background: var(--bg-card-hi);
+    color: var(--text-muted);
+    font-size: var(--font-sm);
+}
+.exd-place .row-card__icon.exd-place__icon--here { background: var(--primary-bg); color: var(--primary); }
+.exd-place__value {
+    flex-shrink: 0;
+    font-size: var(--font-xs);
+    color: var(--text-secondary);
+    font-variant-numeric: tabular-nums;
+}
+.exd-here-badge {
+    display: inline-block;
+    margin-left: var(--space-4);
+    padding: 1px 5px;
+    border-radius: var(--radius-xs);
+    background: var(--primary);
+    color: var(--text-on-accent);
+    font-size: var(--font-2xs);
+    font-weight: 800;
+    letter-spacing: var(--tracking-eyebrow);
+    text-transform: uppercase;
+    vertical-align: 1px;
+}

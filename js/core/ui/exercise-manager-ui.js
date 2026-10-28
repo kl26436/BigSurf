@@ -49,15 +49,26 @@ const BODY_PARTS = TAXONOMY_BODY_PARTS.map((value) => ({ value, chipClass: BODY_
 
 const EQUIPMENT_TYPES = ['Machine', 'Cable', 'Dumbbell', 'Barbell', 'Bodyweight'];
 
-// Equipment type to icon mapping
+// Equipment type to icon mapping — the same glyphs the Equipment library
+// uses, so a row reads the same in both libraries (Pocket Inventory).
 const equipmentIcons = {
-    Barbell: 'fa-dumbbell',
+    Barbell: 'fa-grip-lines',
     Dumbbell: 'fa-dumbbell',
     Machine: 'fa-cogs',
+    'Plate-Loaded': 'fa-cog',
+    Selectorized: 'fa-th-list',
     Cable: 'fa-link',
+    Bench: 'fa-couch',
+    Rack: 'fa-archway',
+    Cardio: 'fa-heart-pulse',
     Bodyweight: 'fa-person',
     default: 'fa-dumbbell',
 };
+const TINTED_TYPES = new Set(['Barbell', 'Dumbbell', 'Machine', 'Plate-Loaded', 'Selectorized', 'Cable', 'Bench', 'Rack', 'Cardio', 'Bodyweight']);
+/** "Plate-Loaded" → "plate-loaded"; unknown types tint as other. */
+function equipmentTypeSlug(type) {
+    return TINTED_TYPES.has(type) ? type.toLowerCase() : 'other';
+}
 
 // Get icon class for equipment type
 function getEquipmentIcon(equipmentType) {
@@ -405,6 +416,9 @@ function renderExercises() {
         .map((exercise) => {
             const iconClass = getEquipmentIcon(exercise.equipmentType);
             const eid = escapeAttr(exercise.id);
+            const fav = isFav(exercise.name)
+                ? '<i class="fas fa-star exercise-card-fav" role="img" aria-label="Favorite"></i>'
+                : '';
             const usageCount = exerciseUsageCounts?.[exercise.name] || 0;
             const usageBadge = usageCount > 0
                 ? `<span class="exercise-usage-badge">&times;${usageCount}</span>`
@@ -420,11 +434,11 @@ function renderExercises() {
 
             return `
             <div class="exercise-card-new" data-action="exerciseCardClick" data-exercise-id="${eid}">
-                <div class="exercise-card-icon">
-                    <i class="fas ${iconClass}"></i>
+                <div class="exercise-card-icon exercise-card-icon--${equipmentTypeSlug(exercise.equipmentType)}">
+                    <i class="fas ${iconClass}" aria-hidden="true"></i>
                 </div>
                 <div class="exercise-card-info">
-                    <span class="exercise-card-name">${escapeHtml(exercise.name)}</span>
+                    <span class="exercise-card-name">${escapeHtml(exercise.name)}${fav}</span>
                     <span class="exercise-card-meta">${escapeHtml(libraryCardMeta(exercise))}</span>
                 </div>
                 ${originBadge}

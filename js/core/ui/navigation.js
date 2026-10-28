@@ -74,6 +74,75 @@ function sectionOf(view) {
 }
 let skipStackPush = false;
 
+// ===================================================================
+// SCREEN STACK FEEL (Pocket Inventory Landing v2 §5)
+// ===================================================================
+// Pages are sections that stay in the DOM, so "the previous screen stays
+// mounted" is mostly true already; what Back lost was WHERE you were. Each
+// page's scroll is remembered when you leave it and put back when Back
+// returns to it. Going forward into a page (not a tab root) slides it in.
+
+const TAB_ROOTS = new Set(['dashboard', 'workout-history-section', 'ai-coach-section', 'workout-selector', 'active-workout']);
+const scrollMemory = new Map(); // section id → scrollTop
+
+const motionOK = () => typeof window !== 'undefined'
+    && !!window.matchMedia?.('(prefers-reduced-motion: no-preference)').matches;
+
+/** The element that scrolls a page: its body, the page itself, or the window. */
+function scrollerOf(sectionId) {
+    const section = sectionId && document.getElementById(sectionId);
+    if (!section) return null;
+    const candidates = [section.querySelector(':scope > .content-section-body, :scope > .full-page-body'), section];
+    for (const el of candidates) {
+        if (!el) continue;
+        const oy = getComputedStyle(el).overflowY;
+        if (oy === 'auto' || oy === 'scroll') return el;
+    }
+    return document.scrollingElement || document.documentElement;
+}
+
+function rememberScroll(sectionId) {
+    const el = scrollerOf(sectionId);
+    if (el) scrollMemory.set(sectionId, el.scrollTop);
+}
+
+/**
+ * Put a page back where it was. Pages re-render on the way back (often
+ * after a cached read), so keep re-applying for up to a second until the
+ * content is tall enough — and stop the moment the user scrolls themselves.
+ */
+function restoreScroll(sectionId) {
+    const target = scrollMemory.get(sectionId);
+    scrollMemory.delete(sectionId);
+    if (!target) return;
+    let stopped = false;
+    const stop = () => { stopped = true; };
+    const opts = { passive: true, once: true };
+    window.addEventListener('touchstart', stop, opts);
+    window.addEventListener('wheel', stop, opts);
+    const until = performance.now() + 1000;
+    const step = () => {
+        if (stopped) return;
+        const el = scrollerOf(sectionId);
+        if (el) {
+            el.scrollTop = target;
+            if (Math.abs(el.scrollTop - target) < 2) return;
+        }
+        if (performance.now() < until) requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+}
+
+/** Forward into a page: 280 ms slide + fade (Web Animations — no transform left behind). */
+function playPush(sectionId) {
+    const el = sectionId && document.getElementById(sectionId);
+    if (!el || !motionOK() || typeof el.animate !== 'function') return;
+    el.animate(
+        [{ opacity: 0, transform: 'translateX(28px)' }, { opacity: 1, transform: 'none' }],
+        { duration: 280, easing: 'cubic-bezier(.2,.8,.2,1)' },
+    );
+}
+
 /** Push the page we're leaving (or pop, when `view` is the one below it). */
 function recordNavigation(view, { replace = false } = {}) {
     const current = getCurrentView();
@@ -186,6 +255,8 @@ export function navigateTo(view, { replace = false } = {}) {
     const visibleSection = SECTION_IDS
         .map((id) => document.getElementById(id))
         .find((el) => el && !el.classList.contains('hidden'));
+    const isBack = skipStackPush;
+    if (visibleSection && sectionOf(visibleSection.id) !== sectionOf(view)) rememberScroll(visibleSection.id);
 
     function showTarget() {
         // Hide all sections immediately
@@ -200,6 +271,10 @@ export function navigateTo(view, { replace = false } = {}) {
         // Route to appropriate view
         routeToView(view);
         backGuard.sync();
+
+        const shown = getCurrentView() || sectionOf(view);
+        if (isBack) restoreScroll(shown);
+        else if (!TAB_ROOTS.has(shown)) playPush(shown);
     }
 
     // Cancel any in-progress fade from a previous navigateTo call
